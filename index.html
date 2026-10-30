@@ -645,26 +645,36 @@ function linkAluno(atv) { return `${baseUrl()}#/enviar/${encodePayload({ g: S.lo
 /* =========================================================
    INTELIGÊNCIA ARTIFICIAL
    ========================================================= */
+function aiErr(p, st, msg = '') {
+  const m = String(msg); let dica = '';
+  if (st === 401 || /api.?key|x-api-key|authentication|API_KEY_INVALID/i.test(m)) dica = 'chave de API inválida. Copie novamente a chave completa no painel do provedor, cole em Configurações e clique em Testar.';
+  else if (/credit|balance|billing|insufficient_quota|quota/i.test(m) || st === 402) dica = 'sem créditos ou cota esgotada na conta do provedor. Adicione créditos ou use a correção gratuita.';
+  else if (st === 404 || /model/i.test(m) && /not.?found|does not exist|invalid/i.test(m)) dica = 'modelo não encontrado. Confira o nome do modelo em Configurações.';
+  else if (st === 429) dica = 'limite de uso atingido. Aguarde alguns minutos e tente novamente.';
+  else if (st === 529 || st === 503 || st >= 500) dica = 'o serviço da IA está instável no momento. Tente novamente em instantes.';
+  else if (st === 403) dica = 'acesso negado pelo provedor (permissão, região ou chave desativada).';
+  return `IA (${p}): ${dica || 'erro ' + st}${m ? ` [${m.slice(0, 160)}]` : ''}`;
+}
 async function aiCall(cfg, { system, text, images = [] }) {
-  const ai = cfg.ai || {}; const provider = ai.provider || 'anthropic'; const model = ai.model || MODELS[provider]; const key = ai.key;
+  const ai = cfg.ai || {}; const provider = ai.provider || 'anthropic'; const model = ai.model || MODELS[provider]; const key = cleanKey(ai.key);
   if (!key) throw new Error('A chave da IA não foi configurada pelo professor.');
   let r, j;
   if (provider === 'anthropic') {
     const content = [...images.map(d => ({ type: 'image', source: { type: 'base64', media_type: d.mime, data: d.b64 } })), { type: 'text', text }];
     r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }, body: JSON.stringify({ model, max_tokens: 8000, system, messages: [{ role: 'user', content }] }) });
-    j = await r.json(); if (!r.ok) throw new Error('IA (Anthropic): ' + (j.error?.message || r.status));
+    j = await r.json(); if (!r.ok) throw new Error(aiErr('Anthropic', r.status, j.error?.message));
     return j.content.filter(c => c.type === 'text').map(c => c.text).join('');
   }
   if (provider === 'openai') {
     const content = [{ type: 'text', text }, ...images.map(d => ({ type: 'image_url', image_url: { url: `data:${d.mime};base64,${d.b64}` } }))];
     r = await fetch('https://api.openai.com/v1/chat/completions', { method: 'POST', headers: { 'content-type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify({ model, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: system }, { role: 'user', content }] }) });
-    j = await r.json(); if (!r.ok) throw new Error('IA (OpenAI): ' + (j.error?.message || r.status));
+    j = await r.json(); if (!r.ok) throw new Error(aiErr('OpenAI', r.status, j.error?.message));
     return j.choices[0].message.content;
   }
   if (provider === 'gemini') {
     const parts = [...images.map(d => ({ inline_data: { mime_type: d.mime, data: d.b64 } })), { text }];
     r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents: [{ role: 'user', parts }], generationConfig: { responseMimeType: 'application/json', temperature: 0.2 } }) });
-    j = await r.json(); if (!r.ok) throw new Error('IA (Gemini): ' + (j.error?.message || r.status));
+    j = await r.json(); if (!r.ok) throw new Error(aiErr('Gemini', r.status, j.error?.message));
     return (j.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
   }
   throw new Error('Provedor de IA desconhecido');
@@ -1781,7 +1791,8 @@ function viewConfig() {
     <div class="alert info">${ic('sparkle')}<div><b>IA sem custo:</b> o Google oferece um plano gratuito da API Gemini, com limites de uso e apenas para alguns modelos. Crie a chave em <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener"><u>aistudio.google.com/apikey</u></a>, escolha "Google (Gemini)" e um modelo do plano gratuito (ex.: gemini-2.5-flash-lite). No plano gratuito, o Google pode usar o conteúdo enviado para melhorar seus produtos, e novas contas podem precisar ativar o plano pré-pago.</div></div><form id="fAi" onsubmit="return false">
     <div class="field"><label>Provedor</label><select name="provider" onchange="this.form.model.value=MODELS[this.value]">${Object.entries(PROVIDERS).map(([k, v]) => `<option value="${k}" ${ai.provider === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
     <div class="field"><label>Modelo</label><input name="model" value="${esc(ai.model || MODELS[ai.provider || 'anthropic'])}"><div class="hint">Use um modelo com visão (leitura de imagens) para corrigir provas fotografadas.</div></div>
-    <div class="field"><label>Chave de API</label><input type="password" name="key" value="${esc(ai.key)}" autocomplete="off" placeholder="sk-…"></div>
+    <div class="field"><label>Chave de API</label><div style="display:flex;gap:6px"><input type="password" name="key" id="aiKey" value="${esc(ai.key)}" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore placeholder="${ai.provider === 'gemini' ? 'AIza…' : ai.provider === 'openai' ? 'sk-…' : 'sk-ant-…'}"><button type="button" class="btn" onclick="const k=$('#aiKey');k.type=k.type==='password'?'text':'password'" title="Mostrar/ocultar">${ic('eye', 16)}</button></div>
+      <div class="hint">${ai.key ? `Chave salva: <code>${esc(maskKey(ai.key))}</code> (${ai.key.length} caracteres). Confira se o início e o fim batem com a chave do provedor.` : 'Nenhuma chave salva.'} ${ai.provider === 'anthropic' || !ai.provider ? 'Gere a chave em <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener"><u>console.anthropic.com</u></a> (a assinatura do Claude.ai não fornece chave de API).' : ''}</div></div>
     <div class="actions"><button class="btn primary" onclick="saveAi()">${ic('check')} Salvar</button><button class="btn" onclick="testAi()">${ic('sparkle')} Testar</button></div></form></div>
 
   <div class="card"><h3>${ic('cloud')} Sincronização (GitHub Gist)</h3>
@@ -1802,8 +1813,26 @@ function viewConfig() {
 }
 async function saveProf() { Object.assign(S.cfg, formData($('#fProf'))); await saveCfg(); toast('Dados salvos', 'ok'); }
 async function saveModo() { const f = $('#fModo'); S.cfg.modoPadrao = $('[name=modoPadrao]:checked', f).value; S.cfg.fallbackLocal = $('[name=fallbackLocal]', f).checked; await saveCfg(); toast('Modo de correção salvo', 'ok'); }
-async function saveAi() { const d = formData($('#fAi')); S.cfg.ai = { provider: d.provider, model: d.model.trim(), key: d.key.trim() }; await saveCfg(); toast('Configuração da IA salva', 'ok'); }
-async function testAi() { await saveAi(); toast('Testando a IA…'); try { const r = await aiJSON(S.cfg, { system: 'Responda apenas JSON.', text: 'Responda exatamente {"ok":true,"msg":"IA conectada"}' }); toast(r.msg || 'IA respondeu corretamente', 'ok'); } catch (e) { toast(e.message, 'bad', 7000); } }
+const cleanKey = k => String(k || '').replace(/[\s\u200B-\u200D\uFEFF\u00A0"'`]/g, '');
+const maskKey = k => k.length > 14 ? k.slice(0, 10) + '…' + k.slice(-4) : '•'.repeat(k.length);
+function checkKey(provider, key) {
+  if (!key) return 'Informe a chave de API.';
+  const pref = { anthropic: [/^sk-ant-/, 'sk-ant-'], openai: [/^sk-/, 'sk-'], gemini: [/^AIza/, 'AIza'] }[provider];
+  if (provider === 'openai' && /^sk-ant-/.test(key)) return 'Esta é uma chave da Anthropic, mas o provedor selecionado é OpenAI. Selecione "Anthropic (Claude)".';
+  if (provider !== 'anthropic' && /^sk-ant-/.test(key)) return 'Esta é uma chave da Anthropic. Selecione o provedor "Anthropic (Claude)".';
+  if (provider !== 'gemini' && /^AIza/.test(key)) return 'Esta é uma chave do Google. Selecione o provedor "Google (Gemini)".';
+  if (/^(ghp_|github_pat_)/.test(key)) return 'Esta é uma chave do GitHub, não de IA. Provavelmente o navegador preencheu o campo automaticamente.';
+  if (pref && !pref[0].test(key)) return `Chaves deste provedor começam com "${pref[1]}". Verifique se copiou a chave correta e completa.`;
+  if (key.length < 30) return 'A chave parece incompleta. Copie-a novamente por inteiro.';
+  return '';
+}
+async function saveAi(silent) {
+  const d = formData($('#fAi')); const key = cleanKey(d.key); const err = checkKey(d.provider, key);
+  if (err) { toast(err, 'bad', 8000); throw new Error(err); }
+  S.cfg.ai = { provider: d.provider, model: d.model.trim(), key }; await saveCfg();
+  $('#aiKey').value = key; if (!silent) { toast('Configuração da IA salva', 'ok'); viewConfig(); }
+}
+async function testAi() { try { await saveAi(true); } catch { return; } toast('Testando a IA…'); try { const r = await aiJSON(S.cfg, { system: 'Responda apenas JSON.', text: 'Responda exatamente {"ok":true,"msg":"IA conectada"}' }); toast(r.msg || 'IA respondeu corretamente', 'ok'); } catch (e) { toast(e.message, 'bad', 7000); } }
 async function ghConnect() {
   const d = formData($('#fGh')); if (!d.token || !d.gistId) return toast('Informe o token e o ID do Gist (ou crie um novo)', 'bad');
   try { await gh(`/gists/${d.gistId.trim()}`, {}, d.token.trim()); } catch (e) { return toast(e.message, 'bad', 6000); }
