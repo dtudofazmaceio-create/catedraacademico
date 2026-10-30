@@ -281,7 +281,7 @@ const LIBS = {
   pdfworker: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js',
   mammoth: 'https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js'
 };
-const MODELS = { anthropic: 'claude-sonnet-5-5', openai: 'gpt-4.1', gemini: 'gemini-2.5-flash' };
+const MODELS = { anthropic: 'claude-sonnet-5-5', openai: 'gpt-4.1', gemini: 'gemini-2.5-flash-lite' };
 const PROVIDERS = { anthropic: 'Anthropic (Claude)', openai: 'OpenAI (GPT)', gemini: 'Google (Gemini)' };
 const SUBTIPOS = { redacao: 'Redação', artigo: 'Artigo científico', resenha: 'Resenha', relatorio: 'Relatório', ensaio: 'Ensaio', estudo_caso: 'Estudo de caso', outro: 'Outro trabalho' };
 const COLORS = ['#2948d1','#e8a33d','#1b8f62','#c94f7c','#7a5af5','#0e8fa8','#d1622a','#4a6b2f'];
@@ -667,6 +667,7 @@ async function gradeTrabalho(cfg, atv, text, images) {
   if (p.normas && p.normas !== 'nenhuma') par.push(`Normas de formatação/citação: ${p.normas}`);
   if (+p.minReferencias) par.push(`Mínimo de referências bibliográficas: ${p.minReferencias}`);
   if (p.idioma) par.push(`Idioma: ${p.idioma}`);
+  if (p.palavrasChave) par.push(`Conceitos/palavras-chave que devem ser abordados: ${p.palavrasChave}`);
   const prompt = `ATIVIDADE: ${atv.titulo}
 TIPO DE TRABALHO: ${SUBTIPOS[atv.subtipo] || 'Trabalho'}
 ENUNCIADO / ORIENTAÇÕES AO ALUNO:
@@ -749,6 +750,327 @@ Retorne exatamente:
   };
 }
 
+/* =========================================================
+   CORREÇÃO GRATUITA (sem IA) — roda 100% no navegador
+   ========================================================= */
+const STOP = new Set(('a o as os um uma uns umas de do da dos das em no na nos nas por pelo pela pelos pelas para pra com sem sob sobre e ou mas que se nao sim como mais menos muito muita muitos muitas ja ainda tambem quando onde porque pois entre ate apos ao aos este esta estes estas isso isto esse essa esses essas aquele aquela aqueles aquelas seu sua seus suas meu minha nosso nossa ele ela eles elas eu tu voce voces nos lhe lhes me te ser estar ter haver foi era sao estao tem ha sera seria pode podem deve devem num numa so cada qual quais assim entao la aqui tal tais todo toda todos todas outro outra outros outras mesmo mesma quem cujo cuja sendo sido tendo').split(' '));
+const deacc = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+const SUF = ['amentos', 'imentos', 'amento', 'imento', 'adoras', 'adores', 'idades', 'mente', 'acoes', 'icoes', 'ancia', 'encia', 'idade', 'istas', 'ismos', 'acao', 'icao', 'ador', 'ante', 'ista', 'ismo', 'izar', 'avel', 'ivel', 'oes', 'aes', 'ais', 'eis', 'ados', 'idos', 'adas', 'idas', 'ado', 'ido', 'ada', 'ida', 'ar', 'er', 'ir', 'os', 'as', 'es', 'a', 'o', 'e', 's'];
+function stem(w) { for (const s of SUF) if (w.length - s.length >= 4 && w.endsWith(s)) return w.slice(0, -s.length); return w; }
+function toks(s) { return deacc(s).split(/[^a-z0-9]+/).filter(w => w.length > 2 && !STOP.has(w)).map(stem); }
+const splitConceitos = s => String(s || '').split(/[,;\n]+/).map(x => x.trim()).filter(Boolean);
+function conceitoPresente(conceito, set) {
+  return conceito.split('/').some(alt => { const t = toks(alt); if (!t.length) return false; const hit = t.filter(x => set.has(x)).length; return hit / t.length >= (t.length > 2 ? .67 : 1); });
+}
+function cobertura(lista, texto) { const set = new Set(toks(texto)); const ok = [], falta = []; lista.forEach(c => (conceitoPresente(c, set) ? ok : falta).push(c.trim())); return { cov: lista.length ? ok.length / lista.length : null, ok, falta }; }
+function corrigirAbertaLocal(q, resposta) {
+  const r = String(resposta || '').trim();
+  if (!r) return { fracao: 0, comentario: 'Em branco.' };
+  const conc = splitConceitos(q.conceitos);
+  const esperadas = [...new Set(toks(q.resposta))]; const setR = new Set(toks(r));
+  const tokCov = esperadas.length ? esperadas.filter(t => setR.has(t)).length / esperadas.length : 0;
+  let fr, com;
+  if (conc.length) { const c = cobertura(conc, r); fr = 0.8 * c.cov + 0.2 * Math.min(1, tokCov / 0.5); com = `Conceitos identificados: ${c.ok.join(', ') || 'nenhum'}.` + (c.falta.length ? ` Não identificados: ${c.falta.join(', ')}.` : ''); }
+  else { fr = Math.min(1, tokCov / 0.55); com = `A resposta contempla ${Math.round(tokCov * 100)}% dos termos essenciais da resposta esperada.`; }
+  return { fracao: Math.round(clamp(fr, 0, 1) * 20) / 20, comentario: com + ' (correção automática gratuita)' };
+}
+
+const CONECTIVOS = {
+  'adição': ['alem disso', 'ademais', 'outrossim', 'tambem', 'bem como', 'nao so', 'alem de'],
+  'oposição': ['entretanto', 'contudo', 'todavia', 'no entanto', 'porem', 'embora', 'apesar de', 'apesar disso', 'ainda que', 'por outro lado', 'em contrapartida'],
+  'causa': ['porque', 'visto que', 'uma vez que', 'ja que', 'devido a', 'em virtude de', 'posto que', 'dado que', 'pois'],
+  'conclusão': ['portanto', 'logo', 'dessa forma', 'desse modo', 'assim sendo', 'em suma', 'por fim', 'conclui-se', 'em sintese', 'diante disso', 'diante do exposto', 'por conseguinte', 'finalmente'],
+  'exemplificação': ['por exemplo', 'isto e', 'ou seja', 'a exemplo de', 'como exemplo'],
+  'sequência': ['primeiramente', 'em primeiro lugar', 'em seguida', 'posteriormente', 'inicialmente', 'em segundo lugar', 'paralelamente']
+};
+const ERROS = [[/\bconcerteza\b/, '"concerteza" → "com certeza"'], [/\bconserteza\b/, '"conserteza" → "com certeza"'], [/\bderrepente\b/, '"derrepente" → "de repente"'], [/\bmenas\b/, '"menas" → "menos"'], [/\bseje\b/, '"seje" → "seja"'], [/\besteje\b/, '"esteje" → "esteja"'], [/\bporisso\b/, '"porisso" → "por isso"'], [/\bapartir\b/, '"apartir" → "a partir"'], [/\ba nivel de\b/, 'evite "a nível de"'], [/\bhouveram\b/, '"houveram" → "houve" (haver no sentido de existir é impessoal)'], [/\bfazem \d+ anos\b/, '"fazem X anos" → "faz X anos"'], [/\bpara mim (fazer|ler|escrever|estudar|ser|ter)\b/, '"para mim + verbo" → "para eu + verbo"'], [/\bexcessao\b/, '"excessão" → "exceção"'], [/\bprevilegio\b/, '"previlégio" → "privilégio"'], [/\bimpecilho\b/, '"impecilho" → "empecilho"'], [/\b(nescessari|nessesari|necesari)\w*/, 'grafia de "necessário"'], [/\bagente (vai|foi|fez|tem|precisa|deve|pode)\b/, '"agente" → "a gente" (prefira "nós")'], [/\bmal educad\w*/, '"mal educado" → "mal-educado"'], [/\bmeio-dia e meio\b/, '"meio-dia e meio" → "meio-dia e meia"'], [/\bem anexo\b/, ''], [/\bdeixa eu\b/, '"deixa eu" → "deixe-me"'], [/\bcom nois\b|\bnois\b/, '"nois" → "nós"'], [/\bmenor (de|que) idade\b/, ''], [/\bpoblema\b|\bprobrema\b/, 'grafia de "problema"'], [/\bmortandela\b|\bmortadella\b/, '']].filter(e => e[1]);
+function analisarTexto(text, p = {}) {
+  const t = String(text).replace(/\r/g, ''); const d = deacc(t); const palavras = countWords(t);
+  let paras = t.split(/\n\s*\n/).map(s => s.trim()).filter(s => countWords(s) >= 8);
+  if (paras.length <= 1) paras = t.split(/(?<=[.!?:])\s*\n/).map(s => s.trim()).filter(s => countWords(s) >= 8);
+  const frases = t.split(/(?<=[.!?])\s+/).filter(s => countWords(s) >= 2);
+  const mediaFrase = frases.length ? palavras / frases.length : palavras;
+  const cats = {}; let totCon = 0;
+  for (const [k, arr] of Object.entries(CONECTIVOS)) { let n = 0; arr.forEach(c => { n += (d.match(new RegExp('(^|[^a-z])' + c.replace(/ /g, '\\s+') + '(?![a-z])', 'g')) || []).length; }); cats[k] = n; totCon += n; }
+  const catsUsadas = Object.values(cats).filter(n => n > 0).length;
+  const erros = []; ERROS.forEach(([re, msg]) => { const m = d.match(new RegExp(re.source, 'g')); if (m) erros.push(msg + (m.length > 1 ? ` (${m.length}x)` : '')); });
+  const informal = (d.match(/\b(vc|vcs|pq|tbm|tb|ne|blz|tipo assim|ta ligado|pra|pro|ai que)\b/g) || []).length;
+  const minusc = frases.filter(f => /^[a-zà-ú]/.test(f.trim())).length;
+  const dupl = (d.match(/\b(\w{3,})\s+\1\b/g) || []).length;
+  if (informal) erros.push(`${informal} marca(s) de informalidade (ex.: "pra", "vc", "pq")`);
+  if (minusc) erros.push(`${minusc} frase(s) iniciada(s) com letra minúscula`);
+  if (dupl) erros.push(`${dupl} palavra(s) repetida(s) em sequência`);
+  const nErros = erros.length - (informal ? 1 : 0) - (minusc ? 1 : 0) - (dupl ? 1 : 0) + informal + minusc + dupl;
+  const tk = toks(t); const freq = {}; tk.forEach(w => freq[w] = (freq[w] || 0) + 1);
+  const top = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const ttr = tk.length ? new Set(tk.slice(0, 400)).size / Math.min(400, tk.length) : 0;
+  const repet = tk.length > 80 && top.length && top[0][1] / tk.length > 0.045;
+  const citRe = /\(([A-ZÀ-Ú][A-Za-zÀ-ú'-]+(?:\s+(?:et al\.?|e|&)\s*[A-ZÀ-Ú]?[A-Za-zÀ-ú'-]*)?(?:;\s*[^)]*)?),\s*\d{4}[a-z]?(?:,\s*p\.\s*\d+(?:-\d+)?)?\)|[A-ZÀ-Ú][a-zà-ú]+(?:\s+et al\.?)?\s+\(\d{4}[a-z]?(?:,\s*p\.\s*\d+)?\)/g;
+  const citacoes = (t.match(citRe) || []).length;
+  const lines = t.split('\n').map(s => s.trim());
+  const iRef = lines.findIndex(l => /^(\d+\.?\s*)?(referencias( bibliograficas)?|bibliografia|references)\s*:?$/.test(deacc(l)));
+  const refs = iRef >= 0 ? lines.slice(iRef + 1).filter(l => l.length > 15 && /(19|20)\d{2}/.test(l)) : [];
+  const abnt = refs.filter(l => /^[A-ZÀ-Ú][A-ZÀ-Ú'-]+(\s[A-ZÀ-Ú'-]+)*,\s/.test(l)).length;
+  const apa = refs.filter(l => /^[A-ZÀ-Ú][a-zà-ú'-]+,\s[A-Z]\./.test(l) && /\(\d{4}\)/.test(l)).length;
+  const secReq = splitConceitos(p.secoes);
+  const heads = lines.filter(l => l && countWords(l) <= 6 && !/[.;,]$/.test(l)).map(h => deacc(h).replace(/^[\divx.\s-]+(?=[a-z])/, ''));
+  const secOk = secReq.filter(s => heads.some(h => h.startsWith(deacc(s)))); const secFalta = secReq.filter(s => !secOk.includes(s));
+  const temaToks = [...new Set(toks(p.tema || ''))]; const setT = new Set(tk);
+  const temaCov = temaToks.length ? temaToks.filter(x => setT.has(x)).length / temaToks.length : null;
+  const kw = splitConceitos(p.palavrasChave); const kwRes = kw.length ? cobertura(kw, t) : null;
+  const dUlt = deacc(paras[paras.length - 1] || '');
+  const temConclusao = CONECTIVOS['conclusão'].some(c => dUlt.includes(c)) || /\bconclu/.test(dUlt);
+  const proposta = /\b(governo|estado|ministerio|escolas?|sociedade|midia|ongs?|familias?|poder publico|instituic\w*|universidades?)\b/.test(dUlt) && /\b(deve|devem|cabe|e necessario|e preciso|precisa|precisam|medidas?|por meio de|mediante)\b/.test(dUlt);
+  const metodo = (d.match(/\b(metodolog\w*|metodo|amostra|procedimentos?|coleta de dados|questionarios?|entrevistas?|qualitativ\w*|quantitativ\w*|revisao bibliografica|estudo de caso|pesquisa (de campo|bibliografica|documental)|analise de (dados|conteudo)|participantes)\b/g) || []).length;
+  return { palavras, paras: paras.length, frases: frases.length, mediaFrase, cats, totCon, catsUsadas, erros, nErros, informal, top, ttr, repet, citacoes, refs: refs.length, abnt, apa, temRefSecao: iRef >= 0, secReq, secOk, secFalta, temaCov, kwRes, temConclusao, proposta, metodo };
+}
+function critKey(nome) {
+  const n = deacc(nome);
+  if (/norma culta|gramat|ortograf|portugues|linguagem|lingua\b|escrita/.test(n)) return 'norma';
+  if (/referenc|citac|bibliograf|normas?\s*(e|abnt|apa)|formatac/.test(n)) return 'referencias';
+  if (/conclus|proposta de interv|fechamento|soluc|recomend/.test(n)) return 'conclusao';
+  if (/metod|rigor|procedim|tecnic|precis/.test(n)) return 'metodologia';
+  if (/fundament|teori|autores/.test(n)) return 'fundamentacao';
+  if (/estrutur|secoes|partes|apresentacao/.test(n)) return 'estrutura';
+  if (/tema|enunciado|proposta|compreens|adequa|sintese|resumo|atendimento|identific/.test(n)) return 'tema';
+  if (/coes|coeren|organiz|clareza|estilo|fluid/.test(n)) return 'coesao';
+  if (/argument|repert|analis|critic|desenvolv|aplicac|dominio|conteud|profund|tese|diagnost|originalid|interpret/.test(n)) return 'argumentacao';
+  return 'geral';
+}
+function gradeTrabalhoLocal(atv, text) {
+  if (!String(text).trim()) throw new Error('A correção gratuita lê apenas texto digital. Envie o trabalho em PDF (com texto selecionável), DOCX ou TXT, ou cole o texto.');
+  const p = atv.params || {}; const A = analisarTexto(text, p); const notaMax = +atv.notaMax || 10;
+  const per100 = A.palavras ? 100 / A.palavras : 1;
+  const ps = A.paras >= 5 ? 10 : A.paras === 4 ? 9 : A.paras === 3 ? 7.5 : A.paras === 2 ? 5.5 : 4;
+  const lenScore = +p.minPalavras ? Math.min(10, 10 * A.palavras / +p.minPalavras) : Math.min(10, A.palavras / 25);
+  const dens = A.totCon * per100; const densScore = Math.min(10, 4 + dens * 3);
+  const ttrScore = clamp((A.ttr - 0.35) / 0.3 * 10, 3, 10);
+  const cov = A.kwRes ? (A.temaCov != null ? A.kwRes.cov * 0.7 + A.temaCov * 0.3 : A.kwRes.cov) : A.temaCov;
+  const refScoreBase = +p.minReferencias ? Math.min(10, 10 * A.refs / +p.minReferencias) : A.refs ? Math.min(10, 8 + A.refs / 3) : (A.citacoes ? 5 : 2);
+  const fmtRatio = A.refs ? (p.normas === 'APA' ? A.apa : A.abnt) / A.refs : 0;
+  const S10 = {
+    norma: 10 - A.nErros * per100 * 6 - (A.mediaFrase > 40 ? 1.5 : A.mediaFrase > 32 ? .7 : 0),
+    tema: cov == null ? null : 3 + 7 * Math.min(1, cov / 0.75),
+    argumentacao: 0.35 * ps + 0.35 * lenScore + 0.3 * densScore + (A.citacoes ? .5 : 0),
+    coesao: [2, 4, 6, 8, 9, 10, 10][A.catsUsadas] * 0.6 + ttrScore * 0.4 - (A.repet ? 1 : 0),
+    conclusao: A.temConclusao ? (A.proposta ? 10 : 8.5) : A.proposta ? 7.5 : A.paras >= 3 ? 5.5 : 4,
+    estrutura: A.secReq.length ? 10 * A.secOk.length / A.secReq.length : ps,
+    referencias: (p.normas && p.normas !== 'nenhuma' && A.refs ? 0.7 * refScoreBase + 3 * fmtRatio : refScoreBase) - (A.citacoes ? 0 : 1),
+    fundamentacao: (A.citacoes >= 6 ? 10 : A.citacoes >= 3 ? 8 : A.citacoes >= 1 ? 6 : 3) + (A.refs >= 3 ? 1 : 0),
+    metodologia: A.metodo >= 6 ? 10 : A.metodo >= 3 ? 8 : A.metodo >= 1 ? 6 : 3
+  };
+  const baseGeral = [S10.norma, S10.tema, S10.argumentacao, S10.coesao].filter(v => v != null);
+  S10.geral = baseGeral.reduce((a, b) => a + b, 0) / baseGeral.length;
+  if (S10.tema == null) S10.tema = 7;
+  const conOk = Object.entries(A.cats).filter(([, n]) => n).map(([k]) => k);
+  const EVID = {
+    norma: A.erros.length ? 'Desvios identificados: ' + A.erros.slice(0, 4).join('; ') + '.' : 'Nenhum desvio frequente identificado pela verificação automática.',
+    tema: A.kwRes ? `Conceitos esperados encontrados: ${A.kwRes.ok.join(', ') || 'nenhum'}${A.kwRes.falta.length ? '; ausentes: ' + A.kwRes.falta.join(', ') : ''}.` : A.temaCov != null ? `O texto retoma ${Math.round(A.temaCov * 100)}% dos termos centrais do tema.` : 'Sem tema/palavras-chave cadastrados: avaliação neutra.',
+    argumentacao: `${A.paras} parágrafo(s), ${A.palavras} palavras e ${A.totCon} conectivo(s) argumentativo(s)${A.citacoes ? `, ${A.citacoes} citação(ões)` : ''}.`,
+    coesao: `Usa ${A.catsUsadas} tipo(s) de conectivos${conOk.length ? ' (' + conOk.join(', ') + ')' : ''}; diversidade vocabular de ${Math.round(A.ttr * 100)}%.${A.repet ? ` Repetição frequente de "${A.top[0][0]}…".` : ''}`,
+    conclusao: A.temConclusao ? `Há marcas de conclusão no último parágrafo${A.proposta ? ', com proposta de ação e agentes' : ''}.` : `Não foram encontradas marcas claras de conclusão no último parágrafo${A.proposta ? ', embora haja proposta de ação' : ''}.`,
+    estrutura: A.secReq.length ? `Seções encontradas: ${A.secOk.join(', ') || 'nenhuma'}${A.secFalta.length ? '; não encontradas: ' + A.secFalta.join(', ') : ''}.` : `${A.paras} parágrafo(s) identificados.`,
+    referencias: `${A.refs} referência(s) na lista${A.temRefSecao ? '' : ' (seção "Referências" não encontrada)'} e ${A.citacoes} citação(ões) no texto${A.refs && p.normas && p.normas !== 'nenhuma' ? `; ${Math.round(fmtRatio * 100)}% no formato ${p.normas}` : ''}.`,
+    fundamentacao: `${A.citacoes} citação(ões) de autores no corpo do texto.`,
+    metodologia: `${A.metodo} menção(ões) a elementos metodológicos (método, procedimentos, instrumentos).`,
+    geral: `Estimativa geral a partir de linguagem, tema, desenvolvimento e coesão.`
+  };
+  const DICA = {
+    norma: 'Revise gramática e ortografia, mantenha a linguagem formal e prefira frases mais curtas.',
+    tema: `Aborde de forma mais direta os conceitos centrais do tema${A.kwRes?.falta.length ? ': ' + A.kwRes.falta.join(', ') : ''}.`,
+    argumentacao: 'Desenvolva mais os argumentos com explicações, exemplos e dados.',
+    coesao: 'Varie os conectivos (contudo, além disso, portanto, por exemplo) e evite repetir palavras.',
+    conclusao: atv.subtipo === 'redacao' ? 'Conclua com uma proposta de intervenção: agente, ação, meio e finalidade.' : 'Feche com uma conclusão clara que retome o objetivo e os principais resultados.',
+    estrutura: `Organize o texto nas seções exigidas${A.secFalta.length ? ': ' + A.secFalta.join(', ') : ''}.`,
+    referencias: `Inclua uma seção "Referências" completa${p.normas && p.normas !== 'nenhuma' ? ' no padrão ' + p.normas : ''}${+p.minReferencias ? ` com pelo menos ${p.minReferencias} obras` : ''}.`,
+    fundamentacao: 'Fundamente as ideias com citações de autores (ex.: SOBRENOME, 2020).',
+    metodologia: 'Descreva o método: tipo de pesquisa, procedimentos e instrumentos.',
+    geral: 'Revise o texto quanto ao desenvolvimento, à clareza e à linguagem.'
+  };
+  const cs = critsOf(atv).map(c => { const k = critKey(c.nome); return { nome: c.nome, peso: +c.peso || 1, nota: round2(clamp(S10[k], 0, 10)), comentario: EVID[k], _k: k }; });
+  const sp = cs.reduce((a, c) => a + c.peso, 0) || 1;
+  const bruta = cs.reduce((a, c) => a + c.nota / 10 * c.peso, 0) / sp * notaMax;
+  let penal = 0, foraLimite = false;
+  if ((+p.minPalavras && A.palavras < +p.minPalavras) || (+p.maxPalavras && A.palavras > +p.maxPalavras)) { foraLimite = true; penal = (+p.penalidade || 0) / 100 * bruta; }
+  const conformidade = [];
+  if (+p.minPalavras || +p.maxPalavras) conformidade.push({ parametro: 'Extensão', atendido: !foraLimite, obs: `${A.palavras} palavras (exigido: ${p.minPalavras || '—'} a ${p.maxPalavras || '—'})` });
+  if (A.secReq.length) conformidade.push({ parametro: 'Seções obrigatórias', atendido: !A.secFalta.length, obs: A.secFalta.length ? 'Não encontradas: ' + A.secFalta.join(', ') : 'Todas encontradas' });
+  if (+p.minReferencias) conformidade.push({ parametro: 'Referências', atendido: A.refs >= +p.minReferencias, obs: `${A.refs} encontrada(s) (mínimo ${p.minReferencias})` });
+  if (p.normas && p.normas !== 'nenhuma' && A.refs) conformidade.push({ parametro: `Normas ${p.normas}`, atendido: fmtRatio >= .7, obs: `${Math.round(fmtRatio * 100)}% das referências no formato esperado (verificação simplificada)` });
+  if (A.kwRes) conformidade.push({ parametro: 'Conceitos esperados', atendido: A.kwRes.cov >= .6, obs: `${A.kwRes.ok.length} de ${A.kwRes.ok.length + A.kwRes.falta.length} encontrados` });
+  const ord = [...cs].sort((a, b) => b.nota - a.nota);
+  const fortes = ord.filter(c => c.nota >= 8).slice(0, 3).map(c => `${c.nome}: ${c.comentario}`);
+  if (A.catsUsadas >= 4 && !fortes.some(f => /conectivo/.test(f))) fortes.push('Boa variedade de conectivos.');
+  const melh = [...new Set(ord.filter(c => c.nota < 7).reverse().map(c => DICA[c._k]))].slice(0, 4);
+  if (foraLimite) melh.unshift(`Ajuste a extensão ao limite de ${p.minPalavras || '—'} a ${p.maxPalavras || '—'} palavras.`);
+  cs.forEach(c => delete c._k);
+  const nota = round2(Math.max(0, bruta - penal));
+  return {
+    nota, notaMax,
+    relatorio: {
+      tipo: 'trabalho', modo: 'local', criterios: cs, conformidade, pontosFortes: fortes, melhorias: melh, resumo: '',
+      parecer: `Correção automática gratuita, baseada em métricas do texto. O trabalho tem ${A.palavras} palavras em ${A.paras} parágrafo(s). O ponto de maior destaque foi "${ord[0].nome}"${ord[ord.length - 1].nota < 7 ? ` e o principal aspecto a melhorar é "${ord[ord.length - 1].nome}"` : ''}. Esta nota é uma estimativa e pode ser revisada pelo professor.`,
+      indicios: '', palavras: A.palavras, palavrasEstimadas: false, foraLimite, penalidade: round2(penal), notaBruta: round2(bruta),
+      metricas: { palavras: A.palavras, paragrafos: A.paras, frases: A.frases, mediaFrase: round2(A.mediaFrase), conectivos: A.totCon, tiposConectivos: A.catsUsadas, citacoes: A.citacoes, referencias: A.refs, desvios: A.nErros, diversidade: Math.round(A.ttr * 100) }
+    }
+  };
+}
+
+/* ---------- Folha de respostas + leitura óptica (OMR) ---------- */
+const OMR = { mk: [[14, 14], [196, 14], [196, 283], [14, 283]], orient: [32, 14], r: 2.7, rowH: 8.2, y0: 86, perCol: 22 };
+function omrOpts(atv) {
+  const custom = String(atv.params?.alternativas || '').split(/[,;\s]+/).map(s => s.trim().toUpperCase()).filter(Boolean);
+  if (custom.length >= 2) return custom.slice(0, 6);
+  const objs = (atv.gabarito || []).filter(q => q.tipo === 'objetiva');
+  if (objs.length && objs.every(q => /^(V|F|\*)$/i.test(String(q.resposta).trim()))) return ['V', 'F'];
+  return ['A', 'B', 'C', 'D', 'E'];
+}
+function omrLayout(atv) {
+  const objs = (atv.gabarito || []).filter(q => q.tipo === 'objetiva'); const opts = omrOpts(atv);
+  if (objs.length > OMR.perCol * 3) throw new Error(`A folha de respostas comporta até ${OMR.perCol * 3} questões objetivas.`);
+  return { opts, items: objs.map((q, i) => { const c = Math.floor(i / OMR.perCol), r = i % OMR.perCol; const x0 = 20 + c * 60, y = OMR.y0 + r * OMR.rowH; return { numero: q.numero, x0, y, bubbles: opts.map((o, k) => ({ label: o, x: x0 + 12 + k * 8.4, y })) }; }) };
+}
+function folhaPage(doc, a, t, L, al) {
+  doc.setFillColor(0, 0, 0); OMR.mk.forEach(([x, y]) => doc.rect(x - 5, y - 5, 10, 10, 'F'));
+  doc.rect(OMR.orient[0] - 2.5, OMR.orient[1] - 2.5, 5, 5, 'F');
+  doc.setTextColor(17, 26, 51); doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.text('FOLHA DE RESPOSTAS', 105, 18, { align: 'center' });
+  doc.setFontSize(11); doc.text(T(a.titulo).slice(0, 80), 105, 25, { align: 'center' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.text(T([t.nome, t.disciplina].filter(Boolean).join(' - ')), 105, 31, { align: 'center' });
+  doc.setDrawColor(170); doc.setLineWidth(.3); doc.roundedRect(24, 37, 162, 25, 2, 2);
+  doc.setFontSize(10); doc.setTextColor(17, 26, 51);
+  doc.text(T('Aluno(a): ') + (al ? T(al.nome) : ''), 28, 44); if (!al) doc.line(46, 44.6, 182, 44.6);
+  doc.text(T('Matrícula: ') + (al?.matricula ? T(al.matricula) : '_______________'), 28, 51); doc.text(T('Data: ____/____/______'), 122, 51);
+  doc.text(T('Assinatura: ____________________________________________________'), 28, 58);
+  doc.setFontSize(8.3); doc.setTextColor(90);
+  doc.text(doc.splitTextToSize(T('Preencha TODO o círculo com caneta azul ou preta. Não rasure e não marque fora dos círculos. Para enviar, fotografe a folha inteira, de cima, com boa luz e com os 4 quadrados pretos visíveis.'), 160), 25, 68);
+  doc.setTextColor(17, 26, 51); doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5);
+  [...new Set(L.items.map(i => i.x0))].forEach(x0 => L.opts.forEach((o, k) => doc.text(o, x0 + 12 + k * 8.4, OMR.y0 - 5.2, { align: 'center' })));
+  L.items.forEach(it => { doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(17, 26, 51); doc.text(T(it.numero), it.x0 + 6.5, it.y + 1.2, { align: 'right' }); doc.setDrawColor(70); doc.setLineWidth(.3); it.bubbles.forEach(b => doc.circle(b.x, b.y, OMR.r, 'S')); });
+  const ab = (a.gabarito || []).filter(q => q.tipo === 'aberta');
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(90);
+  if (ab.length) doc.text(doc.splitTextToSize(T(`Questões abertas (${ab.map(q => q.numero).join(', ')}): responda na prova. No envio pelo link, digite as respostas nos campos indicados.`), 150), 30, 270);
+  doc.setFontSize(6.5); doc.setTextColor(160); doc.text(T('Cátedra - ID ' + a.id), 105, 291, { align: 'center' });
+}
+async function pdfFolhaRespostas(id) {
+  const a = byId('atividades', id); const t = byId('turmas', a.turmaId); let L;
+  try { L = omrLayout(a); } catch (e) { return toast(e.message, 'bad'); }
+  if (!L.items.length) return toast('Esta prova não tem questões objetivas', 'bad');
+  const doc = await pdfNew(); [...alunosDe(t.id), null].forEach((al, i) => { if (i) doc.addPage(); folhaPage(doc, a, t, L, al); });
+  doc.save(T(`folha-respostas-${a.titulo}`).replace(/[^\w-]+/g, '_') + '.pdf');
+}
+function solveLin(A, b) {
+  const n = b.length; const M = A.map((r, i) => [...r, b[i]]);
+  for (let c = 0; c < n; c++) {
+    let p = c; for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+    [M[c], M[p]] = [M[p], M[c]]; const d = M[c][c]; if (Math.abs(d) < 1e-12) throw new Error('Não foi possível alinhar a folha');
+    for (let r = 0; r < n; r++) { if (r === c) continue; const f = M[r][c] / d; for (let k = c; k <= n; k++) M[r][k] -= f * M[c][k]; }
+  }
+  return M.map((r, i) => r[n] / r[i]);
+}
+function homography(src, dst) {
+  const A = [], b = [];
+  for (let i = 0; i < 4; i++) { const [x, y] = src[i], [u, v] = dst[i]; A.push([x, y, 1, 0, 0, 0, -u * x, -u * y]); b.push(u); A.push([0, 0, 0, x, y, 1, -v * x, -v * y]); b.push(v); }
+  const h = solveLin(A, b);
+  return (x, y) => { const w = h[6] * x + h[7] * y + 1; return [(h[0] * x + h[1] * y + h[2]) / w, (h[3] * x + h[4] * y + h[5]) / w]; };
+}
+async function omrRead(file, atv) {
+  const L = omrLayout(atv);
+  let src; try { src = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+  catch { src = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('Imagem inválida')); i.src = URL.createObjectURL(file); }); }
+  const k = Math.min(1, 1600 / Math.max(src.width, src.height)); const W = Math.round(src.width * k), H = Math.round(src.height * k);
+  const c = document.createElement('canvas'); c.width = W; c.height = H; const ctx = c.getContext('2d', { willReadFrequently: true });
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.drawImage(src, 0, 0, W, H);
+  const px = ctx.getImageData(0, 0, W, H).data; const N = W * H; const g = new Float32Array(N);
+  for (let i = 0; i < N; i++) g[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
+  const W1 = W + 1; const I = new Float64Array(W1 * (H + 1));
+  for (let y = 0; y < H; y++) { let row = 0; for (let x = 0; x < W; x++) { row += g[y * W + x]; I[(y + 1) * W1 + x + 1] = I[y * W1 + x + 1] + row; } }
+  const h2 = Math.max(4, Math.round(Math.max(W, H) / 16)); const bin = new Uint8Array(N);
+  for (let y = 0; y < H; y++) {
+    const y1 = Math.max(0, y - h2), y2 = Math.min(H - 1, y + h2);
+    for (let x = 0; x < W; x++) {
+      const x1 = Math.max(0, x - h2), x2 = Math.min(W - 1, x + h2); const cnt = (x2 - x1 + 1) * (y2 - y1 + 1);
+      const sum = I[(y2 + 1) * W1 + x2 + 1] - I[y1 * W1 + x2 + 1] - I[(y2 + 1) * W1 + x1] + I[y1 * W1 + x1];
+      const v = g[y * W + x]; bin[y * W + x] = (v * cnt < sum * 0.8 && v < 165) ? 1 : 0;
+    }
+  }
+  // componentes conectados
+  const lab = new Uint8Array(N); const stack = new Int32Array(N); const comps = []; const m = Math.min(W, H);
+  for (let i = 0; i < N; i++) {
+    if (!bin[i] || lab[i]) continue;
+    let sp = 0; stack[sp++] = i; lab[i] = 1; let n = 0, minx = W, maxx = 0, miny = H, maxy = 0, sx = 0, sy = 0;
+    while (sp) {
+      const j = stack[--sp]; const x = j % W, y = (j / W) | 0; n++; sx += x; sy += y;
+      if (x < minx) minx = x; if (x > maxx) maxx = x; if (y < miny) miny = y; if (y > maxy) maxy = y;
+      if (x > 0 && bin[j - 1] && !lab[j - 1]) { lab[j - 1] = 1; stack[sp++] = j - 1; }
+      if (x < W - 1 && bin[j + 1] && !lab[j + 1]) { lab[j + 1] = 1; stack[sp++] = j + 1; }
+      if (y > 0 && bin[j - W] && !lab[j - W]) { lab[j - W] = 1; stack[sp++] = j - W; }
+      if (y < H - 1 && bin[j + W] && !lab[j + W]) { lab[j + W] = 1; stack[sp++] = j + W; }
+    }
+    const bw = maxx - minx + 1, bh = maxy - miny + 1;
+    if (bw >= m * 0.012 && bw <= m * 0.12 && bh >= m * 0.012 && bh <= m * 0.12 && bw / bh > 0.6 && bw / bh < 1.65 && n / (bw * bh) > 0.6) comps.push({ n, cx: sx / n, cy: sy / n });
+  }
+  if (comps.length < 4) throw new Error('Não encontrei os 4 quadrados pretos da folha de respostas. Fotografe a folha inteira, de cima, com boa luz.');
+  const maxA = Math.max(...comps.map(c => c.n)); const big = comps.filter(c => c.n >= maxA * 0.4);
+  if (big.length < 4) throw new Error('Não foi possível identificar os 4 cantos da folha. Fotografe novamente, enquadrando a folha inteira.');
+  const pick = f => big.reduce((a, b) => f(b) > f(a) ? b : a);
+  const tl = pick(c => -(c.cx + c.cy)), br = pick(c => c.cx + c.cy), tr = pick(c => c.cx - c.cy), bl = pick(c => c.cy - c.cx);
+  const corners = [tl, tr, br, bl];
+  if (new Set(corners).size < 4) throw new Error('Não foi possível identificar os 4 cantos da folha. Fotografe novamente, de cima.');
+  const areas = corners.map(c => c.n); if (Math.max(...areas) / Math.min(...areas) > 3.5) throw new Error('Os cantos da folha não ficaram nítidos. Fotografe novamente, mais de perto e de cima.');
+  const sample = (cx, cy, rad) => { let d = 0, t = 0; const R = Math.ceil(rad); for (let yy = -R; yy <= R; yy++) for (let xx = -R; xx <= R; xx++) { if (xx * xx + yy * yy > rad * rad) continue; const X = Math.round(cx + xx), Y = Math.round(cy + yy); if (X < 0 || Y < 0 || X >= W || Y >= H) continue; t++; d += bin[Y * W + X]; } return t ? d / t : 0; };
+  // orientação: testa as 4 rotações e escolhe a que encontra a marca de orientação
+  let best = null;
+  for (let r = 0; r < 4; r++) {
+    const Hm = homography(OMR.mk, OMR.mk.map((_, i) => { const c = corners[(i + r) % 4]; return [c.cx, c.cy]; }));
+    const [ox, oy] = Hm(...OMR.orient); const [ox2, oy2] = Hm(OMR.orient[0] + 1, OMR.orient[1]); const s = Math.hypot(ox2 - ox, oy2 - oy);
+    const v = sample(ox, oy, 1.6 * s);
+    if (!best || v > best.v) best = { v, Hm };
+  }
+  if (best.v < 0.5) throw new Error('A folha enviada não parece ser a folha de respostas desta prova. Imprima a folha gerada pelo sistema e fotografe-a inteira.');
+  const Hm = best.Hm; const respostas = {}; let duvidas = 0;
+  for (const it of L.items) {
+    const fr = it.bubbles.map(b => { const [x, y] = Hm(b.x, b.y); const [x2, y2] = Hm(b.x + 1, b.y); return sample(x, y, OMR.r * 0.62 * Math.hypot(x2 - x, y2 - y)); });
+    const mx = Math.max(...fr); const marc = it.bubbles.filter((b, i) => fr[i] >= 0.42 && fr[i] >= mx * 0.65);
+    if (fr.some(v => v > 0.22 && v < 0.42)) duvidas++;
+    respostas[it.numero] = marc.length === 0 ? '' : marc.length > 1 ? 'MULTIPLA' : marc[0].label;
+  }
+  return { respostas, confianca: duvidas === 0 ? 'alta' : duvidas <= 2 ? 'média' : 'baixa', duvidas };
+}
+function pontuarObjetiva(q, resp) {
+  const r = normAns(resp); const aceitas = String(q.resposta || '').split(/[\/|;]| ou /i).map(normAns).filter(Boolean);
+  const correta = String(q.resposta).trim() === '*' ? true : (r !== 'MULTIPLA' && !!r && aceitas.includes(r));
+  return { correta, fracao: correta ? 1 : 0 };
+}
+async function gradeProvaLocal(atv, files, abertas) {
+  const gab = atv.gabarito || []; if (!gab.length) throw new Error('Esta prova ainda não possui gabarito cadastrado.');
+  const temObj = gab.some(q => q.tipo === 'objetiva'); let omr = { respostas: {}, confianca: '' };
+  if (temObj) {
+    const img = files.find(f => f.type.startsWith('image/') || /\.(jpe?g|png|webp|heic)$/i.test(f.name));
+    if (!img) throw new Error('Envie a foto da folha de respostas.');
+    omr = await omrRead(img, atv);
+  }
+  const questoes = gab.map(q => {
+    const valor = +q.valor || 1;
+    if (q.tipo === 'objetiva') { const resp = omr.respostas[q.numero] ?? ''; const { correta, fracao } = pontuarObjetiva(q, resp); return { numero: q.numero, tipo: q.tipo, valor, respostaAluno: resp === 'MULTIPLA' ? 'Mais de uma marcação' : resp, esperada: q.resposta, fracao, correta, pontos: round2(fracao * valor), comentario: !resp ? 'Em branco' : resp === 'MULTIPLA' ? 'Anulada: mais de uma marcação' : correta ? 'Correta' : 'Incorreta' }; }
+    const resp = abertas[q.numero] || ''; const r = corrigirAbertaLocal(q, resp);
+    return { numero: q.numero, tipo: q.tipo, valor, respostaAluno: resp, esperada: q.resposta, fracao: r.fracao, correta: null, pontos: round2(r.fracao * valor), comentario: r.comentario };
+  });
+  const tot = questoes.reduce((s, q) => s + q.valor, 0) || 1, obt = questoes.reduce((s, q) => s + q.pontos, 0); const notaMax = +atv.notaMax || 10;
+  const nObj = questoes.filter(q => q.tipo === 'objetiva').length, acertos = questoes.filter(q => q.correta).length;
+  const erradas = questoes.filter(q => q.fracao < 0.5).map(q => q.numero);
+  return {
+    nota: round2(obt / tot * notaMax), notaMax,
+    relatorio: {
+      tipo: 'prova', modo: 'local', questoes, pontosObtidos: round2(obt), pontosTotais: round2(tot), acertosObjetivas: acertos, totalObjetivas: nObj,
+      legibilidade: temObj ? `leitura óptica com confiança ${omr.confianca}` : '', nomeNaProva: '',
+      parecer: `Correção automática gratuita: ${nObj ? `${acertos} de ${nObj} questões objetivas corretas (leitura óptica da folha de respostas)` : 'sem questões objetivas'}${questoes.length > nObj ? '; questões abertas avaliadas pela presença dos conceitos esperados' : ''}. ${erradas.length ? `Revise o conteúdo das questões ${erradas.join(', ')}.` : 'Excelente desempenho!'}`,
+      pontosFortes: questoes.filter(q => q.fracao >= 1).length ? [`Acertou as questões ${questoes.filter(q => q.fracao >= 1).map(q => q.numero).join(', ')}.`] : [],
+      melhorias: erradas.length ? [`Estude novamente os temas das questões ${erradas.join(', ')}.`] : [], indicios: omr.confianca && omr.confianca !== 'alta' ? `Leitura óptica com confiança ${omr.confianca} (${omr.duvidas} questão(ões) com marcação fraca ou duvidosa). Confira a folha física.` : ''
+    }
+  };
+}
+function modoDe(atv, cfg) { const m = atv.modoCorrecao || 'padrao'; if (m !== 'padrao') return m; return cfg.modoPadrao || (cfg.ai && cfg.ai.key ? 'ia' : 'local'); }
+
 /* ---------- Leitura de arquivos ---------- */
 async function compressImage(file, max = 1600, q = 0.82) {
   let src;
@@ -791,9 +1113,26 @@ async function extractFiles(files, pasted) {
   if (!text.trim() && !images.length) throw new Error('Nenhum conteúdo encontrado. Selecione um arquivo ou cole o texto.');
   return { text: text.trim(), images, nomes };
 }
-async function processSubmission(cfg, atv, files, pasted, step) {
+async function processSubmission(cfg, atv, files, pasted, step, abertas = {}) {
+  const modo = modoDe(atv, cfg);
+  if (modo === 'local') {
+    step(0);
+    if (atv.tipo === 'prova') {
+      const r = await gradeProvaLocal(atv, files, abertas); step(2);
+      return { ...r, textoExtraido: Object.entries(abertas).filter(([, v]) => v).map(([k, v]) => `Questão ${k}: ${v}`).join('\n\n').slice(0, 6000), arquivos: files.map(f => f.name), paginas: files.length };
+    }
+    if (files.some(f => f.type.startsWith('image/'))) throw new Error('A correção gratuita lê apenas texto digital. Envie o trabalho em PDF, DOCX ou TXT, ou cole o texto (fotos não são aceitas).');
+    const { text, nomes } = await extractFiles(files, pasted);
+    step(1); const r = gradeTrabalhoLocal(atv, text); step(2);
+    return { ...r, textoExtraido: text.slice(0, 6000), arquivos: nomes, paginas: 0 };
+  }
   step(0); const { text, images, nomes } = await extractFiles(files, pasted);
-  step(1); const r = atv.tipo === 'prova' ? await gradeProva(cfg, atv, text, images) : await gradeTrabalho(cfg, atv, text, images);
+  step(1); let r;
+  try { r = atv.tipo === 'prova' ? await gradeProva(cfg, atv, text, images) : await gradeTrabalho(cfg, atv, text, images); }
+  catch (err) {
+    if (cfg.fallbackLocal !== false && atv.tipo === 'trabalho' && text.trim()) { r = gradeTrabalhoLocal(atv, text); r.relatorio.fallback = err.message; }
+    else throw err;
+  }
   step(2);
   return { ...r, textoExtraido: text.slice(0, 6000), arquivos: nomes, paginas: images.length };
 }
@@ -801,8 +1140,16 @@ async function processSubmission(cfg, atv, files, pasted, step) {
 /* ---------- Componente de upload ---------- */
 const Upl = {
   files: [],
-  html(atv) {
-    const prova = atv.tipo === 'prova';
+  html(atv, cfg = S.cfg) {
+    const prova = atv.tipo === 'prova'; const local = modoDe(atv, cfg) === 'local';
+    if (prova && local) {
+      const temObj = (atv.gabarito || []).some(q => q.tipo === 'objetiva'); const ab = (atv.gabarito || []).filter(q => q.tipo === 'aberta');
+      return `<div class="upl">${temObj ? `<div class="lbl">Foto da folha de respostas</div><div class="upl-btns"><label class="btn primary big">${ic('camera')} Fotografar a folha<input type="file" accept="image/*" capture="environment" hidden data-upl data-single></label><label class="btn big">${ic('image')} Escolher da galeria<input type="file" accept="image/*" hidden data-upl data-single></label></div>
+        <p class="hint">Fotografe a <b>folha de respostas inteira</b>, de cima, com boa luz e com os <b>4 quadrados pretos</b> aparecendo.</p><div class="upl-list" id="uplList"></div>` : ''}
+        ${ab.length ? `<div class="lbl" style="margin-top:16px">Questões abertas — digite exatamente o que você respondeu na prova</div>${ab.map(q => `<div class="field"><label>Questão ${esc(q.numero)}</label><textarea data-aberta="${esc(q.numero)}" rows="4" placeholder="Sua resposta…"></textarea></div>`).join('')}` : ''}</div>`;
+    }
+    if (!prova && local) return `<div class="upl"><label class="drop" data-drop>${ic('upload', 30)}<b>Toque para selecionar ou arraste o arquivo</b><span>PDF (com texto), DOCX ou TXT</span><input type="file" accept=".pdf,.docx,.txt,.md" hidden data-upl data-single></label>
+         <details class="paste"><summary>Ou cole o texto diretamente</summary><textarea id="uplText" rows="9" placeholder="Cole aqui o texto completo do trabalho…"></textarea></details><div class="upl-list" id="uplList"></div></div>`;
     return `<div class="upl">${prova
       ? `<div class="upl-btns"><label class="btn primary big">${ic('camera')} Tirar foto da página<input type="file" accept="image/*" capture="environment" hidden data-upl></label><label class="btn big">${ic('image')} Galeria ou PDF<input type="file" accept="image/*,application/pdf" multiple hidden data-upl></label></div>
          <p class="hint">Fotografe cada página com boa iluminação, de cima e sem cortes. Adicione quantas páginas forem necessárias, na ordem.</p>`
@@ -812,7 +1159,7 @@ const Upl = {
   },
   bind(root) {
     this.files = [];
-    $$('[data-upl]', root).forEach(inp => inp.addEventListener('change', () => { this.add([...inp.files]); inp.value = ''; }));
+    $$('[data-upl]', root).forEach(inp => inp.addEventListener('change', () => { if (inp.dataset.single !== undefined) this.files = []; this.add([...inp.files].slice(0, inp.dataset.single !== undefined ? 1 : 99)); inp.value = ''; }));
     const d = $('[data-drop]', root);
     if (d) { d.addEventListener('dragover', e => { e.preventDefault(); d.classList.add('over'); }); d.addEventListener('dragleave', () => d.classList.remove('over')); d.addEventListener('drop', e => { e.preventDefault(); d.classList.remove('over'); this.add([...e.dataTransfer.files]); }); }
     this.render();
@@ -823,9 +1170,11 @@ const Upl = {
     const el = $('#uplList'); if (!el) return;
     el.innerHTML = this.files.map((f, i) => `<div class="upl-item">${f.type.startsWith('image/') ? `<img src="${URL.createObjectURL(f)}" alt="">` : `<div class="fi">${ic('file', 22)}</div>`}<div class="meta"><b>${this.files.length > 1 ? (i + 1) + '. ' : ''}${esc(f.name)}</b><span>${(f.size / 1024).toFixed(0)} KB</span></div><button type="button" class="icon-btn" onclick="Upl.remove(${i})" title="Remover">${ic('x')}</button></div>`).join('');
   },
-  text() { return ($('#uplText')?.value || '').trim(); }
+  text() { return ($('#uplText')?.value || '').trim(); },
+  abertas() { const o = {}; $$('[data-aberta]').forEach(t => o[t.dataset.aberta] = t.value.trim()); return o; },
+  temAbertas() { return $$('[data-aberta]').some(t => t.value.trim()); }
 };
-const STEPS = ['Lendo o arquivo', 'Analisando com inteligência artificial', 'Calculando a nota', 'Salvando o resultado'];
+const STEPS = ['Lendo o arquivo', 'Analisando e corrigindo', 'Calculando a nota', 'Salvando o resultado'];
 function stepsHTML(cur) { return `<div class="steps">${STEPS.map((s, i) => `<div class="step ${i < cur ? 'done' : i === cur ? 'cur' : ''}"><span class="sd">${i < cur ? ic('check', 14) : ''}</span>${s}</div>`).join('')}</div>`; }
 
 /* =========================================================
@@ -837,15 +1186,17 @@ function renderRelatorio(e, atv, { student = false, aluno = null } = {}) {
   const showNota = !student || atv.mostrarNota !== false;
   let h = `<div class="card"><div class="report-head">
     ${showNota ? `<div class="ring" style="--p:${Math.round((p || 0) * 100)};--rc:${rc}"><div><b>${fmtN(nf)}</b><span>de ${fmtN(e.notaMax)}</span></div></div>` : ''}
-    <div style="flex:1;min-width:220px"><div class="actions" style="margin-bottom:8px"><span class="badge ${atv.tipo === 'prova' ? 'dark' : ''}">${atv.tipo === 'prova' ? 'Prova' : esc(SUBTIPOS[atv.subtipo] || 'Trabalho')}</span>${e.notaManual != null && e.notaManual !== '' ? '<span class="badge warn">Nota ajustada pelo professor</span>' : ''}${e.atrasado ? '<span class="badge bad">Entregue após o prazo</span>' : ''}${e.origem === 'professor' ? '<span class="badge gray">Lançada pelo professor</span>' : ''}</div>
+    <div style="flex:1;min-width:220px"><div class="actions" style="margin-bottom:8px"><span class="badge ${atv.tipo === 'prova' ? 'dark' : ''}">${atv.tipo === 'prova' ? 'Prova' : esc(SUBTIPOS[atv.subtipo] || 'Trabalho')}</span>${e.notaManual != null && e.notaManual !== '' ? '<span class="badge warn">Nota ajustada pelo professor</span>' : ''}${e.atrasado ? '<span class="badge bad">Entregue após o prazo</span>' : ''}${e.origem === 'professor' ? '<span class="badge gray">Lançada pelo professor</span>' : ''}${R.modo === 'local' ? '<span class="badge ok">Correção gratuita</span>' : R.fallback ? '<span class="badge warn">Correção gratuita (reserva)</span>' : '<span class="badge">Corrigida por IA</span>'}</div>
     <h3 style="font-size:22px;margin-bottom:4px">${esc(atv.titulo)}</h3>
     <div class="muted small">${esc(aluno?.nome || e.alunoNome || '')} · ${fmtDate(e.criadoEm)} · tentativa ${e.tentativa || 1}${e.arquivos?.length ? ' · ' + esc(e.arquivos.join(', ')) : ''}</div>
     ${R.tipo === 'prova' ? `<div class="muted small" style="margin-top:6px">${fmtN(R.pontosObtidos)} de ${fmtN(R.pontosTotais)} pontos${R.totalObjetivas ? ` · ${R.acertosObjetivas}/${R.totalObjetivas} objetivas corretas` : ''}${R.legibilidade ? ' · Legibilidade: ' + esc(R.legibilidade) : ''}</div>` : ''}
     ${R.tipo === 'trabalho' && R.palavras ? `<div class="muted small" style="margin-top:6px">${R.palavras} palavras${R.palavrasEstimadas ? ' (estimado)' : ''}${R.foraLimite ? ` · <b style="color:var(--bad)">fora do limite${R.penalidade ? ` (−${fmtN(R.penalidade)} pts)` : ''}</b>` : ''}</div>` : ''}
     </div></div>
     ${R.parecer ? `<div class="parecer" style="margin-top:18px">${esc(R.parecer)}</div>` : ''}
+    ${!student && R.fallback ? `<div class="alert warn" style="margin:14px 0 0">${ic('alert')}<div>A IA falhou (${esc(R.fallback)}) e foi usada a correção gratuita. Você pode revisar a nota.</div></div>` : ''}
     ${e.obsProfessor ? `<div class="alert info" style="margin:14px 0 0">${ic('user')}<div><b>Comentário do professor:</b> ${esc(e.obsProfessor)}</div></div>` : ''}
   </div>`;
+  if (R.metricas) { const M = R.metricas; h += `<div class="card" style="margin-top:16px"><h3>Métricas do texto</h3><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px">${[['Palavras', M.palavras], ['Parágrafos', M.paragrafos], ['Frases', M.frases], ['Palavras/frase', fmtN(M.mediaFrase)], ['Conectivos', `${M.conectivos} (${M.tiposConectivos} tipos)`], ['Citações', M.citacoes], ['Referências', M.referencias], ['Desvios detectados', M.desvios], ['Diversidade vocabular', M.diversidade + '%']].map(([k, v]) => `<div style="background:#f7f6f2;border-radius:10px;padding:10px 12px"><div class="muted small">${k}</div><b>${v}</b></div>`).join('')}</div></div>`; }
   if (R.criterios?.length) h += `<div class="card" style="margin-top:16px"><h3>Critérios de avaliação</h3>${R.criterios.map(c => `<div class="crit"><div class="crit-top"><span>${esc(c.nome)} <span class="muted small">· peso ${fmtN(c.peso)}</span></span><span class="nota ${cls(c.nota / 10)}">${fmtN(c.nota)}</span></div><div class="bar" style="--c:${c.nota >= 7 ? 'var(--ok)' : c.nota >= 5 ? 'var(--warn)' : 'var(--bad)'}"><i style="width:${c.nota * 10}%"></i></div>${c.comentario ? `<p>${esc(c.comentario)}</p>` : ''}</div>`).join('')}</div>`;
   if (R.questoes?.length) h += `<div class="card" style="margin-top:16px"><h3>Questões</h3><div class="table-wrap"><table class="tbl"><thead><tr><th>Q</th><th>Tipo</th><th>Resposta do aluno</th>${student && atv.mostrarGabarito === false ? '' : '<th>Gabarito</th>'}<th class="num">Pontos</th><th>Comentário</th></tr></thead><tbody>${R.questoes.map(q => `<tr><td><b>${esc(q.numero)}</b></td><td><span class="badge ${q.tipo === 'objetiva' ? 'gray' : ''}">${q.tipo === 'objetiva' ? 'Objetiva' : 'Aberta'}</span></td><td style="max-width:280px">${esc(q.respostaAluno || '—')}</td>${student && atv.mostrarGabarito === false ? '' : `<td style="max-width:240px" class="small muted">${esc(q.esperada)}</td>`}<td class="num"><span class="nota ${cls(q.fracao)}">${fmtN(q.pontos)}/${fmtN(q.valor)}</span></td><td class="small" style="min-width:180px">${esc(q.comentario)}</td></tr>`).join('')}</tbody></table></div></div>`;
   if (R.conformidade?.length) h += `<div class="card" style="margin-top:16px"><h3>Parâmetros exigidos</h3>${R.conformidade.map(c => `<div class="conf"><span class="ci ${c.atendido ? 'ok' : 'bad'}">${ic(c.atendido ? 'check' : 'x', 13)}</span><div><b>${esc(c.parametro)}</b>${c.obs ? `<div class="muted small">${esc(c.obs)}</div>` : ''}</div></div>`).join('')}</div>`;
@@ -870,7 +1221,7 @@ function viewPainel() {
   <div class="page-head"><div><h2>${hello}</h2><p class="muted">${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</p></div>
    <div class="actions"><a class="btn" href="#/turmas">${ic('users')} Turmas</a><button class="btn primary" onclick="formTurma()">${ic('plus')} Nova turma</button></div></div>
   ${!Sync.configured() ? `<div class="alert warn">${ic('cloud')}<div><b>Sincronização desativada.</b> Para gerar links para os alunos e sincronizar em tempo real entre dispositivos, configure o GitHub Gist e a IA em <a href="#/config" style="text-decoration:underline">Configurações</a>.</div></div>` : ''}
-  ${!S.cfg.ai?.key ? `<div class="alert info">${ic('sparkle')}<div><b>Configure a IA de correção</b> (Claude, GPT ou Gemini) em <a href="#/config" style="text-decoration:underline">Configurações</a> para corrigir trabalhos e provas automaticamente.</div></div>` : ''}
+  ${!S.cfg.ai?.key || S.cfg.modoPadrao === 'local' ? `<div class="alert ok">${ic('check')}<div><b>Correção gratuita ativa.</b> Trabalhos são avaliados por métricas do texto e provas pela leitura óptica da folha de respostas, sem custo. Para correções mais profundas, configure uma IA em <a href="#/config" style="text-decoration:underline">Configurações</a> (o Gemini tem plano gratuito).</div></div>` : ''}
   <div class="grid stats">
     ${statCard('users', ts.length, 'Turmas')}${statCard('user', al.length, 'Alunos')}${statCard('layers', at.length, 'Atividades')}${statCard('clipboard', en.length, 'Entregas corrigidas')}${statCard('award', pctStr(media), 'Aproveitamento médio')}
   </div>
@@ -1005,6 +1356,7 @@ function viewAtividadeForm(tid, aid) {
       <div class="field"><label>Tema</label><input name="p_tema" value="${esc(a.params.tema)}" placeholder="Ex.: Os desafios da inteligência artificial na educação brasileira"></div>
       <div class="row"><div class="field"><label>Mín. palavras</label><input type="number" name="p_minPalavras" value="${esc(a.params.minPalavras)}"></div><div class="field"><label>Máx. palavras</label><input type="number" name="p_maxPalavras" value="${esc(a.params.maxPalavras)}"></div><div class="field"><label>Penalidade fora do limite (%)</label><input type="number" min="0" max="100" name="p_penalidade" value="${esc(a.params.penalidade ?? 10)}"></div></div>
       <div class="row"><div class="field" style="grid-column:span 2"><label>Seções / partes obrigatórias</label><input name="p_secoes" value="${esc(a.params.secoes)}" placeholder="Ex.: Resumo, Introdução, Metodologia, Conclusão, Referências"></div><div class="field"><label>Normas</label><select name="p_normas">${['ABNT', 'APA', 'Vancouver', 'Chicago', 'nenhuma'].map(n => `<option ${a.params.normas === n ? 'selected' : ''} value="${n}">${n === 'nenhuma' ? 'Nenhuma' : n}</option>`).join('')}</select></div><div class="field"><label>Mín. de referências</label><input type="number" min="0" name="p_minReferencias" value="${esc(a.params.minReferencias)}"></div></div>
+      <div class="field"><label>Conceitos / palavras-chave esperados</label><input name="p_palavrasChave" value="${esc(a.params.palavrasChave)}" placeholder="Ex.: privacidade, viés algorítmico, formação docente/capacitação de professores"><div class="hint">Separe por vírgula; use "/" para sinônimos. Usado para verificar a abordagem do tema (na correção gratuita e na IA).</div></div>
       <div class="lbl" style="margin-top:6px">Critérios de avaliação e pesos</div>
       <div class="dyn-row dyn-head hide-sm"><span>Critério</span><span>Peso</span><span>O que será avaliado</span><span></span></div>
       <div id="critList"></div>
@@ -1012,6 +1364,7 @@ function viewAtividadeForm(tid, aid) {
     </fieldset>
 
     <fieldset data-only="prova"><legend>Gabarito</legend>
+      <div class="row"><div class="field"><label>Alternativas da folha de respostas</label><input name="p_alternativas" value="${esc(a.params.alternativas || '')}" placeholder="A,B,C,D,E"><div class="hint">Usado na correção gratuita (leitura óptica). Para V/F use "V,F".</div></div></div>
       <div class="field"><label>Como ler a prova (opcional)</label><input name="p_instrucoesProva" value="${esc(a.params.instrucoesProva)}" placeholder="Ex.: Alternativas de A a E marcadas com X; questões abertas no verso"></div>
       <div class="actions" style="margin-bottom:12px"><button type="button" class="btn sm" onclick="faAddQ('objetiva')">${ic('plus', 15)} Questão objetiva</button><button type="button" class="btn sm" onclick="faAddQ('aberta')">${ic('plus', 15)} Questão aberta</button><button type="button" class="btn sm ghost" onclick="faGabRapido()">${ic('list', 15)} Gabarito rápido</button></div>
       <div id="gabList"></div>
@@ -1020,6 +1373,7 @@ function viewAtividadeForm(tid, aid) {
     </fieldset>
 
     <fieldset><legend>Correção e envio</legend>
+      <div class="field"><label>Modo de correção</label><select name="modoCorrecao"><option value="padrao" ${!a.modoCorrecao || a.modoCorrecao === 'padrao' ? 'selected' : ''}>Padrão do sistema (definido em Configurações)</option><option value="local" ${a.modoCorrecao === 'local' ? 'selected' : ''}>Gratuita — sem IA, sem custo</option><option value="ia" ${a.modoCorrecao === 'ia' ? 'selected' : ''}>Inteligência artificial</option></select><div class="hint">Gratuita: trabalhos por métricas do texto; provas por leitura óptica da folha de respostas impressa + conceitos nas questões abertas digitadas pelo aluno.</div></div>
       <div class="field"><label>Instruções adicionais para a IA (opcional)</label><textarea name="p_instrucoes" rows="3" placeholder="Ex.: Valorize exemplos práticos da realidade brasileira; desconte 1 ponto se não houver título.">${esc(a.params.instrucoes)}</textarea></div>
       <label class="check"><input type="checkbox" name="aberta" ${a.aberta !== false ? 'checked' : ''}> <span><b>Recebendo envios</b><br><span class="muted small">Desmarque para fechar o link manualmente.</span></span></label>
       <label class="check"><input type="checkbox" name="aceitarAtraso" ${a.aceitarAtraso ? 'checked' : ''}> <span><b>Aceitar envios após o prazo</b> <span class="muted small">(marcados como atrasados)</span></span></label>
@@ -1077,7 +1431,7 @@ async function faSave(tid, aid) {
   faReadLists(); const f = $('#fa'); const d = Object.fromEntries(new FormData(f).entries());
   if (!d.titulo.trim()) { toast('Informe o título', 'bad'); return $('#fa [name=titulo]').focus(); }
   const a = FA;
-  Object.assign(a, { tipo: d.tipo, subtipo: d.subtipo || a.subtipo, titulo: d.titulo.trim(), descricao: d.descricao, notaMax: +d.notaMax || 10, prazo: d.prazo, tentativas: Math.max(1, +d.tentativas || 1), rigor: d.rigor, aberta: !!d.aberta, aceitarAtraso: !!d.aceitarAtraso, mostrarNota: !!d.mostrarNota, mostrarRelatorio: !!d.mostrarRelatorio, mostrarGabarito: !!d.mostrarGabarito });
+  Object.assign(a, { tipo: d.tipo, subtipo: d.subtipo || a.subtipo, titulo: d.titulo.trim(), descricao: d.descricao, notaMax: +d.notaMax || 10, prazo: d.prazo, tentativas: Math.max(1, +d.tentativas || 1), rigor: d.rigor, modoCorrecao: d.modoCorrecao || 'padrao', aberta: !!d.aberta, aceitarAtraso: !!d.aceitarAtraso, mostrarNota: !!d.mostrarNota, mostrarRelatorio: !!d.mostrarRelatorio, mostrarGabarito: !!d.mostrarGabarito });
   for (const k of Object.keys(d)) if (k.startsWith('p_')) a.params[k.slice(2)] = d[k];
   a.params.criterios = a.params.criterios.filter(c => c.nome);
   a.gabarito = a.gabarito.filter(q => q.numero);
@@ -1097,14 +1451,15 @@ function viewAtividade(id) {
   const link = Sync.configured() ? linkAluno(a) : null;
   const p = a.params || {};
   setMain(`<a class="crumb" href="#/turma/${t.id}/atividades">${ic('back', 15)} ${esc(t.nome)}</a>
-  <div class="page-head"><div><div class="actions" style="margin-bottom:8px"><span class="badge ${a.tipo === 'prova' ? 'dark' : ''}">${a.tipo === 'prova' ? 'Prova' : esc(SUBTIPOS[a.subtipo])}</span><span class="badge ${isOpen(a) ? 'ok' : 'gray'}">${isOpen(a) ? 'Recebendo envios' : 'Encerrada'}</span></div><h2>${esc(a.titulo)}</h2><p class="muted">Vale ${fmtN(a.notaMax)}${a.prazo ? ' · prazo ' + fmtDate(a.prazo) : ''} · ${a.tentativas || 1} tentativa(s)</p></div>
-  <div class="actions"><button class="btn" onclick="pdfAtividade('${id}')">${ic('download')} PDF</button><a class="btn" href="#/atividade-form/${t.id}/${id}">${ic('edit')} Editar</a><button class="btn" onclick="toggleAberta('${id}')">${isOpen(a) ? ic('x') + ' Encerrar' : ic('check') + ' Reabrir'}</button><button class="btn danger" onclick="delAtividade('${id}')">${ic('trash')}</button></div></div>
+  <div class="page-head"><div><div class="actions" style="margin-bottom:8px"><span class="badge ${a.tipo === 'prova' ? 'dark' : ''}">${a.tipo === 'prova' ? 'Prova' : esc(SUBTIPOS[a.subtipo])}</span><span class="badge ${isOpen(a) ? 'ok' : 'gray'}">${isOpen(a) ? 'Recebendo envios' : 'Encerrada'}</span><span class="badge ${modoDe(a, S.cfg) === 'local' ? 'ok' : ''}">${modoDe(a, S.cfg) === 'local' ? 'Correção gratuita' : 'Correção por IA'}</span></div><h2>${esc(a.titulo)}</h2><p class="muted">Vale ${fmtN(a.notaMax)}${a.prazo ? ' · prazo ' + fmtDate(a.prazo) : ''} · ${a.tentativas || 1} tentativa(s)</p></div>
+  <div class="actions">${a.tipo === 'prova' ? `<button class="btn" onclick="pdfFolhaRespostas('${id}')">${ic('file')} Folha de respostas</button>` : ''}<button class="btn" onclick="pdfAtividade('${id}')">${ic('download')} PDF</button><a class="btn" href="#/atividade-form/${t.id}/${id}">${ic('edit')} Editar</a><button class="btn" onclick="toggleAberta('${id}')">${isOpen(a) ? ic('x') + ' Encerrar' : ic('check') + ' Reabrir'}</button><button class="btn danger" onclick="delAtividade('${id}')">${ic('trash')}</button></div></div>
 
   <div class="card" style="margin-bottom:16px"><div class="card-head"><h3>${ic('link')} Link de envio para os alunos</h3></div>
     ${link ? `<div class="linkbox"><code>${esc(link)}</code><button class="btn sm primary" onclick="copyText('${esc(link)}')">${ic('copy', 15)} Copiar</button></div>
       <div class="actions" style="margin-top:10px"><a class="btn sm" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(`${a.titulo} — envie sua ${a.tipo === 'prova' ? 'prova' : 'atividade'} por aqui: ${link}`)}">${ic('share', 15)} WhatsApp</a><a class="btn sm" href="mailto:?subject=${encodeURIComponent(a.titulo)}&body=${encodeURIComponent('Envie sua atividade pelo link: ' + link)}">${ic('send', 15)} E-mail</a><a class="btn sm ghost" target="_blank" href="${esc(link)}">${ic('eye', 15)} Abrir como aluno</a></div>
       ${/^(file:|http:\/\/localhost|http:\/\/127)/.test(baseUrl()) ? `<div class="alert warn" style="margin:12px 0 0">${ic('alert')}<div>O sistema está aberto localmente (${esc(baseUrl().slice(0, 40))}…). Para que os alunos consigam abrir o link, publique este arquivo (ex.: GitHub Pages) e informe a <b>URL pública</b> em Configurações.</div></div>` : ''}
-      ${!(S.cfg.ai && S.cfg.ai.key) ? `<div class="alert bad" style="margin:12px 0 0">${ic('alert')}<div>A IA não está configurada — os alunos não conseguirão receber a correção. Configure em <a href="#/config"><u>Configurações</u></a>.</div></div>` : ''}`
+      ${a.tipo === 'prova' && modoDe(a, S.cfg) === 'local' && (a.gabarito || []).some(q => q.tipo === 'objetiva') ? `<div class="alert info" style="margin:12px 0 0">${ic('file')}<div><b>Correção gratuita:</b> imprima a <a href="javascript:pdfFolhaRespostas('${id}')"><u>folha de respostas</u></a> (uma por aluno, já com o nome). Ao final da prova, o aluno fotografa a folha pelo link${(a.gabarito || []).some(q => q.tipo === 'aberta') ? ' e digita as respostas das questões abertas' : ''}.</div></div>` : ''}
+      ${modoDe(a, S.cfg) === 'ia' && !(S.cfg.ai && S.cfg.ai.key) ? `<div class="alert bad" style="margin:12px 0 0">${ic('alert')}<div>A IA não está configurada — os alunos não conseguirão receber a correção. Configure em <a href="#/config"><u>Configurações</u></a>.</div></div>` : ''}`
       : `<div class="alert warn" style="margin:0">${ic('cloud')}<div>Para gerar o link do aluno é preciso configurar a sincronização com o GitHub Gist em <a href="#/config"><u>Configurações</u></a>. Enquanto isso, você pode lançar correções manualmente abaixo.</div></div>`}
   </div>
 
@@ -1127,17 +1482,17 @@ async function delAtividade(id) { const a = byId('atividades', id); if (await co
 function corrigirManual(id) {
   const a = byId('atividades', id); const als = alunosDe(a.turmaId);
   if (!als.length) return toast('Cadastre alunos na turma primeiro', 'bad');
-  if (!S.cfg.ai?.key) return toast('Configure a IA em Configurações', 'bad');
+  if (modoDe(a, S.cfg) === 'ia' && !S.cfg.ai?.key) return toast('Configure a IA em Configurações ou use a correção gratuita', 'bad');
   const m = modal({
     title: 'Lançar correção', wide: true,
     body: `<div id="cmBody"><div class="field"><label>Aluno</label><select id="cmAluno">${als.map(al => `<option value="${al.id}">${esc(al.nome)}</option>`).join('')}</select></div>${Upl.html(a)}</div>`,
     actions: [{ label: 'Cancelar' }, {
-      label: ic('sparkle') + ' Corrigir com IA', cls: 'primary', onClick: async (el) => {
-        const al = byId('alunos', $('#cmAluno').value); const files = [...Upl.files], txt = Upl.text();
-        if (!files.length && !txt) throw new Error('Selecione o arquivo ou cole o texto');
+      label: ic('sparkle') + ' Corrigir', cls: 'primary', onClick: async (el) => {
+        const al = byId('alunos', $('#cmAluno').value); const files = [...Upl.files], txt = Upl.text(), abertas = Upl.abertas();
+        if (!files.length && !txt && !Upl.temAbertas()) throw new Error('Selecione o arquivo ou cole o texto');
         $('#cmBody').innerHTML = stepsHTML(0);
         try {
-          const r = await processSubmission(S.cfg, a, files, txt, i => $('#cmBody').innerHTML = stepsHTML(i));
+          const r = await processSubmission(S.cfg, a, files, txt, i => $('#cmBody').innerHTML = stepsHTML(i), abertas);
           const e = { id: uid(), atividadeId: a.id, turmaId: a.turmaId, alunoId: al.id, alunoNome: al.nome, criadoEm: Date.now(), tentativa: entregasDe(a.id, al.id).length + 1, origem: 'professor', notaManual: null, obsProfessor: '', ...r };
           await save('entregas', e); toast('Correção concluída', 'ok'); m.close(); go('entrega/' + e.id);
         } catch (err) { $('#cmBody').innerHTML = `<div class="alert bad">${ic('alert')}<div>${esc(err.message)}</div></div>`; throw err; }
@@ -1181,7 +1536,15 @@ function viewConfig() {
     <div class="field"><label>URL pública do sistema</label><input name="publicUrl" value="${esc(c.publicUrl)}" placeholder="https://seuusuario.github.io/catedra/"><div class="hint">Endereço onde este arquivo está publicado. É a base dos links enviados aos alunos. Em branco = endereço atual.</div></div>
     <button class="btn primary" onclick="saveProf()">${ic('check')} Salvar</button></form></div>
 
-  <div class="card"><h3>${ic('sparkle')} Inteligência artificial</h3><form id="fAi" onsubmit="return false">
+  <div class="card"><h3>${ic('check')} Modo de correção</h3><form id="fModo" onsubmit="return false">
+    <label class="check"><input type="radio" name="modoPadrao" value="local" ${(c.modoPadrao || (ai.key ? 'ia' : 'local')) === 'local' ? 'checked' : ''}> <span><b>Gratuita (sem IA)</b><br><span class="muted small">Sem custo e sem chave. Trabalhos: métricas do texto (extensão, conectivos, desvios, citações, referências, seções e conceitos do tema). Provas: leitura óptica da folha de respostas impressa + verificação de conceitos nas questões abertas. É uma estimativa: revise quando necessário.</span></span></label>
+    <label class="check"><input type="radio" name="modoPadrao" value="ia" ${(c.modoPadrao || (ai.key ? 'ia' : 'local')) === 'ia' ? 'checked' : ''}> <span><b>Inteligência artificial</b><br><span class="muted small">Análise profunda de conteúdo e leitura de provas manuscritas. Pode ter custo, conforme o provedor.</span></span></label>
+    <label class="check"><input type="checkbox" name="fallbackLocal" ${c.fallbackLocal !== false ? 'checked' : ''}> <span>Se a IA falhar (limite gratuito esgotado, erro ou sem créditos), usar a correção gratuita nos trabalhos</span></label>
+    <div class="hint" style="margin-bottom:12px">Cada atividade pode usar outro modo (no formulário da atividade).</div>
+    <button class="btn primary" onclick="saveModo()">${ic('check')} Salvar</button></form></div>
+
+  <div class="card"><h3>${ic('sparkle')} Inteligência artificial</h3>
+    <div class="alert info">${ic('sparkle')}<div><b>IA sem custo:</b> o Google oferece um plano gratuito da API Gemini, com limites de uso e apenas para alguns modelos. Crie a chave em <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener"><u>aistudio.google.com/apikey</u></a>, escolha "Google (Gemini)" e um modelo do plano gratuito (ex.: gemini-2.5-flash-lite). No plano gratuito, o Google pode usar o conteúdo enviado para melhorar seus produtos, e novas contas podem precisar ativar o plano pré-pago.</div></div><form id="fAi" onsubmit="return false">
     <div class="field"><label>Provedor</label><select name="provider" onchange="this.form.model.value=MODELS[this.value]">${Object.entries(PROVIDERS).map(([k, v]) => `<option value="${k}" ${ai.provider === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
     <div class="field"><label>Modelo</label><input name="model" value="${esc(ai.model || MODELS[ai.provider || 'anthropic'])}"><div class="hint">Use um modelo com visão (leitura de imagens) para corrigir provas fotografadas.</div></div>
     <div class="field"><label>Chave de API</label><input type="password" name="key" value="${esc(ai.key)}" autocomplete="off" placeholder="sk-…"></div>
@@ -1204,6 +1567,7 @@ function viewConfig() {
   </div>`, 'Configurações');
 }
 async function saveProf() { Object.assign(S.cfg, formData($('#fProf'))); await saveCfg(); toast('Dados salvos', 'ok'); }
+async function saveModo() { const f = $('#fModo'); S.cfg.modoPadrao = $('[name=modoPadrao]:checked', f).value; S.cfg.fallbackLocal = $('[name=fallbackLocal]', f).checked; await saveCfg(); toast('Modo de correção salvo', 'ok'); }
 async function saveAi() { const d = formData($('#fAi')); S.cfg.ai = { provider: d.provider, model: d.model.trim(), key: d.key.trim() }; await saveCfg(); toast('Configuração da IA salva', 'ok'); }
 async function testAi() { await saveAi(); toast('Testando a IA…'); try { const r = await aiJSON(S.cfg, { system: 'Responda apenas JSON.', text: 'Responda exatamente {"ok":true,"msg":"IA conectada"}' }); toast(r.msg || 'IA respondeu corretamente', 'ok'); } catch (e) { toast(e.message, 'bad', 7000); } }
 async function ghConnect() {
@@ -1282,6 +1646,7 @@ function pdfEntregaSection(doc, e, atv, aluno, { student = false } = {}) {
   }
   const kv = [['Aluno', aluno?.nome || e.alunoNome], ['Data de envio', fmtDate(e.criadoEm) + (e.atrasado ? ' (após o prazo)' : '')], ['Tentativa', String(e.tentativa || 1)]];
   if (showNota) kv.push(['Nota', `${fmtN(nf)} de ${fmtN(e.notaMax)}${e.notaManual != null && e.notaManual !== '' ? ` (ajustada pelo professor; IA: ${fmtN(e.nota)})` : ''}`]);
+  kv.push(['Método', R.modo === 'local' ? 'Correção automática gratuita (estimativa)' : R.fallback ? 'Correção automática gratuita (reserva)' : 'Inteligência artificial']);
   if (R.tipo === 'prova') kv.push(['Pontuação', `${fmtN(R.pontosObtidos)} de ${fmtN(R.pontosTotais)} pontos${R.totalObjetivas ? ` - ${R.acertosObjetivas}/${R.totalObjetivas} objetivas corretas` : ''}`]);
   if (R.tipo === 'trabalho' && R.palavras) kv.push(['Extensão', `${R.palavras} palavras${R.palavrasEstimadas ? ' (estimado)' : ''}${R.foraLimite ? ' - fora do limite' + (R.penalidade ? ` (-${fmtN(R.penalidade)} pts)` : '') : ''}`]);
   pTable(doc, [], kv, { theme: 'plain', showHead: 'never', styles: { fontSize: 9.5, cellPadding: 1.3 }, columnStyles: { 0: { fontStyle: 'bold', cellWidth: 34 } }, margin: { left: M, right: M + 40 } }); doc._y -= 2;
@@ -1389,8 +1754,10 @@ function sIntro() {
     if (p.normas && p.normas !== 'nenhuma') params.push(['Normas', p.normas]);
     if (+p.minReferencias) params.push(['Referências', `mínimo de ${p.minReferencias}`]);
     params.push(['Critérios de avaliação', critsOf(atv).map(c => `${c.nome} (peso ${fmtN(c.peso)})`).join('; ')]);
+    if (modoDe(atv, ST.cfg) === 'local') params.push(['Formato do envio', 'arquivo digital (PDF com texto, DOCX ou TXT) ou texto colado. Fotos não são aceitas.']);
   } else {
     params.push(['Questões', `${(atv.gabarito || []).length} questões`]);
+    if (modoDe(atv, ST.cfg) === 'local') params.push(['Como enviar', `${(atv.gabarito || []).some(q => q.tipo === 'objetiva') ? 'fotografe a FOLHA DE RESPOSTAS inteira (com os 4 quadrados pretos visíveis)' : ''}${(atv.gabarito || []).some(q => q.tipo === 'aberta') ? ((atv.gabarito || []).some(q => q.tipo === 'objetiva') ? ' e ' : '') + 'digite as respostas das questões abertas' : ''}.`]);
     if (p.instrucoesProva) params.push(['Orientação', p.instrucoesProva]);
   }
   $('#main').innerHTML = sShell(`
@@ -1437,7 +1804,7 @@ function sUploadStep() {
   const { atv, aluno, anteriores } = ST;
   $('#sId').outerHTML = `<div class="card" id="sUp"><div class="card-head"><h3>${atv.tipo === 'prova' ? 'Envie as fotos da sua prova' : 'Envie seu trabalho'}</h3><span class="badge gray">${esc(aluno.nome)}</span></div>
     ${anteriores.length ? `<div class="alert info">${ic('refresh')}<div>Tentativa ${anteriores.length + 1} de ${atv.tentativas}. Sua maior nota até agora: <b>${fmtN(Math.max(...anteriores.map(notaFinal)))}</b>.</div></div>` : ''}
-    ${Upl.html(atv)}
+    ${Upl.html(atv, ST.cfg)}
     <button class="btn primary big" style="width:100%;margin-top:16px" onclick="sSubmit()">${ic('sparkle')} Enviar para correção</button>
     <p class="hint" style="text-align:center">Ao enviar, seu trabalho será lido e corrigido automaticamente conforme os parâmetros do professor.</p></div>`;
   Upl.bind($('#sUp'));
@@ -1445,12 +1812,15 @@ function sUploadStep() {
 const pendKey = () => `catedra_pend_${ST.atv.id}_${ST.aluno.id}`;
 function sGetPending() { try { return JSON.parse(localStorage.getItem(pendKey())); } catch { return null; } }
 async function sSubmit() {
-  const files = [...Upl.files], txt = Upl.text();
-  if (!files.length && !txt) return toast(ST.atv.tipo === 'prova' ? 'Adicione as fotos da prova' : 'Selecione o arquivo ou cole o texto', 'bad');
+  const files = [...Upl.files], txt = Upl.text(), abertas = Upl.abertas();
+  const localProva = ST.atv.tipo === 'prova' && modoDe(ST.atv, ST.cfg) === 'local';
+  if (localProva && (ST.atv.gabarito || []).some(q => q.tipo === 'objetiva') && !files.length) return toast('Fotografe a folha de respostas', 'bad');
+  if (!localProva && !files.length && !txt) return toast(ST.atv.tipo === 'prova' ? 'Adicione as fotos da prova' : 'Selecione o arquivo ou cole o texto', 'bad');
+  if (localProva && Object.values(abertas).some(v => !v) && !confirm('Há questões abertas em branco. Enviar assim mesmo?')) return;
   const box = $('#sUp'); box.innerHTML = `<h3>Corrigindo…</h3><p class="muted">Não feche esta página. Isso pode levar até um minuto.</p>${stepsHTML(0)}`;
   const setStep = i => { const s = $('.steps', box); if (s) s.outerHTML = stepsHTML(i); };
   let r;
-  try { r = await processSubmission(ST.cfg, ST.atv, files, txt, setStep); }
+  try { r = await processSubmission(ST.cfg, ST.atv, files, txt, setStep, abertas); }
   catch (err) { box.innerHTML = `<div class="alert bad">${ic('alert')}<div><b>Não foi possível corrigir:</b> ${esc(err.message)}<br><span class="small">Seu envio não foi contabilizado. Tente novamente.</span></div></div><button class="btn primary" onclick="sUploadStep2()">${ic('refresh')} Tentar novamente</button>`; return; }
   const atrasado = ST.atv.prazo && Date.now() > new Date(ST.atv.prazo).getTime();
   const e = { id: uid(), atividadeId: ST.atv.id, turmaId: ST.atv.turmaId, alunoId: ST.aluno.id, alunoNome: ST.aluno.nome, criadoEm: Date.now(), updatedAt: Date.now(), tentativa: ST.anteriores.length + 1, origem: 'aluno', atrasado: !!atrasado, notaManual: null, obsProfessor: '', ...r };
