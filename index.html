@@ -312,7 +312,8 @@ const LIBS = {
   tessCore: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1',
   tessLang: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/por@1.0.0/4.0.0_best_int'
 };
-const APP_VERSION = '2026.10.30-10';
+const APP_VERSION = '2026.10.30-12';
+const sha16 = async t => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(t || ''))))].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
 const verNum = v => { const m = String(v || '').match(/^(\d+)\.(\d+)\.(\d+)-(\d+)$/); return m ? ((+m[1] * 100 + +m[2]) * 100 + +m[3]) * 1000 + +m[4] : 0; };
 const BC = (() => { try { return new BroadcastChannel('catedra'); } catch { return null; } })();
 function hardReload() { const u = new URL(location.href); u.searchParams.set('v', Date.now().toString(36)); location.replace(u.toString()); }
@@ -1744,7 +1745,7 @@ function viewAtividade(id) {
   <div class="actions">${a.tipo === 'prova' ? `<button class="btn" onclick="pdfFolhaRespostas('${id}')">${ic('file')} Folha de respostas</button>` : ''}<button class="btn" onclick="pdfAtividade('${id}')">${ic('download')} PDF</button><a class="btn" href="#/atividade-form/${t.id}/${id}">${ic('edit')} Editar</a><button class="btn" onclick="toggleAberta('${id}')">${isOpen(a) ? ic('x') + ' Encerrar' : ic('check') + ' Reabrir'}</button><button class="btn danger" onclick="delAtividade('${id}')">${ic('trash')}</button></div></div>
 
   <div class="card" style="margin-bottom:16px"><div class="card-head"><h3>${ic('link')} Link de envio para os alunos</h3></div>
-    ${link ? `<div class="linkbox"><code>${esc(link)}</code><button class="btn sm primary" onclick="copyText('${esc(link)}')">${ic('copy', 15)} Copiar</button></div>
+    ${link ? `<div id="linkCheck" class="small muted" style="margin-bottom:8px">Verificando o link no servidor…</div><div class="linkbox"><code>${esc(link)}</code><button class="btn sm primary" onclick="copyText('${esc(link)}')">${ic('copy', 15)} Copiar</button></div>
       <div class="actions" style="margin-top:10px"><a class="btn sm" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(`${a.titulo} — envie sua ${a.tipo === 'prova' ? 'prova' : 'atividade'} por aqui: ${link}`)}">${ic('share', 15)} WhatsApp</a><a class="btn sm" href="mailto:?subject=${encodeURIComponent(a.titulo)}&body=${encodeURIComponent('Envie sua atividade pelo link: ' + link)}">${ic('send', 15)} E-mail</a><a class="btn sm ghost" target="_blank" href="${esc(link)}">${ic('eye', 15)} Abrir como aluno</a></div>
       ${/^(file:|http:\/\/localhost|http:\/\/127)/.test(baseUrl()) ? `<div class="alert warn" style="margin:12px 0 0">${ic('alert')}<div>O sistema está aberto localmente (${esc(baseUrl().slice(0, 40))}…). Para que os alunos consigam abrir o link, publique este arquivo (ex.: GitHub Pages) e informe a <b>URL pública</b> em Configurações.</div></div>` : ''}
       ${a.tipo === 'prova' && modoDe(a, S.cfg) === 'local' && (a.gabarito || []).some(q => q.tipo === 'objetiva') ? `<div class="alert info" style="margin:12px 0 0">${ic('file')}<div><b>Correção gratuita:</b> imprima a <a href="javascript:pdfFolhaRespostas('${id}')"><u>folha de respostas</u></a> (uma por aluno, já com o nome). Ao final da prova, o aluno fotografa a folha pelo link${(a.gabarito || []).some(q => q.tipo === 'aberta') ? ' e digita as respostas das questões abertas' : ''}.</div></div>` : ''}
@@ -1766,6 +1767,22 @@ function viewAtividade(id) {
       : `<div class="lbl">Gabarito (${a.gabarito.length} questões)</div><div class="table-wrap"><table class="tbl"><tbody>${a.gabarito.map(q => `<tr><td><b>${esc(q.numero)}</b></td><td class="small">${q.tipo === 'objetiva' ? `<span class="badge gray">${esc(q.resposta)}</span>` : esc(q.resposta.slice(0, 120)) + (q.resposta.length > 120 ? '…' : '')}</td><td class="num muted small">${fmtN(q.valor)}</td></tr>`).join('')}</tbody></table></div>`}
     </div>
   </div>`, a.titulo);
+  if (link) verificarLink(id);
+}
+async function verificarLink(id) {
+  const box = $('#linkCheck'); if (!box || !workerUrl()) return;
+  try {
+    clearTimeout(Sync.timer); while (Sync.busy) await sleep(200); await Sync.run(true); while (Sync.busy) await sleep(200);
+    if (Sync.state === 'err') { box.outerHTML = `<div id="linkCheck" class="alert bad" style="margin:0 0 10px">${ic('alert')}<div>A sincronização com o Gist falhou (${esc(Sync.lastError)}). Os alunos não verão esta atividade até a sincronização funcionar.</div></div>`; return; }
+    const r = await fetch(workerUrl() + '/atividade?a=' + encodeURIComponent(id), { cache: 'no-store' });
+    if (!$('#linkCheck')) return;
+    if (r.ok) { $('#linkCheck').outerHTML = `<div id="linkCheck" class="alert ok" style="margin:0 0 10px">${ic('check')}<div>Link verificado: o servidor encontrou esta atividade. Pode enviar aos alunos.</div></div>`; return; }
+    let msg = ''; try { msg = (await r.json()).erro || ''; } catch { }
+    let dica = msg;
+    if (r.status === 404) { let mesmo = null; try { const h = await (await fetch(workerUrl() + '/health', { cache: 'no-store' })).json(); mesmo = h.gistHash ? h.gistHash === await sha16(S.local.gistId) : null; } catch { }
+      dica = mesmo === false ? `O servidor está lendo <b>outro Gist</b>. No Cloudflare, ajuste <b>GIST_ID</b> para <code>${esc(S.local.gistId)}</code> e clique em Implantar.` : 'O servidor ainda não encontrou esta atividade. Clique em "Sincronizar agora" e recarregue esta página.'; }
+    $('#linkCheck').outerHTML = `<div id="linkCheck" class="alert bad" style="margin:0 0 10px">${ic('alert')}<div><b>Os alunos ainda não conseguem abrir este link.</b> ${dica.includes('<') ? dica : esc(dica)} <a href="#/config"><u>Testar servidor</u></a></div></div>`;
+  } catch (e) { const b = $('#linkCheck'); if (b) b.outerHTML = `<div id="linkCheck" class="alert warn" style="margin:0 0 10px">${ic('alert')}<div>Não foi possível verificar o link (${esc(e.message)}).</div></div>`; }
 }
 async function toggleAberta(id) { const a = byId('atividades', id); a.aberta = !isOpen(a); if (a.aberta && a.prazo && new Date(a.prazo) < Date.now()) a.prazo = ''; await save('atividades', a); router(); }
 async function delAtividade(id) { const a = byId('atividades', id); if (await confirmDlg('Excluir esta atividade e todas as entregas?', 'Excluir')) { await removeRec('atividades', id); toast('Atividade excluída'); go('turma/' + a.turmaId + '/atividades'); } }
@@ -1873,8 +1890,14 @@ async function testSrv() {
   const box = $('#srvStatus'); if (!box) return; if (!workerUrl()) { box.innerHTML = ''; return; }
   box.innerHTML = '<div class="muted small">Testando…</div>';
   try { const h = await (await fetch(workerUrl() + '/health', { cache: 'no-store' })).json();
-    const itens = [[h.ok, `Servidor online (versão ${h.versao})`], [h.gist, h.gist ? 'Acessa o Gist' : 'Sem acesso ao Gist: ' + (h.gistErro || 'confira GITHUB_TOKEN e GIST_ID')], [h.ia.configurada, h.ia.configurada ? `IA configurada (${PROVIDERS[h.ia.provider] || h.ia.provider})` : 'Sem AI_KEY: alunos usarão a correção gratuita'], [h.sessao, h.sessao ? 'SESSION_SECRET definido' : 'Defina SESSION_SECRET (recomendado)'], [!!h.origem, h.origem ? 'ALLOWED_ORIGIN: ' + h.origem : 'Defina ALLOWED_ORIGIN com o endereço do sistema (recomendado)'], [verNum(h.versao) >= verNum(APP_VERSION), verNum(h.versao) >= verNum(APP_VERSION) ? 'Servidor atualizado' : 'Servidor desatualizado: publique o worker.js novo']];
+    const V = h.vars || {};
+    const itens = [[h.ok, `Servidor online (versão ${h.versao})`],
+      ...(h.vars ? ['GITHUB_TOKEN', 'GIST_ID', 'AI_KEY', 'SESSION_SECRET', 'ALLOWED_ORIGIN'].map(k => [V[k], `${k}: ${V[k] ? 'encontrada' : 'NÃO encontrada pelo servidor'}`]) : []),
+      ...((h.parecidos || []).length ? [[false, `Nomes parecidos encontrados (confira a grafia): ${h.parecidos.join(', ')}`]] : []),
+      [h.gist, h.gist ? 'Acessa o Gist' : 'Sem acesso ao Gist: ' + (h.gistErro || 'confira GITHUB_TOKEN e GIST_ID')],
+      ...(h.gistHash && S.local.gistId ? [[h.gistHash === await sha16(S.local.gistId), h.gistHash === await sha16(S.local.gistId) ? 'O servidor usa o mesmo Gist deste navegador' : `O servidor usa OUTRO Gist. No Cloudflare, ajuste GIST_ID para: ${S.local.gistId}`]] : []), [h.ia.configurada, h.ia.configurada ? `IA configurada (${PROVIDERS[h.ia.provider] || h.ia.provider})` : 'Sem AI_KEY: alunos usarão a correção gratuita'], [h.sessao, h.sessao ? 'SESSION_SECRET definido' : 'Defina SESSION_SECRET (recomendado)'], [!!h.origem, h.origem ? 'ALLOWED_ORIGIN: ' + h.origem : 'Defina ALLOWED_ORIGIN com o endereço do sistema (recomendado)'], [verNum(h.versao) >= verNum(APP_VERSION), verNum(h.versao) >= verNum(APP_VERSION) ? 'Servidor atualizado' : 'Servidor desatualizado: publique o worker.js novo']];
     box.innerHTML = itens.map(([ok, t]) => `<div class="conf"><span class="ci ${ok ? 'ok' : 'bad'}">${ic(ok ? 'check' : 'x', 13)}</span><div class="small">${esc(t)}</div></div>`).join('');
+    if (h.vars && (!V.GITHUB_TOKEN || !V.GIST_ID || !V.SESSION_SECRET)) box.innerHTML += `<div class="alert warn" style="margin-top:10px">${ic('alert')}<div class="small"><b>Variáveis não encontradas.</b> No painel da Cloudflare, abra o <b>mesmo</b> worker deste endereço → <b>Configurações</b> → <b>Variáveis e segredos</b> (não use "Variáveis de build"). Clique em <b>+ Adicionar</b>, escolha o tipo <b>Segredo</b> para GITHUB_TOKEN, AI_KEY e SESSION_SECRET e <b>Texto</b> para GIST_ID, com o nome exatamente igual (maiúsculas, com _). Clique em <b>Implantar</b> e teste de novo.</div></div>`;
   } catch (e) { box.innerHTML = `<div class="alert bad">${ic('alert')}<div>Servidor inacessível (${esc(e.message)}). Confira o endereço e se o worker foi publicado.</div></div>`; }
 }
 function guiaServidor() {
