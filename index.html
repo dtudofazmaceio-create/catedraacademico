@@ -310,7 +310,10 @@ const LIBS = {
   tessCore: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1',
   tessLang: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/por@1.0.0/4.0.0_best_int'
 };
-const APP_VERSION = '2026.10.30-7';
+const APP_VERSION = '2026.10.30-8';
+const verNum = v => { const m = String(v || '').match(/^(\d+)\.(\d+)\.(\d+)-(\d+)$/); return m ? ((+m[1] * 100 + +m[2]) * 100 + +m[3]) * 1000 + +m[4] : 0; };
+const BC = (() => { try { return new BroadcastChannel('catedra'); } catch { return null; } })();
+function hardReload() { const u = new URL(location.href); u.searchParams.set('v', Date.now().toString(36)); location.replace(u.toString()); }
 const MODELS = { anthropic: 'claude-sonnet-5-5', openai: 'gpt-4.1', gemini: 'gemini-2.5-flash-lite' };
 const PROVIDERS = { anthropic: 'Anthropic (Claude)', openai: 'OpenAI (GPT)', gemini: 'Google (Gemini)' };
 const SUBTIPOS = { redacao: 'Redação', artigo: 'Artigo científico', resenha: 'Resenha', relatorio: 'Relatório', ensaio: 'Ensaio', estudo_caso: 'Estudo de caso', outro: 'Outro trabalho' };
@@ -465,7 +468,7 @@ async function removeRec(st, id) {
   if (st === 'turmas') { for (const a of S.alunos.filter(x => x.turmaId === id && !x.deleted)) { a.deleted = true; await save('alunos', a); } for (const a of S.atividades.filter(x => x.turmaId === id && !x.deleted)) { a.deleted = true; await save('atividades', a); } }
   if (st === 'atividades') { for (const e of S.entregas.filter(x => x.atividadeId === id && !x.deleted)) { e.deleted = true; await save('entregas', e); } }
 }
-async function saveCfg() { S.cfg.updatedAt = Date.now(); await DB.put('meta', S.cfg); Sync.schedule(); }
+async function saveCfg() { S.cfg.updatedAt = Date.now(); S.cfg.appVersion = APP_VERSION; await DB.put('meta', S.cfg); BC && BC.postMessage({ t: 'cfg', v: APP_VERSION }); Sync.schedule(); }
 async function saveLocal() { await DB.put('meta', S.local); }
 
 /* ---------- UI helpers ---------- */
@@ -589,7 +592,11 @@ const Sync = {
       }
       // 2) config.json
       const fc = g.files['config.json']; const remoteCfgStr = await fileContent(fc);
-      if (remoteCfgStr) { const rc = JSON.parse(remoteCfgStr); if ((rc.updatedAt || 0) > (S.cfg.updatedAt || 0)) { S.cfg = { ...rc, id: 'cfg' }; await DB.put('meta', S.cfg); changed = true; } }
+      if (remoteCfgStr) {
+        const rc = JSON.parse(remoteCfgStr); const ru = Math.min(rc.updatedAt || 0, Date.now() + 60000);
+        if (verNum(rc.appVersion) > verNum(APP_VERSION)) showUpdateBanner(rc.appVersion);
+        else if (ru > (S.cfg.updatedAt || 0)) { S.cfg = { ...rc, id: 'cfg', updatedAt: ru }; await DB.put('meta', S.cfg); changed = true; }
+      }
       // 3) entregas
       const toDelete = [];
       for (const [name, file] of Object.entries(g.files)) {
@@ -606,7 +613,7 @@ const Sync = {
       // 4) envio das alterações locais
       const files = {};
       const ld = JSON.stringify(buildData()); if (ld !== remoteDataStr) files['data.json'] = { content: ld };
-      const lc = JSON.stringify(cfgPublic()); if (lc !== remoteCfgStr) files['config.json'] = { content: lc };
+      const lc = JSON.stringify(cfgPublic()); const remoteNewer = remoteCfgStr && verNum(JSON.parse(remoteCfgStr).appVersion) > verNum(APP_VERSION); if (lc !== remoteCfgStr && !remoteNewer) files['config.json'] = { content: lc };
       for (const aid of this.dirtyArq) { const list = S.entregas.filter(e => e.atividadeId === aid); if (list.length) files[`arq_${aid}.json`] = { content: JSON.stringify(list) }; }
       toDelete.forEach(n => files[n] = null);
       if (Object.keys(files).length) await gh(`/gists/${gistId}`, { method: 'PATCH', body: JSON.stringify({ files }) }, token);
@@ -625,6 +632,17 @@ const Sync = {
       if (this.again) { this.again = false; setTimeout(() => this.run(true), 300); }
     }
   }
+};
+function showUpdateBanner(v) {
+  if ($('#updBanner')) return; const d = document.createElement('div'); d.id = 'updBanner';
+  d.style.cssText = 'position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:200;background:#111a33;color:#fff;padding:12px 16px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.25);display:flex;gap:12px;align-items:center;font-size:14px;max-width:92vw';
+  d.innerHTML = `<span>Há uma versão mais nova do sistema (${esc(v)}). Esta aba está desatualizada.</span><button class="btn sm accent" onclick="hardReload()">Atualizar agora</button>`; document.body.appendChild(d);
+}
+if (BC) BC.onmessage = async e => {
+  if (e.data?.t !== 'cfg') return;
+  if (verNum(e.data.v) > verNum(APP_VERSION)) return showUpdateBanner(e.data.v);
+  if (document.body.classList.contains('student')) return;
+  try { S.cfg = await DB.get('meta', 'cfg') || S.cfg; Sync.ui(); if (location.hash.includes('config') && !$('#modalRoot').children.length) viewConfig(); } catch { }
 };
 function softRefresh() {
   if (document.body.classList.contains('student')) return;
@@ -1742,6 +1760,7 @@ function corrigirManual(id) {
       label: ic('sparkle') + ' Corrigir', cls: 'primary', onClick: async (el) => {
         const al = byId('alunos', $('#cmAluno').value); const files = [...Upl.files], txt = Upl.text(), abertas = Upl.abertas();
         if (!files.length && !txt && !Upl.temAbertas()) throw new Error('Selecione o arquivo ou cole o texto');
+        try { S.cfg = await DB.get('meta', 'cfg') || S.cfg; } catch { }
         $('#cmBody').innerHTML = stepsHTML(0);
         try {
           const r = await processSubmission(S.cfg, a, files, txt, i => $('#cmBody').innerHTML = stepsHTML(i), abertas);
@@ -2033,6 +2052,7 @@ async function viewEnviar(payload) {
     if (!atv) { main.innerHTML = sErr('Atividade não encontrada', 'Esta atividade pode ter sido removida pelo professor.'); return; }
     const turma = (data.turmas || []).find(t => t.id === atv.turmaId) || {};
     const alunos = (data.alunos || []).filter(a => a.turmaId === atv.turmaId && !a.deleted).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    if (verNum(cfg.appVersion) > verNum(APP_VERSION) && sessionStorage.getItem('catedra_reload') !== cfg.appVersion) { sessionStorage.setItem('catedra_reload', cfg.appVersion); return hardReload(); }
     ST = { P, g, cfg, atv, turma, alunos, aluno: null };
     sIntro();
   } catch (e) { main.innerHTML = sErr('Não foi possível carregar a atividade', e.message + '. Verifique sua conexão e tente novamente.'); }
@@ -2108,12 +2128,18 @@ function sUploadStep() {
 }
 const pendKey = () => `catedra_pend_${ST.atv.id}_${ST.aluno.id}`;
 function sGetPending() { try { return JSON.parse(localStorage.getItem(pendKey())); } catch { return null; } }
+async function sRefreshCfg() {
+  try { const g = await gh(`/gists/${ST.P.g}`, {}, ST.P.t); const c = JSON.parse(await fileContent(g.files['config.json']) || '{}'); if (c && c.ai) ST.cfg = c; ST.g = g;
+    if (verNum(c.appVersion) > verNum(APP_VERSION)) { toast('O sistema foi atualizado. Recarregando…'); sessionStorage.setItem('catedra_reload', c.appVersion); await sleep(900); hardReload(); return false; } } catch { }
+  return true;
+}
 async function sSubmit() {
   const files = [...Upl.files], txt = Upl.text(), abertas = Upl.abertas();
   const localProva = ST.atv.tipo === 'prova' && modoDe(ST.atv, ST.cfg) === 'local';
   if (localProva && (ST.atv.gabarito || []).some(q => q.tipo === 'objetiva') && !files.length) return toast('Fotografe a folha de respostas', 'bad');
   if (!localProva && !files.length && !txt) return toast(ST.atv.tipo === 'prova' ? 'Adicione as fotos da prova' : 'Selecione o arquivo ou cole o texto', 'bad');
   if (localProva && Object.values(abertas).some(v => !v) && !confirm('Há questões abertas em branco. Enviar assim mesmo?')) return;
+  if (!(await sRefreshCfg())) return;
   const box = $('#sUp'); box.innerHTML = `<h3>Corrigindo…</h3><p class="muted">Não feche esta página. Isso pode levar até um minuto.</p>${stepsHTML(0)}`;
   const setStep = i => { const s = $('.steps', box); if (s) s.outerHTML = stepsHTML(i); };
   let r;
