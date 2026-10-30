@@ -176,8 +176,33 @@ details.raw pre{white-space:pre-wrap;font-size:13px;background:#f7f6f2;padding:1
 .drop.over,.drop:hover{background:#eef2ff;border-color:var(--primary)}
 .drop b{color:var(--ink)}
 .drop span{font-size:13px;color:var(--muted)}
-.upl-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.upl-list{display:grid;gap:8px;margin-top:12px}
+.upl-btns{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.upl.over{outline:2px dashed var(--primary);outline-offset:6px;border-radius:12px}
+.scan{position:fixed;inset:0;z-index:120;background:#0b0f1c;color:#fff;display:flex;flex-direction:column;touch-action:none;user-select:none}
+.scan-top{display:flex;align-items:center;justify-content:space-between;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;gap:10px}
+.scan-top b{font-weight:600}
+.scan-ib{width:42px;height:42px;border-radius:50%;border:0;background:rgba(255,255,255,.12);color:#fff;display:grid;place-items:center;cursor:pointer;flex:none}
+.scan-stage{flex:1;position:relative;overflow:hidden;min-height:0;margin:0 8px;border-radius:14px;background:#000}
+.scan-stage video,.scan-ov{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.scan-hint{text-align:center;font-size:13.5px;color:#c9d1e6;padding:10px 16px 0}
+.scan-bot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px calc(18px + env(safe-area-inset-bottom))}
+.scan-side{width:76px;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;color:#c9d1e6;background:none;border:0;cursor:pointer}
+.shutter{width:76px;height:76px;border-radius:50%;background:#fff;border:0;cursor:pointer;box-shadow:0 0 0 4px #0b0f1c inset,0 0 0 4px rgba(255,255,255,.7);flex:none}
+.shutter:active{transform:scale(.93)}
+.scan-center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px;color:#c9d1e6}
+.scan-center .ei{width:64px;height:64px;border-radius:18px;display:grid;place-items:center}
+.sc-img{position:absolute}
+.sc-poly{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.sc-poly polygon{fill:rgba(232,163,61,.14);stroke:#e8a33d;stroke-width:2}
+.sc-h{position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;border:3px solid #e8a33d;background:rgba(17,26,51,.45);touch-action:none;cursor:grab;z-index:2}
+.sc-h::after{content:"";position:absolute;inset:-14px}
+.sc-h.on{background:#e8a33d}
+.sc-prev{position:absolute;inset:10px;width:calc(100% - 20px);height:calc(100% - 20px);object-fit:contain}
+.sc-chips{display:flex;gap:8px;justify-content:center;padding:12px 6px 0}
+.sc-chips button{border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;border-radius:999px;padding:7px 16px;font-weight:600;cursor:pointer;font-size:14px}
+.sc-chips button.on{background:#fff;color:#111a33;border-color:#fff}
+.btn.ghost-w{background:rgba(255,255,255,.1);border-color:transparent;color:#fff}
+.upl-list{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin-top:12px}
 .upl-item{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:12px;padding:8px;background:#fff}
 .upl-item img,.upl-item .fi{width:52px;height:52px;border-radius:8px;object-fit:cover;background:#f1efe9;display:grid;place-items:center;color:var(--muted);flex:none}
 .upl-item .meta{flex:1;min-width:0}
@@ -279,7 +304,11 @@ const LIBS = {
   autotable: 'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js',
   pdfjs: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js',
   pdfworker: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js',
-  mammoth: 'https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js'
+  mammoth: 'https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js',
+  tesseract: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js',
+  tessWorker: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js',
+  tessCore: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1',
+  tessLang: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/por@1.0.0/4.0.0_best_int'
 };
 const MODELS = { anthropic: 'claude-sonnet-5-5', openai: 'gpt-4.1', gemini: 'gemini-2.5-flash-lite' };
 const PROVIDERS = { anthropic: 'Anthropic (Claude)', openai: 'OpenAI (GPT)', gemini: 'Google (Gemini)' };
@@ -971,7 +1000,8 @@ function homography(src, dst) {
   const A = [], b = [];
   for (let i = 0; i < 4; i++) { const [x, y] = src[i], [u, v] = dst[i]; A.push([x, y, 1, 0, 0, 0, -u * x, -u * y]); b.push(u); A.push([0, 0, 0, x, y, 1, -v * x, -v * y]); b.push(v); }
   const h = solveLin(A, b);
-  return (x, y) => { const w = h[6] * x + h[7] * y + 1; return [(h[0] * x + h[1] * y + h[2]) / w, (h[3] * x + h[4] * y + h[5]) / w]; };
+  const f = (x, y) => { const w = h[6] * x + h[7] * y + 1; return [(h[0] * x + h[1] * y + h[2]) / w, (h[3] * x + h[4] * y + h[5]) / w]; };
+  f.h = h; return f;
 }
 async function omrRead(file, atv) {
   const L = omrLayout(atv);
@@ -1071,6 +1101,205 @@ async function gradeProvaLocal(atv, files, abertas) {
 }
 function modoDe(atv, cfg) { const m = atv.modoCorrecao || 'padrao'; if (m !== 'padrao') return m; return cfg.modoPadrao || (cfg.ai && cfg.ai.key ? 'ia' : 'local'); }
 
+/* =========================================================
+   SCANNER DE DOCUMENTOS (câmera ao vivo + recorte + filtros)
+   ========================================================= */
+const dist2 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+function fallbackQuad(w, h) { const mx = w * .06, my = h * .06; return [{ x: mx, y: my }, { x: w - mx, y: my }, { x: w - mx, y: h - my }, { x: mx, y: h - my }]; }
+function quadArea(q) { let s = 0; for (let i = 0; i < 4; i++) { const a = q[i], b = q[(i + 1) % 4]; s += a.x * b.y - b.x * a.y; } return Math.abs(s) / 2; }
+const _qc = document.createElement('canvas');
+function detectQuad(src) {
+  const sw = src.videoWidth || src.width, sh = src.videoHeight || src.height; if (!sw || !sh) return { pts: fallbackQuad(1, 1), auto: false };
+  const k = 360 / Math.max(sw, sh); const w = Math.max(2, Math.round(sw * k)), h = Math.max(2, Math.round(sh * k));
+  _qc.width = w; _qc.height = h; const x = _qc.getContext('2d', { willReadFrequently: true }); x.drawImage(src, 0, 0, w, h);
+  const d = x.getImageData(0, 0, w, h).data; const N = w * h; const g = new Uint8Array(N); const hist = new Uint32Array(256);
+  for (let i = 0; i < N; i++) { const v = (d[i * 4] * 77 + d[i * 4 + 1] * 150 + d[i * 4 + 2] * 29) >> 8; g[i] = v; hist[v]++; }
+  let sum = 0; for (let i = 0; i < 256; i++) sum += i * hist[i];
+  let sB = 0, wB = 0, best = 0, t = 128;
+  for (let i = 0; i < 256; i++) { wB += hist[i]; if (!wB) continue; const wF = N - wB; if (!wF) break; sB += i * hist[i]; const mB = sB / wB, mF = (sum - sB) / wF; const v = wB * wF * (mB - mF) ** 2; if (v > best) { best = v; t = i; } }
+  const bin = new Uint8Array(N); for (let i = 0; i < N; i++) bin[i] = g[i] > t ? 1 : 0;
+  const seen = new Uint8Array(N); const st = new Int32Array(N); let top = null;
+  for (let i = 0; i < N; i++) {
+    if (!bin[i] || seen[i]) continue; let sp = 0; st[sp++] = i; seen[i] = 1; let n = 0;
+    const c = { n: 0, tl: [1e9, 0, 0], tr: [-1e9, 0, 0], br: [-1e9, 0, 0], bl: [-1e9, 0, 0] };
+    while (sp) {
+      const j = st[--sp]; const px = j % w, py = (j / w) | 0; n++;
+      if (-(px + py) > -c.tl[0]) c.tl = [px + py, px, py];
+      if (px - py > c.tr[0]) c.tr = [px - py, px, py];
+      if (px + py > c.br[0]) c.br = [px + py, px, py];
+      if (py - px > c.bl[0]) c.bl = [py - px, px, py];
+      if (px > 0 && bin[j - 1] && !seen[j - 1]) { seen[j - 1] = 1; st[sp++] = j - 1; }
+      if (px < w - 1 && bin[j + 1] && !seen[j + 1]) { seen[j + 1] = 1; st[sp++] = j + 1; }
+      if (py > 0 && bin[j - w] && !seen[j - w]) { seen[j - w] = 1; st[sp++] = j - w; }
+      if (py < h - 1 && bin[j + w] && !seen[j + w]) { seen[j + w] = 1; st[sp++] = j + w; }
+    }
+    c.n = n; if (!top || n > top.n) top = c;
+  }
+  if (!top || top.n < N * .12) return { pts: fallbackQuad(sw, sh), auto: false };
+  const pts = [top.tl, top.tr, top.br, top.bl].map(p => ({ x: (p[1] + .5) / k, y: (p[2] + .5) / k }));
+  const ar = quadArea(pts) / (sw * sh);
+  if (ar < .15 || ar > .97 || Math.min(dist2(pts[0], pts[1]), dist2(pts[1], pts[2])) < Math.min(sw, sh) * .2) return { pts: fallbackQuad(sw, sh), auto: false };
+  return { pts, auto: true };
+}
+function homCoef(src, dst) { return homography(src, dst).h; }
+function warpQuad(srcCanvas, q, maxSide = 2200) {
+  const [tl, tr, br, bl] = q; let W = Math.max(dist2(tl, tr), dist2(bl, br)), H = Math.max(dist2(tl, bl), dist2(tr, br));
+  const s = Math.min(1.4, maxSide / Math.max(W, H)); W = Math.max(10, Math.round(W * s)); H = Math.max(10, Math.round(H * s));
+  const h = homCoef([[0, 0], [W, 0], [W, H], [0, H]], q.map(p => [p.x, p.y]));
+  const sw = srcCanvas.width, sh = srcCanvas.height; const sd = srcCanvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, sw, sh).data;
+  const out = document.createElement('canvas'); out.width = W; out.height = H; const octx = out.getContext('2d'); const od = octx.createImageData(W, H); const o = od.data;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const z = h[6] * x + h[7] * y + 1; let fx = (h[0] * x + h[1] * y + h[2]) / z, fy = (h[3] * x + h[4] * y + h[5]) / z;
+    if (fx < 0) fx = 0; if (fy < 0) fy = 0; if (fx > sw - 1.001) fx = sw - 1.001; if (fy > sh - 1.001) fy = sh - 1.001;
+    const x0 = fx | 0, y0 = fy | 0, ax = fx - x0, ay = fy - y0; const i00 = (y0 * sw + x0) * 4, i10 = i00 + 4, i01 = i00 + sw * 4, i11 = i01 + 4; const oi = (y * W + x) * 4;
+    for (let c = 0; c < 3; c++) o[oi + c] = (sd[i00 + c] * (1 - ax) + sd[i10 + c] * ax) * (1 - ay) + (sd[i01 + c] * (1 - ax) + sd[i11 + c] * ax) * ay;
+    o[oi + 3] = 255;
+  }
+  octx.putImageData(od, 0, 0); return out;
+}
+function enhanceCanvas(src, mode) {
+  if (mode === 'original') return src;
+  const W = src.width, H = src.height; const id = src.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, W, H); const d = id.data; const N = W * H;
+  const g = new Float32Array(N); for (let i = 0; i < N; i++) g[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
+  const W1 = W + 1; const I = new Float64Array(W1 * (H + 1));
+  for (let y = 0; y < H; y++) { let row = 0; for (let x = 0; x < W; x++) { row += g[y * W + x]; I[(y + 1) * W1 + x + 1] = I[y * W1 + x + 1] + row; } }
+  const r = Math.max(8, Math.round(Math.max(W, H) / 24));
+  for (let y = 0; y < H; y++) {
+    const y1 = Math.max(0, y - r), y2 = Math.min(H - 1, y + r);
+    for (let x = 0; x < W; x++) {
+      const x1 = Math.max(0, x - r), x2 = Math.min(W - 1, x + r); const cnt = (x2 - x1 + 1) * (y2 - y1 + 1);
+      const mean = (I[(y2 + 1) * W1 + x2 + 1] - I[y1 * W1 + x2 + 1] - I[(y2 + 1) * W1 + x1] + I[y1 * W1 + x1]) / cnt;
+      const ratio = g[y * W + x] / (mean + 1);
+      const v = mode === 'bw' ? (ratio < 0.8 ? 0 : 255) : clamp(255 * (ratio - 0.4) / 0.52, 0, 255);
+      const i = (y * W + x) * 4; d[i] = d[i + 1] = d[i + 2] = v;
+    }
+  }
+  const out = document.createElement('canvas'); out.width = W; out.height = H; out.getContext('2d').putImageData(id, 0, 0); return out;
+}
+function rotateCanvas(src) { const c = document.createElement('canvas'); c.width = src.height; c.height = src.width; const x = c.getContext('2d'); x.translate(c.width, 0); x.rotate(Math.PI / 2); x.drawImage(src, 0, 0); return c; }
+async function fileToCanvas(file, max = 2600) {
+  let src; try { src = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+  catch { src = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('Imagem inválida')); i.src = URL.createObjectURL(file); }); }
+  const k = Math.min(1, max / Math.max(src.width, src.height)); const c = document.createElement('canvas'); c.width = Math.round(src.width * k); c.height = Math.round(src.height * k);
+  c.getContext('2d').drawImage(src, 0, 0, c.width, c.height); return c;
+}
+const canvasToFile = (c, name) => new Promise(res => c.toBlob(b => res(new File([b], name, { type: 'image/jpeg' })), 'image/jpeg', 0.88));
+
+const Scanner = {
+  root: null, stream: null, timer: null, quad: null, src: null, warped: null, filtro: 'doc', replaceIndex: null, fromCam: false, count: 0,
+  ensureRoot() { if (!this.root) { this.root = document.createElement('div'); this.root.className = 'scan'; document.body.appendChild(this.root); document.body.style.overflow = 'hidden'; } return this.root; },
+  close() {
+    clearInterval(this.timer); this.timer = null;
+    if (this.stream) { this.stream.getTracks().forEach(t => t.stop()); this.stream = null; }
+    if (this.root) { this.root.remove(); this.root = null; } document.body.style.overflow = '';
+    Upl.render();
+  },
+  async open() {
+    this.count = 0; this.replaceIndex = null;
+    if (!navigator.mediaDevices?.getUserMedia || !window.isSecureContext) return this.fallbackView('Este navegador não permite usar a câmera ao vivo aqui.');
+    try { this.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 2560 }, height: { ideal: 1440 } }, audio: false }); }
+    catch (e) { return this.fallbackView(e.name === 'NotAllowedError' ? 'A permissão da câmera foi negada.' : 'Não foi possível abrir a câmera ao vivo.'); }
+    this.camView();
+  },
+  fallbackView(msg) {
+    const r = this.ensureRoot();
+    r.innerHTML = `<div class="scan-top"><button class="scan-ib" onclick="Scanner.close()">${ic('x', 22)}</button><b>Scanner</b><span></span></div>
+      <div class="scan-center"><div class="ei" style="background:rgba(255,255,255,.1);color:#fff">${ic('camera', 30)}</div><p>${esc(msg)}<br>Use a câmera do aparelho: depois você poderá recortar e melhorar a imagem.</p>
+      <label class="btn accent big">${ic('camera')} Abrir câmera do aparelho<input type="file" accept="image/*" capture="environment" hidden onchange="Scanner.fromFile(this.files[0])"></label></div>`;
+  },
+  camView() {
+    const r = this.ensureRoot(); this.fromCam = true;
+    r.innerHTML = `<div class="scan-top"><button class="scan-ib" onclick="Scanner.close()" title="Fechar">${ic('x', 22)}</button><b>${this.count ? this.count + ' página(s)' : 'Scanner'}</b><span></span></div>
+      <div class="scan-stage"><video playsinline muted autoplay></video><canvas class="scan-ov"></canvas></div>
+      <div class="scan-hint" id="scanHint">Enquadre a folha inteira, de preferência sobre uma superfície escura</div>
+      <div class="scan-bot"><label class="scan-side">${ic('image', 22)}<span>Galeria</span><input type="file" accept="image/*" hidden onchange="Scanner.fromFile(this.files[0])"></label>
+        <button class="shutter" onclick="Scanner.shoot()" aria-label="Capturar"></button>
+        <button class="scan-side" onclick="Scanner.close()" ${this.count ? '' : 'style="visibility:hidden"'}>${ic('check', 22)}<span>Concluir</span></button></div>`;
+    const v = $('video', r); v.srcObject = this.stream; v.play().catch(() => { });
+    const ov = $('.scan-ov', r);
+    clearInterval(this.timer);
+    this.timer = setInterval(() => {
+      if (!v.videoWidth) return;
+      const det = detectQuad(v); this.quad = det;
+      const rc = ov.getBoundingClientRect(); ov.width = rc.width * devicePixelRatio; ov.height = rc.height * devicePixelRatio;
+      const s = Math.min(ov.width / v.videoWidth, ov.height / v.videoHeight); const ox = (ov.width - v.videoWidth * s) / 2, oy = (ov.height - v.videoHeight * s) / 2;
+      const c = ov.getContext('2d'); c.clearRect(0, 0, ov.width, ov.height);
+      if (det.auto) { c.beginPath(); det.pts.forEach((p, i) => c[i ? 'lineTo' : 'moveTo'](ox + p.x * s, oy + p.y * s)); c.closePath(); c.fillStyle = 'rgba(53,200,138,.18)'; c.fill(); c.lineWidth = 3 * devicePixelRatio; c.strokeStyle = '#35c88a'; c.stroke(); }
+      const hint = $('#scanHint'); if (hint) hint.textContent = det.auto ? 'Folha detectada — toque no botão para capturar' : 'Enquadre a folha inteira, de preferência sobre uma superfície escura';
+    }, 280);
+  },
+  shoot() {
+    const v = $('.scan video'); if (!v || !v.videoWidth) return;
+    const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight; c.getContext('2d').drawImage(v, 0, 0);
+    clearInterval(this.timer); this.timer = null;
+    this.src = c; const det = detectQuad(c); this.cornerView(det.pts);
+  },
+  async fromFile(file, replaceIndex = null) {
+    if (!file) return; this.ensureRoot(); this.replaceIndex = replaceIndex; if (!this.stream) this.fromCam = false;
+    clearInterval(this.timer); this.timer = null;
+    this.root.innerHTML = `<div class="scan-center"><div class="spinner"></div></div>`;
+    try { this.src = await fileToCanvas(file); } catch (e) { toast(e.message, 'bad'); return this.close(); }
+    this.cornerView(detectQuad(this.src).pts);
+  },
+  async adjust(i) { Scanner.count = 0; await Scanner.fromFile(Upl.files[i], i); },
+  cornerView(pts) {
+    const r = this.ensureRoot(); this.quad = pts.map(p => ({ ...p }));
+    r.innerHTML = `<div class="scan-top"><button class="scan-ib" onclick="Scanner.back()" title="Voltar">${ic('back', 22)}</button><b>Ajuste os cantos</b><button class="scan-ib" onclick="Scanner.resetCorners()" title="Página inteira">${ic('grid', 20)}</button></div>
+      <div class="scan-stage" id="scEdit"><canvas class="sc-img"></canvas><svg class="sc-poly"><polygon/></svg>${[0, 1, 2, 3].map(i => `<div class="sc-h" data-h="${i}"></div>`).join('')}</div>
+      <div class="scan-hint">Arraste os círculos até os cantos da folha</div>
+      <div class="scan-bot"><span class="scan-side"></span><button class="btn accent big" onclick="Scanner.crop()">${ic('check')} Recortar</button><span class="scan-side"></span></div>`;
+    const stage = $('#scEdit'); const cv = $('.sc-img', stage);
+    const lay = () => { const rc = stage.getBoundingClientRect(); const s = Math.min(rc.width / this.src.width, rc.height / this.src.height); this._s = s; this._ox = (rc.width - this.src.width * s) / 2; this._oy = (rc.height - this.src.height * s) / 2; cv.style.cssText = `left:${this._ox}px;top:${this._oy}px;width:${this.src.width * s}px;height:${this.src.height * s}px`; cv.width = Math.round(this.src.width * s * devicePixelRatio); cv.height = Math.round(this.src.height * s * devicePixelRatio); cv.getContext('2d').drawImage(this.src, 0, 0, cv.width, cv.height); this.drawCorners(); };
+    lay(); this._lay = lay; window.addEventListener('resize', lay);
+    $$('.sc-h', stage).forEach(hd => {
+      hd.addEventListener('pointerdown', e => { e.preventDefault(); hd.setPointerCapture(e.pointerId); hd.classList.add('on'); });
+      hd.addEventListener('pointermove', e => { if (!hd.hasPointerCapture(e.pointerId)) return; const rc = stage.getBoundingClientRect(); const i = +hd.dataset.h; this.quad[i] = { x: clamp((e.clientX - rc.left - this._ox) / this._s, 0, this.src.width), y: clamp((e.clientY - rc.top - this._oy) / this._s, 0, this.src.height) }; this.drawCorners(); });
+      hd.addEventListener('pointerup', () => hd.classList.remove('on'));
+    });
+  },
+  drawCorners() {
+    const st = $('#scEdit'); if (!st) return; const P = this.quad.map(p => [this._ox + p.x * this._s, this._oy + p.y * this._s]);
+    $$('.sc-h', st).forEach((h, i) => { h.style.left = P[i][0] + 'px'; h.style.top = P[i][1] + 'px'; });
+    $('.sc-poly polygon', st).setAttribute('points', P.map(p => p.join(',')).join(' '));
+  },
+  resetCorners() { const w = this.src.width, h = this.src.height; this.quad = [{ x: 0, y: 0 }, { x: w, y: 0 }, { x: w, y: h }, { x: 0, y: h }]; this.drawCorners(); },
+  back() { window.removeEventListener('resize', this._lay); if (this.stream && this.replaceIndex == null) this.camView(); else this.close(); },
+  crop() {
+    window.removeEventListener('resize', this._lay);
+    this.root.innerHTML = `<div class="scan-center"><div class="spinner"></div><p>Processando…</p></div>`;
+    setTimeout(() => { try { this.warped = warpQuad(this.src, this.quad); this.previewView(); } catch (e) { toast(e.message, 'bad'); this.close(); } }, 30);
+  },
+  previewView() {
+    const r = this.root; const f = this.filtro;
+    r.innerHTML = `<div class="scan-top"><button class="scan-ib" onclick="Scanner.cornerView(Scanner.quad)" title="Voltar">${ic('back', 22)}</button><b>Revisar página</b><button class="scan-ib" onclick="Scanner.rotate()" title="Girar">${ic('refresh', 20)}</button></div>
+      <div class="scan-stage"><img class="sc-prev" alt="Prévia"></div>
+      <div class="sc-chips">${[['original', 'Original'], ['doc', 'Documento'], ['bw', 'P&B']].map(([k, l]) => `<button class="${f === k ? 'on' : ''}" onclick="Scanner.setFiltro('${k}')">${l}</button>`).join('')}</div>
+      <div class="scan-bot">${this.fromCam && this.replaceIndex == null && !Upl.single ? `<button class="btn big ghost-w" onclick="Scanner.usar(true)">${ic('plus')} Mais páginas</button>` : '<span></span>'}<button class="btn accent big" onclick="Scanner.usar(false)">${ic('check')} ${this.replaceIndex != null ? 'Salvar' : 'Usar página'}</button></div>`;
+    this.renderPreview();
+  },
+  renderPreview() { const img = $('.sc-prev'); if (!img) return; this.final = enhanceCanvas(this.warped, this.filtro); img.src = this.final.toDataURL('image/jpeg', .8); },
+  setFiltro(k) { this.filtro = k; this.previewView(); },
+  rotate() { this.warped = rotateCanvas(this.warped); this.renderPreview(); },
+  async usar(mais) {
+    const file = await canvasToFile(this.final || this.warped, `pagina-${Date.now().toString(36)}.jpg`);
+    if (this.replaceIndex != null) { Upl.files[this.replaceIndex] = file; this.replaceIndex = null; return this.close(); }
+    if (Upl.single) Upl.files = [file]; else Upl.files.push(file);
+    this.count++;
+    if (mais && this.stream) { toast(`Página ${this.count} adicionada`, 'ok', 1800); return this.camView(); }
+    this.close();
+  }
+};
+
+/* ---------- OCR gratuito (texto digitado/impresso) ---------- */
+async function ocrImages(images, onProg) {
+  await loadScript(LIBS.tesseract);
+  const worker = await Tesseract.createWorker('por', 1, { workerPath: LIBS.tessWorker, corePath: LIBS.tessCore, langPath: LIBS.tessLang, logger: m => onProg && m.status === 'recognizing text' && onProg(m.progress) });
+  let text = ''; const conf = [];
+  try { for (const im of images) { const { data } = await worker.recognize(`data:${im.mime};base64,${im.b64}`); text += data.text + '\n\n'; conf.push(data.confidence); } }
+  finally { await worker.terminate(); }
+  return { text: text.trim(), conf: conf.length ? conf.reduce((a, b) => a + b, 0) / conf.length : 0 };
+}
+
 /* ---------- Leitura de arquivos ---------- */
 async function compressImage(file, max = 1600, q = 0.82) {
   let src;
@@ -1098,11 +1327,11 @@ async function extractPdf(file) {
   }
   return { text, images };
 }
-async function extractFiles(files, pasted) {
+async function extractFiles(files, pasted, maxImg = 1600) {
   let text = pasted ? pasted + '\n' : ''; const images = []; const nomes = [];
   for (const f of files) {
     nomes.push(f.name); const n = f.name.toLowerCase();
-    if (f.type.startsWith('image/') || /\.(jpe?g|png|webp|heic|heif)$/.test(n)) images.push(await compressImage(f));
+    if (f.type.startsWith('image/') || /\.(jpe?g|png|webp|heic|heif)$/.test(n)) images.push(await compressImage(f, maxImg));
     else if (f.type === 'application/pdf' || n.endsWith('.pdf')) { const r = await extractPdf(f); text += r.text; images.push(...r.images); }
     else if (n.endsWith('.docx')) { await loadLib('mammoth'); const r = await mammoth.extractRawText({ arrayBuffer: await f.arrayBuffer() }); text += r.value + '\n'; }
     else if (/\.(txt|md|rtf)$/.test(n) || f.type.startsWith('text/')) text += await f.text() + '\n';
@@ -1121,9 +1350,14 @@ async function processSubmission(cfg, atv, files, pasted, step, abertas = {}) {
       const r = await gradeProvaLocal(atv, files, abertas); step(2);
       return { ...r, textoExtraido: Object.entries(abertas).filter(([, v]) => v).map(([k, v]) => `Questão ${k}: ${v}`).join('\n\n').slice(0, 6000), arquivos: files.map(f => f.name), paginas: files.length };
     }
-    if (files.some(f => f.type.startsWith('image/'))) throw new Error('A correção gratuita lê apenas texto digital. Envie o trabalho em PDF, DOCX ou TXT, ou cole o texto (fotos não são aceitas).');
-    const { text, nomes } = await extractFiles(files, pasted);
-    step(1); const r = gradeTrabalhoLocal(atv, text); step(2);
+    const ex = await extractFiles(files, pasted, 2200); let text = ex.text, ocr = null; const nomes = ex.nomes;
+    step(1);
+    if (ex.images.length) {
+      ocr = await ocrImages(ex.images);
+      if (countWords(ocr.text) < 30 || ocr.conf < 50) throw new Error(`Não foi possível ler o texto das imagens com segurança (confiança ${Math.round(ocr.conf)}%). Na correção gratuita só textos digitados ou impressos são lidos; manuscritos não. Envie o arquivo digital, cole o texto ou escaneie novamente com boa luz.`);
+      text = (text + '\n\n' + ocr.text).trim();
+    }
+    const r = gradeTrabalhoLocal(atv, text); if (ocr) r.relatorio.metricas.ocr = Math.round(ocr.conf); step(2);
     return { ...r, textoExtraido: text.slice(0, 6000), arquivos: nomes, paginas: 0 };
   }
   step(0); const { text, images, nomes } = await extractFiles(files, pasted);
@@ -1140,35 +1374,35 @@ async function processSubmission(cfg, atv, files, pasted, step, abertas = {}) {
 /* ---------- Componente de upload ---------- */
 const Upl = {
   files: [],
+  single: false,
   html(atv, cfg = S.cfg) {
-    const prova = atv.tipo === 'prova'; const local = modoDe(atv, cfg) === 'local';
-    if (prova && local) {
-      const temObj = (atv.gabarito || []).some(q => q.tipo === 'objetiva'); const ab = (atv.gabarito || []).filter(q => q.tipo === 'aberta');
-      return `<div class="upl">${temObj ? `<div class="lbl">Foto da folha de respostas</div><div class="upl-btns"><label class="btn primary big">${ic('camera')} Fotografar a folha<input type="file" accept="image/*" capture="environment" hidden data-upl data-single></label><label class="btn big">${ic('image')} Escolher da galeria<input type="file" accept="image/*" hidden data-upl data-single></label></div>
-        <p class="hint">Fotografe a <b>folha de respostas inteira</b>, de cima, com boa luz e com os <b>4 quadrados pretos</b> aparecendo.</p><div class="upl-list" id="uplList"></div>` : ''}
-        ${ab.length ? `<div class="lbl" style="margin-top:16px">Questões abertas — digite exatamente o que você respondeu na prova</div>${ab.map(q => `<div class="field"><label>Questão ${esc(q.numero)}</label><textarea data-aberta="${esc(q.numero)}" rows="4" placeholder="Sua resposta…"></textarea></div>`).join('')}` : ''}</div>`;
-    }
-    if (!prova && local) return `<div class="upl"><label class="drop" data-drop>${ic('upload', 30)}<b>Toque para selecionar ou arraste o arquivo</b><span>PDF (com texto), DOCX ou TXT</span><input type="file" accept=".pdf,.docx,.txt,.md" hidden data-upl data-single></label>
-         <details class="paste"><summary>Ou cole o texto diretamente</summary><textarea id="uplText" rows="9" placeholder="Cole aqui o texto completo do trabalho…"></textarea></details><div class="upl-list" id="uplList"></div></div>`;
-    return `<div class="upl">${prova
-      ? `<div class="upl-btns"><label class="btn primary big">${ic('camera')} Tirar foto da página<input type="file" accept="image/*" capture="environment" hidden data-upl></label><label class="btn big">${ic('image')} Galeria ou PDF<input type="file" accept="image/*,application/pdf" multiple hidden data-upl></label></div>
-         <p class="hint">Fotografe cada página com boa iluminação, de cima e sem cortes. Adicione quantas páginas forem necessárias, na ordem.</p>`
-      : `<label class="drop" data-drop>${ic('upload', 30)}<b>Toque para selecionar ou arraste o arquivo</b><span>PDF, DOCX, TXT ou fotos das páginas</span><input type="file" accept=".pdf,.docx,.txt,.md,image/*" multiple hidden data-upl></label>
-         <details class="paste"><summary>Ou cole o texto diretamente</summary><textarea id="uplText" rows="9" placeholder="Cole aqui o texto completo do trabalho…"></textarea></details>`}
-      <div class="upl-list" id="uplList"></div></div>`;
+    const prova = atv.tipo === 'prova'; const local = modoDe(atv, cfg) === 'local'; const folha = prova && local; this.single = folha;
+    const temObj = (atv.gabarito || []).some(q => q.tipo === 'objetiva'); const ab = folha ? (atv.gabarito || []).filter(q => q.tipo === 'aberta') : [];
+    const showImgs = !folha || temObj;
+    const hint = folha ? 'Escaneie a <b>folha de respostas inteira</b>, com os <b>4 quadrados pretos</b> visíveis. O scanner recorta e endireita a imagem.'
+      : prova ? 'Escaneie cada página da prova, na ordem. O scanner detecta as bordas, endireita e melhora a imagem.'
+      : local ? 'Envie o arquivo digital ou escaneie as páginas <b>digitadas ou impressas</b>. Na correção gratuita, textos manuscritos não são lidos.'
+      : 'Envie o arquivo digital ou escaneie as páginas (também manuscritas).';
+    return `<div class="upl" data-drop>${showImgs ? `${folha ? '<div class="lbl">Folha de respostas</div>' : ''}<div class="upl-btns">
+        <button type="button" class="btn primary big" onclick="Scanner.open()">${ic('camera')} ${folha ? 'Escanear a folha' : 'Câmera (scanner)'}</button>
+        <label class="btn big">${ic('image')} Galeria<input type="file" accept="image/*" ${folha ? 'data-single' : 'multiple'} hidden data-upl></label>
+        ${!prova ? `<label class="btn big">${ic('file')} Arquivo<input type="file" accept=".pdf,.docx,.txt,.md" multiple hidden data-upl></label>` : !local ? `<label class="btn big">${ic('file')} PDF<input type="file" accept="application/pdf" multiple hidden data-upl></label>` : ''}
+      </div><p class="hint">${hint}</p><div class="upl-list" id="uplList"></div>` : ''}
+      ${!prova ? `<details class="paste"><summary>Ou cole o texto diretamente</summary><textarea id="uplText" rows="9" placeholder="Cole aqui o texto completo do trabalho…"></textarea></details>` : ''}
+      ${ab.length ? `<div class="lbl" style="margin-top:16px">Questões abertas — digite exatamente o que você respondeu na prova</div>${ab.map(q => `<div class="field"><label>Questão ${esc(q.numero)}</label><textarea data-aberta="${esc(q.numero)}" rows="4" placeholder="Sua resposta…"></textarea></div>`).join('')}` : ''}</div>`;
   },
   bind(root) {
     this.files = [];
     $$('[data-upl]', root).forEach(inp => inp.addEventListener('change', () => { if (inp.dataset.single !== undefined) this.files = []; this.add([...inp.files].slice(0, inp.dataset.single !== undefined ? 1 : 99)); inp.value = ''; }));
     const d = $('[data-drop]', root);
-    if (d) { d.addEventListener('dragover', e => { e.preventDefault(); d.classList.add('over'); }); d.addEventListener('dragleave', () => d.classList.remove('over')); d.addEventListener('drop', e => { e.preventDefault(); d.classList.remove('over'); this.add([...e.dataTransfer.files]); }); }
+    if (d && $('#uplList', root)) { d.addEventListener('dragover', e => { e.preventDefault(); d.classList.add('over'); }); d.addEventListener('dragleave', () => d.classList.remove('over')); d.addEventListener('drop', e => { e.preventDefault(); d.classList.remove('over'); this.add([...e.dataTransfer.files]); }); }
     this.render();
   },
-  add(fs) { this.files.push(...fs); this.render(); },
+  add(fs) { if (this.single) this.files = fs.filter(f => f.type.startsWith('image/')).slice(0, 1); else this.files.push(...fs); this.render(); },
   remove(i) { this.files.splice(i, 1); this.render(); },
   render() {
     const el = $('#uplList'); if (!el) return;
-    el.innerHTML = this.files.map((f, i) => `<div class="upl-item">${f.type.startsWith('image/') ? `<img src="${URL.createObjectURL(f)}" alt="">` : `<div class="fi">${ic('file', 22)}</div>`}<div class="meta"><b>${this.files.length > 1 ? (i + 1) + '. ' : ''}${esc(f.name)}</b><span>${(f.size / 1024).toFixed(0)} KB</span></div><button type="button" class="icon-btn" onclick="Upl.remove(${i})" title="Remover">${ic('x')}</button></div>`).join('');
+    el.innerHTML = this.files.map((f, i) => `<div class="upl-item">${f.type.startsWith('image/') ? `<img src="${URL.createObjectURL(f)}" alt="">` : `<div class="fi">${ic('file', 22)}</div>`}<div class="meta"><b>${this.files.length > 1 ? (i + 1) + '. ' : ''}${esc(f.name)}</b><span>${(f.size / 1024).toFixed(0)} KB</span></div>${f.type.startsWith('image/') ? `<button type="button" class="btn sm" onclick="Scanner.adjust(${i})" title="Recortar e melhorar">${ic("edit", 14)} Ajustar</button>` : ''}<button type="button" class="icon-btn" onclick="Upl.remove(${i})" title="Remover">${ic('x')}</button></div>`).join('');
   },
   text() { return ($('#uplText')?.value || '').trim(); },
   abertas() { const o = {}; $$('[data-aberta]').forEach(t => o[t.dataset.aberta] = t.value.trim()); return o; },
@@ -1196,7 +1430,7 @@ function renderRelatorio(e, atv, { student = false, aluno = null } = {}) {
     ${!student && R.fallback ? `<div class="alert warn" style="margin:14px 0 0">${ic('alert')}<div>A IA falhou (${esc(R.fallback)}) e foi usada a correção gratuita. Você pode revisar a nota.</div></div>` : ''}
     ${e.obsProfessor ? `<div class="alert info" style="margin:14px 0 0">${ic('user')}<div><b>Comentário do professor:</b> ${esc(e.obsProfessor)}</div></div>` : ''}
   </div>`;
-  if (R.metricas) { const M = R.metricas; h += `<div class="card" style="margin-top:16px"><h3>Métricas do texto</h3><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px">${[['Palavras', M.palavras], ['Parágrafos', M.paragrafos], ['Frases', M.frases], ['Palavras/frase', fmtN(M.mediaFrase)], ['Conectivos', `${M.conectivos} (${M.tiposConectivos} tipos)`], ['Citações', M.citacoes], ['Referências', M.referencias], ['Desvios detectados', M.desvios], ['Diversidade vocabular', M.diversidade + '%']].map(([k, v]) => `<div style="background:#f7f6f2;border-radius:10px;padding:10px 12px"><div class="muted small">${k}</div><b>${v}</b></div>`).join('')}</div></div>`; }
+  if (R.metricas) { const M = R.metricas; h += `<div class="card" style="margin-top:16px"><h3>Métricas do texto</h3><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px">${[['Palavras', M.palavras], ['Parágrafos', M.paragrafos], ['Frases', M.frases], ['Palavras/frase', fmtN(M.mediaFrase)], ['Conectivos', `${M.conectivos} (${M.tiposConectivos} tipos)`], ['Citações', M.citacoes], ['Referências', M.referencias], ['Desvios detectados', M.desvios], ['Diversidade vocabular', M.diversidade + '%'], ...(M.ocr != null ? [['Leitura (OCR)', M.ocr + '% de confiança']] : [])].map(([k, v]) => `<div style="background:#f7f6f2;border-radius:10px;padding:10px 12px"><div class="muted small">${k}</div><b>${v}</b></div>`).join('')}</div></div>`; }
   if (R.criterios?.length) h += `<div class="card" style="margin-top:16px"><h3>Critérios de avaliação</h3>${R.criterios.map(c => `<div class="crit"><div class="crit-top"><span>${esc(c.nome)} <span class="muted small">· peso ${fmtN(c.peso)}</span></span><span class="nota ${cls(c.nota / 10)}">${fmtN(c.nota)}</span></div><div class="bar" style="--c:${c.nota >= 7 ? 'var(--ok)' : c.nota >= 5 ? 'var(--warn)' : 'var(--bad)'}"><i style="width:${c.nota * 10}%"></i></div>${c.comentario ? `<p>${esc(c.comentario)}</p>` : ''}</div>`).join('')}</div>`;
   if (R.questoes?.length) h += `<div class="card" style="margin-top:16px"><h3>Questões</h3><div class="table-wrap"><table class="tbl"><thead><tr><th>Q</th><th>Tipo</th><th>Resposta do aluno</th>${student && atv.mostrarGabarito === false ? '' : '<th>Gabarito</th>'}<th class="num">Pontos</th><th>Comentário</th></tr></thead><tbody>${R.questoes.map(q => `<tr><td><b>${esc(q.numero)}</b></td><td><span class="badge ${q.tipo === 'objetiva' ? 'gray' : ''}">${q.tipo === 'objetiva' ? 'Objetiva' : 'Aberta'}</span></td><td style="max-width:280px">${esc(q.respostaAluno || '—')}</td>${student && atv.mostrarGabarito === false ? '' : `<td style="max-width:240px" class="small muted">${esc(q.esperada)}</td>`}<td class="num"><span class="nota ${cls(q.fracao)}">${fmtN(q.pontos)}/${fmtN(q.valor)}</span></td><td class="small" style="min-width:180px">${esc(q.comentario)}</td></tr>`).join('')}</tbody></table></div></div>`;
   if (R.conformidade?.length) h += `<div class="card" style="margin-top:16px"><h3>Parâmetros exigidos</h3>${R.conformidade.map(c => `<div class="conf"><span class="ci ${c.atendido ? 'ok' : 'bad'}">${ic(c.atendido ? 'check' : 'x', 13)}</span><div><b>${esc(c.parametro)}</b>${c.obs ? `<div class="muted small">${esc(c.obs)}</div>` : ''}</div></div>`).join('')}</div>`;
@@ -1754,7 +1988,7 @@ function sIntro() {
     if (p.normas && p.normas !== 'nenhuma') params.push(['Normas', p.normas]);
     if (+p.minReferencias) params.push(['Referências', `mínimo de ${p.minReferencias}`]);
     params.push(['Critérios de avaliação', critsOf(atv).map(c => `${c.nome} (peso ${fmtN(c.peso)})`).join('; ')]);
-    if (modoDe(atv, ST.cfg) === 'local') params.push(['Formato do envio', 'arquivo digital (PDF com texto, DOCX ou TXT) ou texto colado. Fotos não são aceitas.']);
+    if (modoDe(atv, ST.cfg) === 'local') params.push(['Formato do envio', 'arquivo digital (PDF, DOCX ou TXT), texto colado ou páginas digitadas/impressas escaneadas pela câmera. Textos manuscritos não são lidos na correção gratuita.']);
   } else {
     params.push(['Questões', `${(atv.gabarito || []).length} questões`]);
     if (modoDe(atv, ST.cfg) === 'local') params.push(['Como enviar', `${(atv.gabarito || []).some(q => q.tipo === 'objetiva') ? 'fotografe a FOLHA DE RESPOSTAS inteira (com os 4 quadrados pretos visíveis)' : ''}${(atv.gabarito || []).some(q => q.tipo === 'aberta') ? ((atv.gabarito || []).some(q => q.tipo === 'objetiva') ? ' e ' : '') + 'digite as respostas das questões abertas' : ''}.`]);
