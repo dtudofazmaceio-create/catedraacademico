@@ -310,6 +310,7 @@ const LIBS = {
   tessCore: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1',
   tessLang: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/por@1.0.0/4.0.0_best_int'
 };
+const APP_VERSION = '2026.10.30-5';
 const MODELS = { anthropic: 'claude-sonnet-5-5', openai: 'gpt-4.1', gemini: 'gemini-2.5-flash-lite' };
 const PROVIDERS = { anthropic: 'Anthropic (Claude)', openai: 'OpenAI (GPT)', gemini: 'Google (Gemini)' };
 const SUBTIPOS = { redacao: 'Redação', artigo: 'Artigo científico', resenha: 'Resenha', relatorio: 'Relatório', ensaio: 'Ensaio', estudo_caso: 'Estudo de caso', outro: 'Outro trabalho' };
@@ -1793,7 +1794,7 @@ function viewConfig() {
     <div class="field"><label>Modelo</label><input name="model" value="${esc(ai.model || MODELS[ai.provider || 'anthropic'])}"><div class="hint">Use um modelo com visão (leitura de imagens) para corrigir provas fotografadas.</div></div>
     <div class="field"><label>Chave de API</label><div style="display:flex;gap:6px"><input type="password" name="key" id="aiKey" value="${esc(ai.key)}" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore placeholder="${ai.provider === 'gemini' ? 'AIza…' : ai.provider === 'openai' ? 'sk-…' : 'sk-ant-…'}"><button type="button" class="btn" onclick="const k=$('#aiKey');k.type=k.type==='password'?'text':'password'" title="Mostrar/ocultar">${ic('eye', 16)}</button></div>
       <div class="hint">${ai.key ? `Chave salva: <code>${esc(maskKey(ai.key))}</code> (${ai.key.length} caracteres). Confira se o início e o fim batem com a chave do provedor.` : 'Nenhuma chave salva.'} ${ai.provider === 'anthropic' || !ai.provider ? 'Gere a chave em <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener"><u>console.anthropic.com</u></a> (a assinatura do Claude.ai não fornece chave de API).' : ''}</div></div>
-    <div class="actions"><button class="btn primary" onclick="saveAi()">${ic('check')} Salvar</button><button class="btn" onclick="testAi()">${ic('sparkle')} Testar</button></div></form></div>
+    <div class="actions"><button class="btn primary" onclick="saveAi()">${ic('check')} Salvar</button><button class="btn" onclick="testAi()">${ic('sparkle')} Testar e diagnosticar</button></div></form></div>
 
   <div class="card"><h3>${ic('cloud')} Sincronização (GitHub Gist)</h3>
     <div class="alert ${Sync.configured() ? (Sync.state === 'err' ? 'bad' : 'ok') : 'warn'}">${ic(Sync.configured() ? 'check' : 'alert')}<div>${Sync.configured() ? (Sync.state === 'err' ? esc(Sync.lastError) : `Conectado ao Gist <b>${esc(l.gistId.slice(0, 10))}…</b>. Última sincronização: ${fmtDate(l.lastSync)}`) : 'Não configurado — os dados estão apenas neste navegador.'}</div></div>
@@ -1808,6 +1809,7 @@ function viewConfig() {
     <ul class="blist small"><li>Use uma <b>conta GitHub exclusiva</b> para o sistema, com token apenas de <b>gist</b>.</li><li>Use uma <b>chave de IA exclusiva com limite de gastos</b> definido no painel do provedor.</li><li>Envie o link da prova <b>somente ao final</b> da aplicação.</li><li>Troque o token e a chave ao fim do semestre.</li></ul></div>
 
   <div class="card"><h3>${ic('download')} Backup</h3><p class="muted small" style="margin-top:0">Exporte todos os dados em JSON ou restaure um backup (os registros são mesclados).</p>
+    <p class="hint">Versão do sistema: <b>${APP_VERSION}</b></p>
     <div class="actions"><button class="btn" onclick="exportBackup()">${ic('download')} Exportar</button><label class="btn">${ic('upload')} Importar<input type="file" accept=".json" hidden onchange="importBackup(this.files[0])"></label><button class="btn danger" onclick="wipeAll()">${ic('trash')} Apagar dados locais</button></div></div>
   </div>`, 'Configurações');
 }
@@ -1821,6 +1823,8 @@ function checkKey(provider, key) {
   if (provider === 'openai' && /^sk-ant-/.test(key)) return 'Esta é uma chave da Anthropic, mas o provedor selecionado é OpenAI. Selecione "Anthropic (Claude)".';
   if (provider !== 'anthropic' && /^sk-ant-/.test(key)) return 'Esta é uma chave da Anthropic. Selecione o provedor "Anthropic (Claude)".';
   if (provider !== 'gemini' && /^AIza/.test(key)) return 'Esta é uma chave do Google. Selecione o provedor "Google (Gemini)".';
+  if (/^sk-ant-oat/.test(key)) return 'Este é um token da assinatura do Claude (Pro/Max/Claude Code), que não funciona aqui. Crie uma chave de API em console.anthropic.com/settings/keys (começa com "sk-ant-api03-").';
+  if (/^sk-ant-admin/.test(key)) return 'Esta é uma chave de ADMINISTRADOR da Anthropic, que não serve para correções. Crie uma chave comum em console.anthropic.com/settings/keys (começa com "sk-ant-api03-").';
   if (/^(ghp_|github_pat_)/.test(key)) return 'Esta é uma chave do GitHub, não de IA. Provavelmente o navegador preencheu o campo automaticamente.';
   if (pref && !pref[0].test(key)) return `Chaves deste provedor começam com "${pref[1]}". Verifique se copiou a chave correta e completa.`;
   if (key.length < 30) return 'A chave parece incompleta. Copie-a novamente por inteiro.';
@@ -1832,7 +1836,27 @@ async function saveAi(silent) {
   S.cfg.ai = { provider: d.provider, model: d.model.trim(), key }; await saveCfg();
   $('#aiKey').value = key; if (!silent) { toast('Configuração da IA salva', 'ok'); viewConfig(); }
 }
-async function testAi() { try { await saveAi(true); } catch { return; } toast('Testando a IA…'); try { const r = await aiJSON(S.cfg, { system: 'Responda apenas JSON.', text: 'Responda exatamente {"ok":true,"msg":"IA conectada"}' }); toast(r.msg || 'IA respondeu corretamente', 'ok'); } catch (e) { toast(e.message, 'bad', 7000); } }
+async function testAi() {
+  try { await saveAi(true); } catch { return; }
+  const ai = S.cfg.ai; const key = cleanKey(ai.key);
+  const m = modal({ title: 'Diagnóstico da IA', wide: true, body: `<div id="diag"><div class="spinner"></div><p class="muted" style="text-align:center">Testando a conexão…</p></div>`, actions: [{ label: 'Fechar' }] });
+  const linhas = [['Versão do sistema', APP_VERSION], ['Provedor', PROVIDERS[ai.provider] || ai.provider], ['Modelo', ai.model], ['Chave (início…fim)', maskKey(key)], ['Tamanho da chave', key.length + ' caracteres'], ['Tipo da chave', /^sk-ant-api/.test(key) ? 'Chave de API da Anthropic ✓' : /^sk-ant-oat/.test(key) ? 'Token de assinatura ✗' : /^sk-ant-admin/.test(key) ? 'Chave de administrador ✗' : /^AIza/.test(key) ? 'Chave do Google' : /^sk-/.test(key) ? 'Chave estilo OpenAI' : 'Desconhecido']];
+  let ok = false, det = '';
+  try { const r = await aiJSON(S.cfg, { system: 'Responda apenas JSON.', text: 'Responda exatamente {"ok":true,"msg":"IA conectada"}' }); ok = true; det = r.msg || 'IA respondeu corretamente'; }
+  catch (e) { det = e.message; }
+  linhas.push(['Teste de conexão', ok ? '✓ ' + det : '✗ ' + det]);
+  if (Sync.configured()) {
+    try { clearTimeout(Sync.timer); while (Sync.busy) await sleep(200); await Sync.run(true); while (Sync.busy) await sleep(200); } catch { }
+    try { const g = await gh(`/gists/${S.local.gistId}`, {}, S.local.token); const rc = JSON.parse(await fileContent(g.files['config.json']) || '{}'); const rk = cleanKey(rc.ai?.key);
+      linhas.push(['Chave usada pelos alunos (Gist)', rk ? maskKey(rk) + (rk === key ? ' ✓ igual à desta tela' : ' ✗ DIFERENTE — clique em "Sincronizar agora"') : '✗ nenhuma chave no Gist — clique em "Sincronizar agora"']);
+    } catch (e) { linhas.push(['Chave no Gist', '✗ não foi possível verificar: ' + e.message]); }
+  } else linhas.push(['Gist', 'não configurado (os links dos alunos não funcionam sem ele)']);
+  const box = $('#diag'); if (!box) return;
+  box.innerHTML = `<div class="alert ${ok ? 'ok' : 'bad'}">${ic(ok ? 'check' : 'alert')}<div>${ok ? '<b>A IA está funcionando.</b>' : '<b>A IA não respondeu.</b> Veja os detalhes abaixo.'}</div></div>
+    <table class="tbl"><tbody>${linhas.map(([k, v]) => `<tr><td class="muted" style="width:38%">${esc(k)}</td><td style="word-break:break-word">${esc(v)}</td></tr>`).join('')}</tbody></table>
+    ${!ok && /inválida|invalid/i.test(det) ? `<div class="alert info" style="margin-top:14px">${ic('key')}<div><b>Como resolver "chave inválida":</b><ol style="margin:6px 0 0;padding-left:18px"><li>Entre em <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener"><u>console.anthropic.com/settings/keys</u></a> (é diferente do site claude.ai).</li><li>Clique em <b>Create Key</b> e copie a chave inteira na hora (ela só aparece uma vez).</li><li>Confira se a chave começa com <b>sk-ant-api03-</b> e se o início e o fim batem com a tabela acima.</li><li>Em <b>Billing</b>, verifique se há créditos na conta.</li></ol></div></div>` : ''}
+    <p class="hint">Você pode copiar este diagnóstico: ele não mostra a chave completa.</p>`;
+}
 async function ghConnect() {
   const d = formData($('#fGh')); if (!d.token || !d.gistId) return toast('Informe o token e o ID do Gist (ou crie um novo)', 'bad');
   try { await gh(`/gists/${d.gistId.trim()}`, {}, d.token.trim()); } catch (e) { return toast(e.message, 'bad', 6000); }
