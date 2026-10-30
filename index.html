@@ -310,7 +310,7 @@ const LIBS = {
   tessCore: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1',
   tessLang: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/por@1.0.0/4.0.0_best_int'
 };
-const APP_VERSION = '2026.10.30-5';
+const APP_VERSION = '2026.10.30-7';
 const MODELS = { anthropic: 'claude-sonnet-5-5', openai: 'gpt-4.1', gemini: 'gemini-2.5-flash-lite' };
 const PROVIDERS = { anthropic: 'Anthropic (Claude)', openai: 'OpenAI (GPT)', gemini: 'Google (Gemini)' };
 const SUBTIPOS = { redacao: 'Redação', artigo: 'Artigo científico', resenha: 'Resenha', relatorio: 'Relatório', ensaio: 'Ensaio', estudo_caso: 'Estudo de caso', outro: 'Outro trabalho' };
@@ -648,7 +648,8 @@ function linkAluno(atv) { return `${baseUrl()}#/enviar/${encodePayload({ g: S.lo
    ========================================================= */
 function aiErr(p, st, msg = '') {
   const m = String(msg); let dica = '';
-  if (st === 401 || /api.?key|x-api-key|authentication|API_KEY_INVALID/i.test(m)) dica = 'chave de API inválida. Copie novamente a chave completa no painel do provedor, cole em Configurações e clique em Testar.';
+  if (/workspace/i.test(m)) dica = 'esta chave não está vinculada a um workspace. Informe o "ID do workspace" (começa com wrkspc_) em Configurações → Inteligência artificial, ou crie uma nova chave escolhendo um workspace.';
+  else if (st === 401 || /api.?key|x-api-key|authentication|API_KEY_INVALID/i.test(m)) dica = 'chave de API inválida. Copie novamente a chave completa no painel do provedor, cole em Configurações e clique em Testar.';
   else if (/credit|balance|billing|insufficient_quota|quota/i.test(m) || st === 402) dica = 'sem créditos ou cota esgotada na conta do provedor. Adicione créditos ou use a correção gratuita.';
   else if (st === 404 || /model/i.test(m) && /not.?found|does not exist|invalid/i.test(m)) dica = 'modelo não encontrado. Confira o nome do modelo em Configurações.';
   else if (st === 429) dica = 'limite de uso atingido. Aguarde alguns minutos e tente novamente.';
@@ -662,7 +663,13 @@ async function aiCall(cfg, { system, text, images = [] }) {
   let r, j;
   if (provider === 'anthropic') {
     const content = [...images.map(d => ({ type: 'image', source: { type: 'base64', media_type: d.mime, data: d.b64 } })), { type: 'text', text }];
-    r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }, body: JSON.stringify({ model, max_tokens: 8000, system, messages: [{ role: 'user', content }] }) });
+    const base = { 'content-type': 'application/json', 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' };
+    const ws = String(ai.workspace || '').trim(); if (ws) base['anthropic-workspace-id'] = ws;
+    const body = JSON.stringify({ model, max_tokens: 8000, system, messages: [{ role: 'user', content }] });
+    const call = h => fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { ...base, ...h }, body });
+    const legacy = /^sk-ant-api/.test(key);
+    r = await call(legacy ? { 'x-api-key': key } : { Authorization: 'Bearer ' + key });
+    if (r.status === 401) { const r2 = await call(legacy ? { Authorization: 'Bearer ' + key } : { 'x-api-key': key }); if (r2.status !== 401) r = r2; }
     j = await r.json(); if (!r.ok) throw new Error(aiErr('Anthropic', r.status, j.error?.message));
     return j.content.filter(c => c.type === 'text').map(c => c.text).join('');
   }
@@ -1790,10 +1797,11 @@ function viewConfig() {
 
   <div class="card"><h3>${ic('sparkle')} Inteligência artificial</h3>
     <div class="alert info">${ic('sparkle')}<div><b>IA sem custo:</b> o Google oferece um plano gratuito da API Gemini, com limites de uso e apenas para alguns modelos. Crie a chave em <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener"><u>aistudio.google.com/apikey</u></a>, escolha "Google (Gemini)" e um modelo do plano gratuito (ex.: gemini-2.5-flash-lite). No plano gratuito, o Google pode usar o conteúdo enviado para melhorar seus produtos, e novas contas podem precisar ativar o plano pré-pago.</div></div><form id="fAi" onsubmit="return false">
-    <div class="field"><label>Provedor</label><select name="provider" onchange="this.form.model.value=MODELS[this.value]">${Object.entries(PROVIDERS).map(([k, v]) => `<option value="${k}" ${ai.provider === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+    <div class="field"><label>Provedor</label><select name="provider" onchange="this.form.model.value=MODELS[this.value];$('[data-anth]').style.display=this.value==='anthropic'?'':'none'">${Object.entries(PROVIDERS).map(([k, v]) => `<option value="${k}" ${ai.provider === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
     <div class="field"><label>Modelo</label><input name="model" value="${esc(ai.model || MODELS[ai.provider || 'anthropic'])}"><div class="hint">Use um modelo com visão (leitura de imagens) para corrigir provas fotografadas.</div></div>
+    <div class="field" data-anth ${ai.provider && ai.provider !== 'anthropic' ? 'style="display:none"' : ''}><label>ID do workspace (Anthropic, opcional)</label><input name="workspace" value="${esc(ai.workspace || '')}" placeholder="wrkspc_…" autocomplete="off" spellcheck="false"><div class="hint">Necessário só se a chave não estiver vinculada a um workspace (chaves pessoais <code>sk-ant-usr</code> criadas sem workspace). Encontre o ID no Console em <b>Configurações → Workspaces</b>.</div></div>
     <div class="field"><label>Chave de API</label><div style="display:flex;gap:6px"><input type="password" name="key" id="aiKey" value="${esc(ai.key)}" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore placeholder="${ai.provider === 'gemini' ? 'AIza…' : ai.provider === 'openai' ? 'sk-…' : 'sk-ant-…'}"><button type="button" class="btn" onclick="const k=$('#aiKey');k.type=k.type==='password'?'text':'password'" title="Mostrar/ocultar">${ic('eye', 16)}</button></div>
-      <div class="hint">${ai.key ? `Chave salva: <code>${esc(maskKey(ai.key))}</code> (${ai.key.length} caracteres). Confira se o início e o fim batem com a chave do provedor.` : 'Nenhuma chave salva.'} ${ai.provider === 'anthropic' || !ai.provider ? 'Gere a chave em <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener"><u>console.anthropic.com</u></a> (a assinatura do Claude.ai não fornece chave de API).' : ''}</div></div>
+      <div class="hint">${ai.key ? `Chave salva: <code>${esc(maskKey(ai.key))}</code> (${ai.key.length} caracteres). Confira se o início e o fim batem com a chave do provedor.` : 'Nenhuma chave salva.'} ${ai.provider === 'anthropic' || !ai.provider ? 'Gere a chave em <a href="https://platform.claude.com/settings/keys" target="_blank" rel="noopener"><u>platform.claude.com/settings/keys</u></a> (a assinatura do Claude.ai não fornece chave de API).' : ''}</div></div>
     <div class="actions"><button class="btn primary" onclick="saveAi()">${ic('check')} Salvar</button><button class="btn" onclick="testAi()">${ic('sparkle')} Testar e diagnosticar</button></div></form></div>
 
   <div class="card"><h3>${ic('cloud')} Sincronização (GitHub Gist)</h3>
@@ -1823,8 +1831,8 @@ function checkKey(provider, key) {
   if (provider === 'openai' && /^sk-ant-/.test(key)) return 'Esta é uma chave da Anthropic, mas o provedor selecionado é OpenAI. Selecione "Anthropic (Claude)".';
   if (provider !== 'anthropic' && /^sk-ant-/.test(key)) return 'Esta é uma chave da Anthropic. Selecione o provedor "Anthropic (Claude)".';
   if (provider !== 'gemini' && /^AIza/.test(key)) return 'Esta é uma chave do Google. Selecione o provedor "Google (Gemini)".';
-  if (/^sk-ant-oat/.test(key)) return 'Este é um token da assinatura do Claude (Pro/Max/Claude Code), que não funciona aqui. Crie uma chave de API em console.anthropic.com/settings/keys (começa com "sk-ant-api03-").';
-  if (/^sk-ant-admin/.test(key)) return 'Esta é uma chave de ADMINISTRADOR da Anthropic, que não serve para correções. Crie uma chave comum em console.anthropic.com/settings/keys (começa com "sk-ant-api03-").';
+  if (/^sk-ant-oat/.test(key)) return 'Este é um token da assinatura do Claude (Pro/Max/Claude Code), que não funciona aqui. Crie uma chave de API em platform.claude.com/settings/keys.';
+  if (/^sk-ant-admin/.test(key)) return 'Esta é uma chave de ADMINISTRADOR da Anthropic, que não serve para correções. Crie uma chave comum em platform.claude.com/settings/keys.';
   if (/^(ghp_|github_pat_)/.test(key)) return 'Esta é uma chave do GitHub, não de IA. Provavelmente o navegador preencheu o campo automaticamente.';
   if (pref && !pref[0].test(key)) return `Chaves deste provedor começam com "${pref[1]}". Verifique se copiou a chave correta e completa.`;
   if (key.length < 30) return 'A chave parece incompleta. Copie-a novamente por inteiro.';
@@ -1833,14 +1841,16 @@ function checkKey(provider, key) {
 async function saveAi(silent) {
   const d = formData($('#fAi')); const key = cleanKey(d.key); const err = checkKey(d.provider, key);
   if (err) { toast(err, 'bad', 8000); throw new Error(err); }
-  S.cfg.ai = { provider: d.provider, model: d.model.trim(), key }; await saveCfg();
+  const workspace = String(d.workspace || '').trim();
+  if (d.provider === 'anthropic' && workspace && !/^wrkspc_[A-Za-z0-9]+$/.test(workspace)) { const e = 'O ID do workspace deve começar com "wrkspc_". Copie-o em Configurações → Workspaces no Console.'; toast(e, 'bad', 8000); throw new Error(e); }
+  S.cfg.ai = { provider: d.provider, model: d.model.trim(), key, workspace: d.provider === 'anthropic' ? workspace : '' }; await saveCfg();
   $('#aiKey').value = key; if (!silent) { toast('Configuração da IA salva', 'ok'); viewConfig(); }
 }
 async function testAi() {
   try { await saveAi(true); } catch { return; }
   const ai = S.cfg.ai; const key = cleanKey(ai.key);
   const m = modal({ title: 'Diagnóstico da IA', wide: true, body: `<div id="diag"><div class="spinner"></div><p class="muted" style="text-align:center">Testando a conexão…</p></div>`, actions: [{ label: 'Fechar' }] });
-  const linhas = [['Versão do sistema', APP_VERSION], ['Provedor', PROVIDERS[ai.provider] || ai.provider], ['Modelo', ai.model], ['Chave (início…fim)', maskKey(key)], ['Tamanho da chave', key.length + ' caracteres'], ['Tipo da chave', /^sk-ant-api/.test(key) ? 'Chave de API da Anthropic ✓' : /^sk-ant-oat/.test(key) ? 'Token de assinatura ✗' : /^sk-ant-admin/.test(key) ? 'Chave de administrador ✗' : /^AIza/.test(key) ? 'Chave do Google' : /^sk-/.test(key) ? 'Chave estilo OpenAI' : 'Desconhecido']];
+  const linhas = [['Versão do sistema', APP_VERSION], ['Provedor', PROVIDERS[ai.provider] || ai.provider], ['Modelo', ai.model], ['Chave (início…fim)', maskKey(key)], ['Tamanho da chave', key.length + ' caracteres'], ...(ai.provider === 'anthropic' ? [['ID do workspace', ai.workspace || '(não informado)']] : []), ['Tipo da chave', /^sk-ant-api/.test(key) ? 'Chave de API de workspace ✓' : /^sk-ant-usr/.test(key) ? 'Chave pessoal da Anthropic ✓' : /^sk-ant-svc/.test(key) ? 'Chave de conta de serviço ✓' : /^sk-ant-oat/.test(key) ? 'Token de assinatura ✗' : /^sk-ant-admin/.test(key) ? 'Chave de administrador ✗' : /^sk-ant-/.test(key) ? 'Chave da Anthropic' : /^AIza/.test(key) ? 'Chave do Google' : /^sk-/.test(key) ? 'Chave estilo OpenAI' : 'Desconhecido']];
   let ok = false, det = '';
   try { const r = await aiJSON(S.cfg, { system: 'Responda apenas JSON.', text: 'Responda exatamente {"ok":true,"msg":"IA conectada"}' }); ok = true; det = r.msg || 'IA respondeu corretamente'; }
   catch (e) { det = e.message; }
@@ -1854,7 +1864,7 @@ async function testAi() {
   const box = $('#diag'); if (!box) return;
   box.innerHTML = `<div class="alert ${ok ? 'ok' : 'bad'}">${ic(ok ? 'check' : 'alert')}<div>${ok ? '<b>A IA está funcionando.</b>' : '<b>A IA não respondeu.</b> Veja os detalhes abaixo.'}</div></div>
     <table class="tbl"><tbody>${linhas.map(([k, v]) => `<tr><td class="muted" style="width:38%">${esc(k)}</td><td style="word-break:break-word">${esc(v)}</td></tr>`).join('')}</tbody></table>
-    ${!ok && /inválida|invalid/i.test(det) ? `<div class="alert info" style="margin-top:14px">${ic('key')}<div><b>Como resolver "chave inválida":</b><ol style="margin:6px 0 0;padding-left:18px"><li>Entre em <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener"><u>console.anthropic.com/settings/keys</u></a> (é diferente do site claude.ai).</li><li>Clique em <b>Create Key</b> e copie a chave inteira na hora (ela só aparece uma vez).</li><li>Confira se a chave começa com <b>sk-ant-api03-</b> e se o início e o fim batem com a tabela acima.</li><li>Em <b>Billing</b>, verifique se há créditos na conta.</li></ol></div></div>` : ''}
+    ${!ok && /inválida|invalid/i.test(det) ? `<div class="alert info" style="margin-top:14px">${ic('key')}<div><b>Como resolver "chave inválida":</b><ol style="margin:6px 0 0;padding-left:18px"><li>Entre em <a href="https://platform.claude.com/settings/keys" target="_blank" rel="noopener"><u>platform.claude.com/settings/keys</u></a> (é diferente do site claude.ai).</li><li>Clique em <b>Criar chave</b> e use <b>Copiar chave</b> na janela que aparece (ela só é exibida uma vez).</li><li>Confira se o início e o fim batem com a tabela acima e se a chave não expirou nem foi revogada.</li><li>Em <b>Billing</b>, verifique se há créditos na conta.</li></ol></div></div>` : ''}
     <p class="hint">Você pode copiar este diagnóstico: ele não mostra a chave completa.</p>`;
 }
 async function ghConnect() {
