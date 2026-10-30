@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111a33">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net blob:; worker-src 'self' blob: https://cdn.jsdelivr.net; connect-src 'self' https://api.github.com https://gist.githubusercontent.com https://*.workers.dev https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://cdn.jsdelivr.net data: blob:; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Cátedra · Turmas, avaliações e correção inteligente</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -310,7 +312,7 @@ const LIBS = {
   tessCore: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1',
   tessLang: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/por@1.0.0/4.0.0_best_int'
 };
-const APP_VERSION = '2026.10.30-8';
+const APP_VERSION = '2026.10.30-10';
 const verNum = v => { const m = String(v || '').match(/^(\d+)\.(\d+)\.(\d+)-(\d+)$/); return m ? ((+m[1] * 100 + +m[2]) * 100 + +m[3]) * 1000 + +m[4] : 0; };
 const BC = (() => { try { return new BroadcastChannel('catedra'); } catch { return null; } })();
 function hardReload() { const u = new URL(location.href); u.searchParams.set('v', Date.now().toString(36)); location.replace(u.toString()); }
@@ -391,10 +393,18 @@ const notaFinal = e => e ? (e.notaManual != null && e.notaManual !== '' ? +e.not
 const pctE = e => e && e.notaMax ? notaFinal(e) / e.notaMax : null;
 const notaTag = (e) => e ? `<span class="nota ${cls(pctE(e))}">${fmtN(notaFinal(e))}</span>` : '<span class="nota none">—</span>';
 
+const SRI = {
+  jspdf: 'sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk',
+  autotable: 'sha384-fCAW/rDWORTbQXSiB7mOg0QtQ5c+r0f544y6XoKjuVva0nMBlCpNUjiFeG5iMdS3',
+  pdfjs: 'sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e',
+  mammoth: 'sha384-nFoSjZIoH3CCp8W639jJyQkuPHinJ2NHe7on1xvlUA7SuGfJAfvMldrsoAVm6ECz',
+  tesseract: 'sha384-GJqSu7vueQ9qN0E9yLPb3Wtpd7OrgK8KmYzC8T1IysG1bcvxvIO4qtYR/D3A991F'
+};
 function loadScript(src) {
   return new Promise((res, rej) => {
     if ($$('script').some(s => s.src === src)) return res();
-    const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('Falha ao carregar biblioteca: ' + src)); document.head.appendChild(s);
+    const s = document.createElement('script'); s.src = src; s.onload = res;
+    const nome = Object.keys(LIBS).find(k => LIBS[k] === src); if (nome && SRI[nome]) { s.integrity = SRI[nome]; s.crossOrigin = 'anonymous'; } s.onerror = () => rej(new Error('Falha ao carregar biblioteca: ' + src)); document.head.appendChild(s);
   });
 }
 async function loadLib(name) {
@@ -553,7 +563,10 @@ async function fileContent(f) {
 }
 const sortById = arr => [...arr].sort((a, b) => a.id < b.id ? -1 : 1);
 function buildData() { return { v: 1, turmas: sortById(S.turmas), alunos: sortById(S.alunos), atividades: sortById(S.atividades) }; }
-function cfgPublic() { const { id, ...c } = S.cfg; return c; }
+// A chave da IA NUNCA vai para o Gist: fica só neste navegador (correções feitas pelo professor)
+// e no servidor de envio (variável secreta AI_KEY), usado pelos alunos.
+function cfgPublic() { const { id, ...c } = S.cfg; c.modoPadrao = c.modoPadrao || (S.cfg.ai && S.cfg.ai.key ? 'ia' : 'local'); if (c.ai) { const { key, k, ...ai } = c.ai; c.ai = ai; } return c; }
+function parseCfg(str) { const c = str ? JSON.parse(str) : {}; if (c.ai) { delete c.ai.key; delete c.ai.k; } return c; }
 
 const Sync = {
   busy: false, again: false, timer: null, dirtyArq: new Set(), state: 'off', lastError: '',
@@ -593,9 +606,9 @@ const Sync = {
       // 2) config.json
       const fc = g.files['config.json']; const remoteCfgStr = await fileContent(fc);
       if (remoteCfgStr) {
-        const rc = JSON.parse(remoteCfgStr); const ru = Math.min(rc.updatedAt || 0, Date.now() + 60000);
+        const rc = parseCfg(remoteCfgStr); const ru = Math.min(rc.updatedAt || 0, Date.now() + 60000);
         if (verNum(rc.appVersion) > verNum(APP_VERSION)) showUpdateBanner(rc.appVersion);
-        else if (ru > (S.cfg.updatedAt || 0)) { S.cfg = { ...rc, id: 'cfg', updatedAt: ru }; await DB.put('meta', S.cfg); changed = true; }
+        else if (ru > (S.cfg.updatedAt || 0)) { S.cfg = { ...rc, id: 'cfg', updatedAt: ru, ai: { ...(rc.ai || {}), key: S.cfg.ai?.key || '', workspace: rc.ai?.workspace || S.cfg.ai?.workspace || '' } }; await DB.put('meta', S.cfg); changed = true; }
       }
       // 3) entregas
       const toDelete = [];
@@ -659,7 +672,8 @@ function unb64u(s) { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.lengt
 function encodePayload(o) { const b = new TextEncoder().encode(JSON.stringify(o)); return b64u(b.map((x, i) => x ^ OBF[i % OBF.length])); }
 function decodePayload(s) { const b = unb64u(s); return JSON.parse(new TextDecoder().decode(b.map((x, i) => x ^ OBF[i % OBF.length]))); }
 function baseUrl() { return (S.cfg.publicUrl || location.href.split('#')[0]).trim(); }
-function linkAluno(atv) { return `${baseUrl()}#/enviar/${encodePayload({ g: S.local.gistId, t: S.local.token, a: atv.id })}`; }
+const workerUrl = () => String(S.cfg.workerUrl || '').trim().replace(/\/+$/, '');
+function linkAluno(atv) { return workerUrl() ? `${baseUrl()}#/enviar/${encodePayload({ w: workerUrl(), a: atv.id })}` : null; }
 
 /* =========================================================
    INTELIGÊNCIA ARTIFICIAL
@@ -981,6 +995,34 @@ function gradeTrabalhoLocal(atv, text) {
   };
 }
 
+function pontuarObjetiva(q, resp) {
+  const r = normAns(resp); const aceitas = String(q.resposta || '').split(/[\/|;]| ou /i).map(normAns).filter(Boolean);
+  const correta = String(q.resposta).trim() === '*' ? true : (r !== 'MULTIPLA' && !!r && aceitas.includes(r));
+  return { correta, fracao: correta ? 1 : 0 };
+}
+function pontuarProvaLocal(atv, omr, abertas = {}) {
+  const gab = atv.gabarito || []; if (!gab.length) throw new Error('Esta prova ainda não possui gabarito cadastrado.');
+  const temObj = gab.some(q => q.tipo === 'objetiva'); omr = omr || { respostas: {}, confianca: '', duvidas: 0 };
+  const questoes = gab.map(q => {
+    const valor = +q.valor || 1;
+    if (q.tipo === 'objetiva') { const resp = omr.respostas[q.numero] ?? ''; const { correta, fracao } = pontuarObjetiva(q, resp); return { numero: q.numero, tipo: q.tipo, valor, respostaAluno: resp === 'MULTIPLA' ? 'Mais de uma marcação' : resp, esperada: q.resposta, fracao, correta, pontos: round2(fracao * valor), comentario: !resp ? 'Em branco' : resp === 'MULTIPLA' ? 'Anulada: mais de uma marcação' : correta ? 'Correta' : 'Incorreta' }; }
+    const resp = abertas[q.numero] || ''; const r = corrigirAbertaLocal(q, resp);
+    return { numero: q.numero, tipo: q.tipo, valor, respostaAluno: resp, esperada: q.resposta, fracao: r.fracao, correta: null, pontos: round2(r.fracao * valor), comentario: r.comentario };
+  });
+  const tot = questoes.reduce((s, q) => s + q.valor, 0) || 1, obt = questoes.reduce((s, q) => s + q.pontos, 0); const notaMax = +atv.notaMax || 10;
+  const nObj = questoes.filter(q => q.tipo === 'objetiva').length, acertos = questoes.filter(q => q.correta).length;
+  const erradas = questoes.filter(q => q.fracao < 0.5).map(q => q.numero);
+  return {
+    nota: round2(obt / tot * notaMax), notaMax,
+    relatorio: {
+      tipo: 'prova', modo: 'local', questoes, pontosObtidos: round2(obt), pontosTotais: round2(tot), acertosObjetivas: acertos, totalObjetivas: nObj,
+      legibilidade: temObj ? `leitura óptica com confiança ${omr.confianca}` : '', nomeNaProva: '',
+      parecer: `Correção automática gratuita: ${nObj ? `${acertos} de ${nObj} questões objetivas corretas (leitura óptica da folha de respostas)` : 'sem questões objetivas'}${questoes.length > nObj ? '; questões abertas avaliadas pela presença dos conceitos esperados' : ''}. ${erradas.length ? `Revise o conteúdo das questões ${erradas.join(', ')}.` : 'Excelente desempenho!'}`,
+      pontosFortes: questoes.filter(q => q.fracao >= 1).length ? [`Acertou as questões ${questoes.filter(q => q.fracao >= 1).map(q => q.numero).join(', ')}.`] : [],
+      melhorias: erradas.length ? [`Estude novamente os temas das questões ${erradas.join(', ')}.`] : [], indicios: omr.confianca && omr.confianca !== 'alta' ? `Leitura óptica com confiança ${omr.confianca} (${omr.duvidas} questão(ões) com marcação fraca ou duvidosa). Confira a folha física.` : ''
+    }
+  };
+}
 /* ---------- Folha de respostas + leitura óptica (OMR) ---------- */
 const OMR = { mk: [[14, 14], [196, 14], [196, 283], [14, 283]], orient: [32, 14], r: 2.7, rowH: 8.2, y0: 86, perCol: 22 };
 function omrOpts(atv) {
@@ -1102,40 +1144,17 @@ async function omrRead(file, atv) {
   }
   return { respostas, confianca: duvidas === 0 ? 'alta' : duvidas <= 2 ? 'média' : 'baixa', duvidas };
 }
-function pontuarObjetiva(q, resp) {
-  const r = normAns(resp); const aceitas = String(q.resposta || '').split(/[\/|;]| ou /i).map(normAns).filter(Boolean);
-  const correta = String(q.resposta).trim() === '*' ? true : (r !== 'MULTIPLA' && !!r && aceitas.includes(r));
-  return { correta, fracao: correta ? 1 : 0 };
-}
 async function gradeProvaLocal(atv, files, abertas) {
   const gab = atv.gabarito || []; if (!gab.length) throw new Error('Esta prova ainda não possui gabarito cadastrado.');
-  const temObj = gab.some(q => q.tipo === 'objetiva'); let omr = { respostas: {}, confianca: '' };
-  if (temObj) {
+  let omr = { respostas: {}, confianca: '', duvidas: 0 };
+  if (gab.some(q => q.tipo === 'objetiva')) {
     const img = files.find(f => f.type.startsWith('image/') || /\.(jpe?g|png|webp|heic)$/i.test(f.name));
     if (!img) throw new Error('Envie a foto da folha de respostas.');
     omr = await omrRead(img, atv);
   }
-  const questoes = gab.map(q => {
-    const valor = +q.valor || 1;
-    if (q.tipo === 'objetiva') { const resp = omr.respostas[q.numero] ?? ''; const { correta, fracao } = pontuarObjetiva(q, resp); return { numero: q.numero, tipo: q.tipo, valor, respostaAluno: resp === 'MULTIPLA' ? 'Mais de uma marcação' : resp, esperada: q.resposta, fracao, correta, pontos: round2(fracao * valor), comentario: !resp ? 'Em branco' : resp === 'MULTIPLA' ? 'Anulada: mais de uma marcação' : correta ? 'Correta' : 'Incorreta' }; }
-    const resp = abertas[q.numero] || ''; const r = corrigirAbertaLocal(q, resp);
-    return { numero: q.numero, tipo: q.tipo, valor, respostaAluno: resp, esperada: q.resposta, fracao: r.fracao, correta: null, pontos: round2(r.fracao * valor), comentario: r.comentario };
-  });
-  const tot = questoes.reduce((s, q) => s + q.valor, 0) || 1, obt = questoes.reduce((s, q) => s + q.pontos, 0); const notaMax = +atv.notaMax || 10;
-  const nObj = questoes.filter(q => q.tipo === 'objetiva').length, acertos = questoes.filter(q => q.correta).length;
-  const erradas = questoes.filter(q => q.fracao < 0.5).map(q => q.numero);
-  return {
-    nota: round2(obt / tot * notaMax), notaMax,
-    relatorio: {
-      tipo: 'prova', modo: 'local', questoes, pontosObtidos: round2(obt), pontosTotais: round2(tot), acertosObjetivas: acertos, totalObjetivas: nObj,
-      legibilidade: temObj ? `leitura óptica com confiança ${omr.confianca}` : '', nomeNaProva: '',
-      parecer: `Correção automática gratuita: ${nObj ? `${acertos} de ${nObj} questões objetivas corretas (leitura óptica da folha de respostas)` : 'sem questões objetivas'}${questoes.length > nObj ? '; questões abertas avaliadas pela presença dos conceitos esperados' : ''}. ${erradas.length ? `Revise o conteúdo das questões ${erradas.join(', ')}.` : 'Excelente desempenho!'}`,
-      pontosFortes: questoes.filter(q => q.fracao >= 1).length ? [`Acertou as questões ${questoes.filter(q => q.fracao >= 1).map(q => q.numero).join(', ')}.`] : [],
-      melhorias: erradas.length ? [`Estude novamente os temas das questões ${erradas.join(', ')}.`] : [], indicios: omr.confianca && omr.confianca !== 'alta' ? `Leitura óptica com confiança ${omr.confianca} (${omr.duvidas} questão(ões) com marcação fraca ou duvidosa). Confira a folha física.` : ''
-    }
-  };
+  return pontuarProvaLocal(atv, omr, abertas);
 }
-function modoDe(atv, cfg) { const m = atv.modoCorrecao || 'padrao'; if (m !== 'padrao') return m; return cfg.modoPadrao || (cfg.ai && cfg.ai.key ? 'ia' : 'local'); }
+function modoDe(atv, cfg) { if (atv._modo) return atv._modo; const m = atv.modoCorrecao || 'padrao'; if (m !== 'padrao') return m; return cfg.modoPadrao || (cfg.ai && cfg.ai.key ? 'ia' : 'local'); }
 
 /* =========================================================
    SCANNER DE DOCUMENTOS (câmera ao vivo + recorte + filtros)
@@ -1701,7 +1720,7 @@ async function faSave(tid, aid) {
   faReadLists(); const f = $('#fa'); const d = Object.fromEntries(new FormData(f).entries());
   if (!d.titulo.trim()) { toast('Informe o título', 'bad'); return $('#fa [name=titulo]').focus(); }
   const a = FA;
-  Object.assign(a, { tipo: d.tipo, subtipo: d.subtipo || a.subtipo, titulo: d.titulo.trim(), descricao: d.descricao, notaMax: +d.notaMax || 10, prazo: d.prazo, tentativas: Math.max(1, +d.tentativas || 1), rigor: d.rigor, modoCorrecao: d.modoCorrecao || 'padrao', aberta: !!d.aberta, aceitarAtraso: !!d.aceitarAtraso, mostrarNota: !!d.mostrarNota, mostrarRelatorio: !!d.mostrarRelatorio, mostrarGabarito: !!d.mostrarGabarito });
+  Object.assign(a, { tipo: d.tipo, subtipo: d.subtipo || a.subtipo, titulo: d.titulo.trim(), descricao: d.descricao, notaMax: +d.notaMax || 10, prazo: d.prazo, prazoTs: d.prazo ? new Date(d.prazo).getTime() : null, tentativas: Math.max(1, +d.tentativas || 1), rigor: d.rigor, modoCorrecao: d.modoCorrecao || 'padrao', aberta: !!d.aberta, aceitarAtraso: !!d.aceitarAtraso, mostrarNota: !!d.mostrarNota, mostrarRelatorio: !!d.mostrarRelatorio, mostrarGabarito: !!d.mostrarGabarito });
   for (const k of Object.keys(d)) if (k.startsWith('p_')) a.params[k.slice(2)] = d[k];
   a.params.criterios = a.params.criterios.filter(c => c.nome);
   a.gabarito = a.gabarito.filter(q => q.numero);
@@ -1718,7 +1737,7 @@ function viewAtividade(id) {
   const ent = als.map(al => ({ al, e: entregaValida(a.id, al.id), n: entregasDe(a.id, al.id).length }));
   const ns = ent.filter(x => x.e).map(x => notaFinal(x.e));
   const media = ns.length ? ns.reduce((s, n) => s + n, 0) / ns.length : null;
-  const link = Sync.configured() ? linkAluno(a) : null;
+  const link = Sync.configured() ? linkAluno(a) : null; const semServidor = Sync.configured() && !workerUrl();
   const p = a.params || {};
   setMain(`<a class="crumb" href="#/turma/${t.id}/atividades">${ic('back', 15)} ${esc(t.nome)}</a>
   <div class="page-head"><div><div class="actions" style="margin-bottom:8px"><span class="badge ${a.tipo === 'prova' ? 'dark' : ''}">${a.tipo === 'prova' ? 'Prova' : esc(SUBTIPOS[a.subtipo])}</span><span class="badge ${isOpen(a) ? 'ok' : 'gray'}">${isOpen(a) ? 'Recebendo envios' : 'Encerrada'}</span><span class="badge ${modoDe(a, S.cfg) === 'local' ? 'ok' : ''}">${modoDe(a, S.cfg) === 'local' ? 'Correção gratuita' : 'Correção por IA'}</span></div><h2>${esc(a.titulo)}</h2><p class="muted">Vale ${fmtN(a.notaMax)}${a.prazo ? ' · prazo ' + fmtDate(a.prazo) : ''} · ${a.tentativas || 1} tentativa(s)</p></div>
@@ -1729,8 +1748,9 @@ function viewAtividade(id) {
       <div class="actions" style="margin-top:10px"><a class="btn sm" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(`${a.titulo} — envie sua ${a.tipo === 'prova' ? 'prova' : 'atividade'} por aqui: ${link}`)}">${ic('share', 15)} WhatsApp</a><a class="btn sm" href="mailto:?subject=${encodeURIComponent(a.titulo)}&body=${encodeURIComponent('Envie sua atividade pelo link: ' + link)}">${ic('send', 15)} E-mail</a><a class="btn sm ghost" target="_blank" href="${esc(link)}">${ic('eye', 15)} Abrir como aluno</a></div>
       ${/^(file:|http:\/\/localhost|http:\/\/127)/.test(baseUrl()) ? `<div class="alert warn" style="margin:12px 0 0">${ic('alert')}<div>O sistema está aberto localmente (${esc(baseUrl().slice(0, 40))}…). Para que os alunos consigam abrir o link, publique este arquivo (ex.: GitHub Pages) e informe a <b>URL pública</b> em Configurações.</div></div>` : ''}
       ${a.tipo === 'prova' && modoDe(a, S.cfg) === 'local' && (a.gabarito || []).some(q => q.tipo === 'objetiva') ? `<div class="alert info" style="margin:12px 0 0">${ic('file')}<div><b>Correção gratuita:</b> imprima a <a href="javascript:pdfFolhaRespostas('${id}')"><u>folha de respostas</u></a> (uma por aluno, já com o nome). Ao final da prova, o aluno fotografa a folha pelo link${(a.gabarito || []).some(q => q.tipo === 'aberta') ? ' e digita as respostas das questões abertas' : ''}.</div></div>` : ''}
-      ${modoDe(a, S.cfg) === 'ia' && !(S.cfg.ai && S.cfg.ai.key) ? `<div class="alert bad" style="margin:12px 0 0">${ic('alert')}<div>A IA não está configurada — os alunos não conseguirão receber a correção. Configure em <a href="#/config"><u>Configurações</u></a>.</div></div>` : ''}`
-      : `<div class="alert warn" style="margin:0">${ic('cloud')}<div>Para gerar o link do aluno é preciso configurar a sincronização com o GitHub Gist em <a href="#/config"><u>Configurações</u></a>. Enquanto isso, você pode lançar correções manualmente abaixo.</div></div>`}
+      `
+      : semServidor ? `<div class="alert warn" style="margin:0">${ic('shield')}<div>Para gerar o link do aluno com segurança é preciso configurar o <b>servidor de envio</b> em <a href="#/config"><u>Configurações</u></a>. Enquanto isso, você pode lançar correções manualmente abaixo.</div></div>`
+      : `<div class="alert warn" style="margin:0">${ic('cloud')}<div>Para gerar o link do aluno é preciso configurar a sincronização com o GitHub Gist e o servidor de envio em <a href="#/config"><u>Configurações</u></a>. Enquanto isso, você pode lançar correções manualmente abaixo.</div></div>`}
   </div>
 
   <div class="grid stats">${statCard('clipboard', `${ns.length}/${als.length}`, 'Entregaram')}${statCard('award', fmtN(media), 'Média da turma')}${statCard('sparkle', ns.length ? fmtN(Math.max(...ns)) : '—', 'Maior nota')}${statCard('alert', ns.length ? fmtN(Math.min(...ns)) : '—', 'Menor nota')}</div>
@@ -1831,14 +1851,58 @@ function viewConfig() {
     <div class="actions"><button class="btn primary" onclick="ghConnect()">${ic('link')} Conectar</button><button class="btn" onclick="ghCreate()">${ic('plus')} Criar Gist</button><button class="btn" onclick="ghFind()">${ic('refresh')} Buscar existente</button>${Sync.configured() ? `<button class="btn ghost" onclick="ghDisconnect()">Desconectar</button>` : ''}</div></form>
     <p class="hint" style="margin-top:14px">A sincronização ocorre automaticamente a cada alteração e a cada 20 segundos. Use o mesmo token e Gist em outro dispositivo para acessar seus dados.</p></div>
 
-  <div class="card"><h3>${ic('shield')} Segurança e privacidade</h3>
-    <p class="small" style="margin-top:0">Por ser um sistema 100% online sem servidor próprio, o link do aluno carrega (de forma ofuscada) o acesso ao Gist, e a correção roda no navegador do aluno usando a chave de IA configurada. Um aluno com conhecimento técnico poderia extrair esses dados. Recomendações:</p>
-    <ul class="blist small"><li>Use uma <b>conta GitHub exclusiva</b> para o sistema, com token apenas de <b>gist</b>.</li><li>Use uma <b>chave de IA exclusiva com limite de gastos</b> definido no painel do provedor.</li><li>Envie o link da prova <b>somente ao final</b> da aplicação.</li><li>Troque o token e a chave ao fim do semestre.</li></ul></div>
+  <div class="card"><h3>${ic('shield')} Servidor de envio dos alunos</h3>
+    <p class="small muted" style="margin-top:0">Os alunos enviam e recebem a correção por um pequeno servidor gratuito (Cloudflare Worker) que guarda o token do GitHub e a chave da IA. O link do aluno não contém nenhum segredo, e o gabarito nunca chega ao aparelho do aluno.</p>
+    <form id="fSrv" onsubmit="return false"><div class="field"><label>Endereço do servidor</label><input name="workerUrl" value="${esc(c.workerUrl || '')}" placeholder="https://catedra.seunome.workers.dev" spellcheck="false"></div>
+    <div class="actions"><button class="btn primary" onclick="saveSrv()">${ic('check')} Salvar</button><button class="btn" onclick="testSrv()">${ic('refresh')} Testar servidor</button><button class="btn ghost" onclick="guiaServidor()">${ic('list')} Como instalar</button></div></form>
+    <div id="srvStatus" style="margin-top:12px"></div></div>
+
+  <div class="card"><h3>${ic('shield')} Segurança</h3>
+    <ul class="blist small" style="margin-top:0"><li>Token do GitHub e chave da IA <b>nunca</b> vão para o Gist nem para o link do aluno.</li><li>O gabarito, as instruções internas e as entregas dos colegas não são enviados ao aluno.</li><li>Matrícula, prazo e número de tentativas são conferidos no servidor; a nota é calculada no servidor.</li><li>Defina um <b>limite de gastos</b> no painel do provedor da IA.</li></ul>
+    <p class="small" style="margin:10px 0 6px"><b>Migração (recomendado se você já enviou links antigos):</b> os links antigos continham o token e o ID do Gist. Revogue o token antigo no GitHub, crie um novo, informe-o acima e clique em:</p>
+    <button class="btn" onclick="ghMigrar()">${ic('refresh')} Migrar para um novo Gist</button></div>
 
   <div class="card"><h3>${ic('download')} Backup</h3><p class="muted small" style="margin-top:0">Exporte todos os dados em JSON ou restaure um backup (os registros são mesclados).</p>
     <p class="hint">Versão do sistema: <b>${APP_VERSION}</b></p>
     <div class="actions"><button class="btn" onclick="exportBackup()">${ic('download')} Exportar</button><label class="btn">${ic('upload')} Importar<input type="file" accept=".json" hidden onchange="importBackup(this.files[0])"></label><button class="btn danger" onclick="wipeAll()">${ic('trash')} Apagar dados locais</button></div></div>
   </div>`, 'Configurações');
+  testSrv();
+}
+async function saveSrv() { const v = String(formData($('#fSrv')).workerUrl || '').trim().replace(/\/+$/, ''); if (v && !/^https:\/\/[a-z0-9.-]+(:\d+)?(\/[\w./-]*)?$/i.test(v)) return toast('Informe um endereço https válido', 'bad'); S.cfg.workerUrl = v; await saveCfg(); toast('Servidor salvo', 'ok'); testSrv(); }
+async function testSrv() {
+  const box = $('#srvStatus'); if (!box) return; if (!workerUrl()) { box.innerHTML = ''; return; }
+  box.innerHTML = '<div class="muted small">Testando…</div>';
+  try { const h = await (await fetch(workerUrl() + '/health', { cache: 'no-store' })).json();
+    const itens = [[h.ok, `Servidor online (versão ${h.versao})`], [h.gist, h.gist ? 'Acessa o Gist' : 'Sem acesso ao Gist: ' + (h.gistErro || 'confira GITHUB_TOKEN e GIST_ID')], [h.ia.configurada, h.ia.configurada ? `IA configurada (${PROVIDERS[h.ia.provider] || h.ia.provider})` : 'Sem AI_KEY: alunos usarão a correção gratuita'], [h.sessao, h.sessao ? 'SESSION_SECRET definido' : 'Defina SESSION_SECRET (recomendado)'], [!!h.origem, h.origem ? 'ALLOWED_ORIGIN: ' + h.origem : 'Defina ALLOWED_ORIGIN com o endereço do sistema (recomendado)'], [verNum(h.versao) >= verNum(APP_VERSION), verNum(h.versao) >= verNum(APP_VERSION) ? 'Servidor atualizado' : 'Servidor desatualizado: publique o worker.js novo']];
+    box.innerHTML = itens.map(([ok, t]) => `<div class="conf"><span class="ci ${ok ? 'ok' : 'bad'}">${ic(ok ? 'check' : 'x', 13)}</span><div class="small">${esc(t)}</div></div>`).join('');
+  } catch (e) { box.innerHTML = `<div class="alert bad">${ic('alert')}<div>Servidor inacessível (${esc(e.message)}). Confira o endereço e se o worker foi publicado.</div></div>`; }
+}
+function guiaServidor() {
+  modal({ title: 'Instalar o servidor de envio (grátis)', wide: true, body: `<ol class="blist small" style="padding-left:20px">
+    <li>Crie uma conta gratuita em <a href="https://dash.cloudflare.com/sign-up" target="_blank" rel="noopener"><u>dash.cloudflare.com</u></a>.</li>
+    <li>Vá em <b>Workers e Pages → Criar → Worker</b>, dê o nome <b>catedra</b> e clique em <b>Implantar</b>.</li>
+    <li>Clique em <b>Editar código</b>, apague o conteúdo, cole todo o arquivo <b>worker.js</b> e clique em <b>Implantar</b>.</li>
+    <li>Em <b>Configurações → Variáveis e segredos</b>, adicione:
+      <ul><li><b>GITHUB_TOKEN</b> (tipo Segredo): um token do GitHub só com permissão <b>gist</b>.</li><li><b>GIST_ID</b> (Texto): <code>${esc(S.local.gistId || 'ID do seu Gist')}</code></li><li><b>AI_KEY</b> (Segredo): a chave da IA (opcional; sem ela, usa a correção gratuita).</li><li><b>AI_PROVIDER</b> (Texto): <code>${esc(S.cfg.ai?.provider || 'anthropic')}</code> · <b>AI_MODEL</b>: <code>${esc(S.cfg.ai?.model || MODELS.anthropic)}</code></li><li><b>ANTHROPIC_WORKSPACE</b> (Texto, se a chave precisar): <code>${esc(S.cfg.ai?.workspace || 'wrkspc_…')}</code></li><li><b>SESSION_SECRET</b> (Segredo): um texto aleatório longo. Sugestão: <code>${esc(Array.from(crypto.getRandomValues(new Uint8Array(24)), b => b.toString(16).padStart(2, '0')).join(''))}</code></li><li><b>ALLOWED_ORIGIN</b> (Texto): <code>${esc(location.origin)}</code></li></ul></li>
+    <li>Copie o endereço do worker (ex.: <code>https://catedra.seunome.workers.dev</code>), cole em <b>Endereço do servidor</b> e clique em <b>Testar servidor</b>.</li></ol>
+    <p class="hint">O plano gratuito da Cloudflare atende uma turma com folga. A chave da IA fica guardada apenas como segredo do servidor.</p>`, actions: [{ label: 'Fechar' }] });
+}
+async function ghMigrar() {
+  const d = formData($('#fGh')); const token = (d.token || '').trim(); if (!token) return toast('Informe o novo token do GitHub no campo Token', 'bad');
+  if (!await confirmDlg('Criar um novo Gist com todos os dados (turmas, alunos, atividades e entregas) e passar a usá-lo? O Gist antigo será apagado, se o token permitir. Depois, atualize o GIST_ID no servidor de envio.', 'Migrar', false)) return;
+  try {
+    const old = S.local.gistId;
+    const g = await gh('/gists', { method: 'POST', body: JSON.stringify({ description: 'Cátedra — base de dados (não editar manualmente)', public: false, files: arquivosCompletos() }) }, token);
+    S.local.token = token; S.local.gistId = g.id; await saveLocal();
+    let apagado = false; if (old && old !== g.id) { try { await gh(`/gists/${old}`, { method: 'DELETE' }, token); apagado = true; } catch { } }
+    modal({ title: 'Migração concluída', body: `<p>Novo Gist: <code>${esc(g.id)}</code>${apagado ? '<br>O Gist antigo foi apagado.' : '<br>Apague o Gist antigo manualmente em gist.github.com.'}</p><p><b>Agora:</b> no servidor de envio (Cloudflare), atualize <b>GIST_ID</b> para o valor acima e <b>GITHUB_TOKEN</b> para o token novo. Em seguida, reenvie os links das atividades aos alunos.</p>`, actions: [{ label: 'Entendi', cls: 'primary' }] });
+    router();
+  } catch (e) { toast(e.message, 'bad', 7000); }
+}
+function arquivosCompletos() {
+  const files = { 'data.json': { content: JSON.stringify(buildData()) }, 'config.json': { content: JSON.stringify(cfgPublic()) } };
+  [...new Set(S.entregas.map(e => e.atividadeId))].forEach(aid => { files[`arq_${aid}.json`] = { content: JSON.stringify(S.entregas.filter(e => e.atividadeId === aid)) }; });
+  return files;
 }
 async function saveProf() { Object.assign(S.cfg, formData($('#fProf'))); await saveCfg(); toast('Dados salvos', 'ok'); }
 async function saveModo() { const f = $('#fModo'); S.cfg.modoPadrao = $('[name=modoPadrao]:checked', f).value; S.cfg.fallbackLocal = $('[name=fallbackLocal]', f).checked; await saveCfg(); toast('Modo de correção salvo', 'ok'); }
@@ -1862,7 +1926,7 @@ async function saveAi(silent) {
   if (err) { toast(err, 'bad', 8000); throw new Error(err); }
   const workspace = String(d.workspace || '').trim();
   if (d.provider === 'anthropic' && workspace && !/^wrkspc_[A-Za-z0-9]+$/.test(workspace)) { const e = 'O ID do workspace deve começar com "wrkspc_". Copie-o em Configurações → Workspaces no Console.'; toast(e, 'bad', 8000); throw new Error(e); }
-  S.cfg.ai = { provider: d.provider, model: d.model.trim(), key, workspace: d.provider === 'anthropic' ? workspace : '' }; await saveCfg();
+  S.cfg.ai = { provider: d.provider, model: d.model.trim(), key, workspace: d.provider === 'anthropic' ? workspace : '' }; if (!S.cfg.modoPadrao) S.cfg.modoPadrao = 'ia'; await saveCfg();
   $('#aiKey').value = key; if (!silent) { toast('Configuração da IA salva', 'ok'); viewConfig(); }
 }
 async function testAi() {
@@ -1874,16 +1938,19 @@ async function testAi() {
   try { const r = await aiJSON(S.cfg, { system: 'Responda apenas JSON.', text: 'Responda exatamente {"ok":true,"msg":"IA conectada"}' }); ok = true; det = r.msg || 'IA respondeu corretamente'; }
   catch (e) { det = e.message; }
   linhas.push(['Teste de conexão', ok ? '✓ ' + det : '✗ ' + det]);
-  if (Sync.configured()) {
-    try { clearTimeout(Sync.timer); while (Sync.busy) await sleep(200); await Sync.run(true); while (Sync.busy) await sleep(200); } catch { }
-    try { const g = await gh(`/gists/${S.local.gistId}`, {}, S.local.token); const rc = JSON.parse(await fileContent(g.files['config.json']) || '{}'); const rk = cleanKey(rc.ai?.key);
-      linhas.push(['Chave usada pelos alunos (Gist)', rk ? maskKey(rk) + (rk === key ? ' ✓ igual à desta tela' : ' ✗ DIFERENTE — clique em "Sincronizar agora"') : '✗ nenhuma chave no Gist — clique em "Sincronizar agora"']);
-    } catch (e) { linhas.push(['Chave no Gist', '✗ não foi possível verificar: ' + e.message]); }
-  } else linhas.push(['Gist', 'não configurado (os links dos alunos não funcionam sem ele)']);
+  if (workerUrl()) {
+    try { const h = await (await fetch(workerUrl() + '/health?ia=1', { cache: 'no-store' })).json();
+      linhas.push(['Servidor de envio', h.ok ? `✓ online (versão ${h.versao})` : '✗ com erro']);
+      linhas.push(['Servidor → Gist', h.gist ? '✓ acessa os dados' : '✗ ' + (h.gistErro || 'sem acesso (confira GITHUB_TOKEN e GIST_ID)')]);
+      linhas.push(['Servidor → IA (usada pelos alunos)', !h.ia.configurada ? '— sem AI_KEY (os alunos usarão apenas a correção gratuita)' : h.ia.teste === 'ok' ? `✓ ${PROVIDERS[h.ia.provider] || h.ia.provider} · ${h.ia.model}` : '✗ ' + (h.ia.teste || 'não testada')]);
+      if (!h.sessao) linhas.push(['Servidor → SESSION_SECRET', '✗ não definido (recomendado)']);
+    } catch (e) { linhas.push(['Servidor de envio', '✗ inacessível: ' + e.message]); }
+  } else linhas.push(['Servidor de envio', 'não configurado (necessário para os links dos alunos)']);
+  linhas.push(['Chave no Gist', '✓ nunca enviada (fica só neste navegador e no servidor)']);
   const box = $('#diag'); if (!box) return;
   box.innerHTML = `<div class="alert ${ok ? 'ok' : 'bad'}">${ic(ok ? 'check' : 'alert')}<div>${ok ? '<b>A IA está funcionando.</b>' : '<b>A IA não respondeu.</b> Veja os detalhes abaixo.'}</div></div>
     <table class="tbl"><tbody>${linhas.map(([k, v]) => `<tr><td class="muted" style="width:38%">${esc(k)}</td><td style="word-break:break-word">${esc(v)}</td></tr>`).join('')}</tbody></table>
-    ${!ok && /inválida|invalid/i.test(det) ? `<div class="alert info" style="margin-top:14px">${ic('key')}<div><b>Como resolver "chave inválida":</b><ol style="margin:6px 0 0;padding-left:18px"><li>Entre em <a href="https://platform.claude.com/settings/keys" target="_blank" rel="noopener"><u>platform.claude.com/settings/keys</u></a> (é diferente do site claude.ai).</li><li>Clique em <b>Criar chave</b> e use <b>Copiar chave</b> na janela que aparece (ela só é exibida uma vez).</li><li>Confira se o início e o fim batem com a tabela acima e se a chave não expirou nem foi revogada.</li><li>Em <b>Billing</b>, verifique se há créditos na conta.</li></ol></div></div>` : ''}
+    ${!ok && /inválida|invalid/i.test(det) ? `<div class="alert info" style="margin-top:14px">${ic('key')}<div><b>Como resolver "chave inválida":</b><ol style="margin:6px 0 0;padding-left:18px"><li>Entre em <a href="https://platform.claude.com/settings/keys" target="_blank" rel="noopener"><u>platform.claude.com/settings/keys</u></a> (é diferente do site claude.ai).</li><li>Clique em <b>Criar chave</b> e use <b>Copiar chave</b> na janela que aparece (ela só é exibida uma vez).</li><li>Confira se o início e o fim batem com a tabela acima e se a chave não expirou nem foi revogada. Se a chave aparece como <b>revogada/desativada</b> no Console (ou você recebeu e-mail da Anthropic sobre chave exposta), crie uma nova: esta versão nunca grava a chave no Gist.</li><li>Em <b>Billing</b>, verifique se há créditos na conta.</li></ol></div></div>` : ''}
     <p class="hint">Você pode copiar este diagnóstico: ele não mostra a chave completa.</p>`;
 }
 async function ghConnect() {
@@ -1894,7 +1961,7 @@ async function ghConnect() {
 async function ghCreate() {
   const d = formData($('#fGh')); if (!d.token) return toast('Informe o token', 'bad');
   try {
-    const g = await gh('/gists', { method: 'POST', body: JSON.stringify({ description: 'Cátedra — base de dados (não editar manualmente)', public: false, files: { 'data.json': { content: JSON.stringify(buildData()) }, 'config.json': { content: JSON.stringify(cfgPublic()) } } }) }, d.token.trim());
+    const g = await gh('/gists', { method: 'POST', body: JSON.stringify({ description: 'Cátedra — base de dados (não editar manualmente)', public: false, files: arquivosCompletos() }) }, d.token.trim());
     S.local.token = d.token.trim(); S.local.gistId = g.id; await saveLocal(); toast('Gist criado e conectado', 'ok'); await Sync.run(true); router();
   } catch (e) { toast(e.message, 'bad', 6000); }
 }
@@ -2032,38 +2099,43 @@ async function pdfAtividade(id) {
 }
 
 /* =========================================================
-   VIEW — ALUNO (link de envio)
+   VIEW — ALUNO (link de envio) — fala apenas com o servidor de envio
    ========================================================= */
 let ST = null;
 function sShell(inner) {
   const c = ST?.cfg || {};
   return `<div class="s-brand"><div class="logo">C</div><span>${esc(c.instituicao || 'Cátedra')}${c.professor ? ' · ' + esc(c.professor) : ''}</span></div>${inner}`;
 }
+async function api(path, body) {
+  let r; try { r = await fetch(ST.P.w + path, body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : { cache: 'no-store' }); }
+  catch { throw new Error('Sem conexão com o servidor. Verifique sua internet e tente novamente.'); }
+  let j = {}; try { j = await r.json(); } catch { }
+  if (!r.ok) throw new Error(j.erro || `Erro do servidor (${r.status}).`);
+  return j;
+}
 async function viewEnviar(payload) {
   document.body.classList.add('student'); document.title = 'Envio de atividade · Cátedra';
   const main = $('#main');
   main.innerHTML = `<div class="card empty"><div class="spinner"></div><p>Carregando atividade…</p></div>`;
-  let P; try { P = decodePayload(payload); if (!P.g || !P.t || !P.a) throw 0; } catch { main.innerHTML = sErr('Link inválido', 'Verifique se você copiou o link completo enviado pelo professor.'); return; }
+  let P; try { P = decodePayload(payload); } catch { main.innerHTML = sErr('Link inválido', 'Verifique se você copiou o link completo enviado pelo professor.'); return; }
+  if (P.t || P.g) { main.innerHTML = sErr('Link desatualizado', 'Este link foi gerado por uma versão antiga do sistema e foi desativado por segurança. Peça ao professor o link novo da atividade.'); return; }
+  if (!P.w || !P.a || !/^https:\/\/[a-z0-9.-]+(:\d+)?(\/[\w./-]*)?$/i.test(P.w)) { main.innerHTML = sErr('Link inválido', 'Verifique se você copiou o link completo enviado pelo professor.'); return; }
+  ST = { P: { w: P.w.replace(/\/+$/, ''), a: String(P.a) } };
   try {
-    const g = await gh(`/gists/${P.g}`, {}, P.t);
-    const data = JSON.parse(await fileContent(g.files['data.json']));
-    const cfg = g.files['config.json'] ? JSON.parse(await fileContent(g.files['config.json'])) : {};
-    const atv = (data.atividades || []).find(a => a.id === P.a && !a.deleted);
-    if (!atv) { main.innerHTML = sErr('Atividade não encontrada', 'Esta atividade pode ter sido removida pelo professor.'); return; }
-    const turma = (data.turmas || []).find(t => t.id === atv.turmaId) || {};
-    const alunos = (data.alunos || []).filter(a => a.turmaId === atv.turmaId && !a.deleted).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
-    if (verNum(cfg.appVersion) > verNum(APP_VERSION) && sessionStorage.getItem('catedra_reload') !== cfg.appVersion) { sessionStorage.setItem('catedra_reload', cfg.appVersion); return hardReload(); }
-    ST = { P, g, cfg, atv, turma, alunos, aluno: null };
+    const d = await api('/atividade?a=' + encodeURIComponent(ST.P.a));
+    if (verNum(d.versao) > verNum(APP_VERSION) && sessionStorage.getItem('catedra_reload') !== d.versao) { sessionStorage.setItem('catedra_reload', d.versao); return hardReload(); }
+    ST = { ...ST, cfg: d.cfg || {}, atv: d.atividade, turma: d.turma || {}, alunos: d.alunos || [], aluno: null };
     sIntro();
-  } catch (e) { main.innerHTML = sErr('Não foi possível carregar a atividade', e.message + '. Verifique sua conexão e tente novamente.'); }
+  } catch (e) { main.innerHTML = sErr('Não foi possível carregar a atividade', e.message); }
 }
 const sErr = (t, m) => `<div class="card empty"><div class="ei" style="background:var(--bad-soft);color:var(--bad)">${ic('alert', 28)}</div><h3>${esc(t)}</h3><p>${esc(m)}</p><button class="btn" onclick="location.reload()">${ic('refresh')} Tentar novamente</button></div>`;
 function sIntro() {
   const { atv, turma, alunos } = ST; const p = atv.params || {};
-  const atrasado = atv.prazo && Date.now() > new Date(atv.prazo).getTime();
+  const prazoTs = atv.prazoTs || (atv.prazo ? new Date(atv.prazo).getTime() : 0);
+  const atrasado = prazoTs && Date.now() > prazoTs;
   const fechado = atv.aberta === false || (atrasado && !atv.aceitarAtraso);
   const lembrado = localStorage.getItem('catedra_aluno_' + atv.turmaId) || '';
-  const params = [];
+  const params = []; const local = modoDe(atv, ST.cfg) === 'local';
   if (atv.tipo === 'trabalho') {
     if (p.tema) params.push(['Tema', p.tema]);
     if (p.minPalavras || p.maxPalavras) params.push(['Extensão', `${p.minPalavras ? 'mínimo ' + p.minPalavras : ''}${p.minPalavras && p.maxPalavras ? ' e ' : ''}${p.maxPalavras ? 'máximo ' + p.maxPalavras : ''} palavras`]);
@@ -2071,122 +2143,89 @@ function sIntro() {
     if (p.normas && p.normas !== 'nenhuma') params.push(['Normas', p.normas]);
     if (+p.minReferencias) params.push(['Referências', `mínimo de ${p.minReferencias}`]);
     params.push(['Critérios de avaliação', critsOf(atv).map(c => `${c.nome} (peso ${fmtN(c.peso)})`).join('; ')]);
-    if (modoDe(atv, ST.cfg) === 'local') params.push(['Formato do envio', 'arquivo digital (PDF, DOCX ou TXT), texto colado ou páginas digitadas/impressas escaneadas pela câmera. Textos manuscritos não são lidos na correção gratuita.']);
+    if (local) params.push(['Formato do envio', 'arquivo digital (PDF, DOCX ou TXT), texto colado ou páginas digitadas/impressas escaneadas pela câmera. Textos manuscritos não são lidos na correção gratuita.']);
   } else {
     params.push(['Questões', `${(atv.gabarito || []).length} questões`]);
-    if (modoDe(atv, ST.cfg) === 'local') params.push(['Como enviar', `${(atv.gabarito || []).some(q => q.tipo === 'objetiva') ? 'fotografe a FOLHA DE RESPOSTAS inteira (com os 4 quadrados pretos visíveis)' : ''}${(atv.gabarito || []).some(q => q.tipo === 'aberta') ? ((atv.gabarito || []).some(q => q.tipo === 'objetiva') ? ' e ' : '') + 'digite as respostas das questões abertas' : ''}.`]);
     if (p.instrucoesProva) params.push(['Orientação', p.instrucoesProva]);
+    if (local) params.push(['Como enviar', `${(atv.gabarito || []).some(q => q.tipo === 'objetiva') ? 'escaneie a FOLHA DE RESPOSTAS inteira (com os 4 quadrados pretos visíveis)' : ''}${(atv.gabarito || []).some(q => q.tipo === 'aberta') ? ((atv.gabarito || []).some(q => q.tipo === 'objetiva') ? ' e ' : '') + 'digite as respostas das questões abertas' : ''}.`]);
   }
   $('#main').innerHTML = sShell(`
   <div class="s-hero"><span class="badge" style="background:rgba(255,255,255,.14);color:#fff">${atv.tipo === 'prova' ? 'Prova' : esc(SUBTIPOS[atv.subtipo] || 'Trabalho')}</span>
     <h2>${esc(atv.titulo)}</h2>
-    <div class="meta"><span>${ic('users', 15)} ${esc(turma.nome || '')}${turma.disciplina ? ' · ' + esc(turma.disciplina) : ''}</span><span>${ic('award', 15)} Vale ${fmtN(atv.notaMax)}</span>${atv.prazo ? `<span>${ic('clock', 15)} Até ${fmtDate(atv.prazo)}</span>` : ''}<span>${ic('refresh', 15)} ${atv.tentativas || 1} tentativa(s)</span></div></div>
+    <div class="meta"><span>${ic('users', 15)} ${esc(turma.nome || '')}${turma.disciplina ? ' · ' + esc(turma.disciplina) : ''}</span><span>${ic('award', 15)} Vale ${fmtN(atv.notaMax)}</span>${prazoTs ? `<span>${ic('clock', 15)} Até ${fmtDate(prazoTs)}</span>` : ''}<span>${ic('refresh', 15)} ${atv.tentativas || 1} tentativa(s)</span></div></div>
   ${atv.descricao ? `<div class="card" style="margin-bottom:16px"><h3>Orientações</h3><p class="pre" style="margin:0">${esc(atv.descricao)}</p></div>` : ''}
   <div class="card" style="margin-bottom:16px"><h3>${atv.tipo === 'prova' ? 'Sobre a prova' : 'Parâmetros que serão avaliados'}</h3><ul class="plist">${params.map(([k, v]) => `<li>${ic('check', 15)}<span><b>${esc(k)}:</b> ${esc(v)}</span></li>`).join('')}</ul></div>
   ${fechado ? `<div class="alert bad">${ic('alert')}<div><b>${atv.aberta === false ? 'Esta atividade não está recebendo envios.' : 'O prazo de entrega terminou.'}</b> Fale com seu professor.</div></div>` : `
   <div class="card" id="sId"><h3>Identifique-se</h3>
     ${atrasado ? `<div class="alert warn">${ic('clock')}<div>O prazo terminou. Seu envio será marcado como <b>atrasado</b>.</div></div>` : ''}
-    <div class="field"><label>Seu nome</label><select id="sAluno"><option value="">Selecione…</option>${alunos.map(a => `<option value="${a.id}" ${a.id === lembrado ? 'selected' : ''}>${esc(a.nome)}</option>`).join('')}</select></div>
-    <div class="field"><label>Matrícula</label><input id="sMat" inputmode="numeric" placeholder="Confirme sua matrícula"><div class="hint">Não encontrou seu nome? Fale com o professor.</div></div>
+    <div class="field"><label>Seu nome</label><select id="sAluno"><option value="">Selecione…</option>${alunos.map(a => `<option value="${esc(a.id)}" ${a.id === lembrado ? 'selected' : ''}>${esc(a.nome)}</option>`).join('')}</select></div>
+    <div class="field"><label>Matrícula</label><input id="sMat" inputmode="numeric" autocomplete="off" placeholder="Confirme sua matrícula"><div class="hint">Não encontrou seu nome? Fale com o professor.</div></div>
     <button class="btn primary big" style="width:100%" onclick="sIdentify()">Continuar ${ic('send', 16)}</button></div>`}`);
-}
-async function sCollectEntregas(alunoId) {
-  const g = await gh(`/gists/${ST.P.g}`, {}, ST.P.t); ST.g = g; const out = [];
-  for (const [name, f] of Object.entries(g.files)) {
-    if (name.startsWith(`e_${ST.atv.id}_${alunoId}_`) || name === `arq_${ST.atv.id}.json`) {
-      try { const c = JSON.parse(await fileContent(f)); (Array.isArray(c) ? c : [c]).forEach(e => { if (e && e.alunoId === alunoId && e.atividadeId === ST.atv.id && !e.deleted && !out.some(x => x.id === e.id)) out.push(e); }); } catch { }
-    }
-  }
-  return out.sort((a, b) => b.criadoEm - a.criadoEm);
 }
 async function sIdentify() {
   const id = $('#sAluno').value; const mat = $('#sMat').value.trim();
-  const al = ST.alunos.find(a => a.id === id);
-  if (!al) return toast('Selecione seu nome', 'bad');
-  if (al.matricula && norm(al.matricula) !== norm(mat)) return toast('Matrícula não confere com o cadastro', 'bad');
-  localStorage.setItem('catedra_aluno_' + ST.atv.turmaId, id);
-  ST.aluno = al;
-  $('#sId').innerHTML = `<div class="spinner"></div><p class="muted" style="text-align:center">Verificando envios anteriores…</p>`;
-  try { ST.anteriores = await sCollectEntregas(al.id); } catch (e) { $('#sId').innerHTML = `<div class="alert bad">${ic('alert')}<div>${esc(e.message)}</div></div>`; return; }
-  const pend = sGetPending();
-  if (pend) return sShowResult(pend, true);
-  if (ST.anteriores.length >= (ST.atv.tentativas || 1)) {
-    const ult = ST.anteriores[0];
-    $('#sId').outerHTML = `<div class="alert info">${ic('check')}<div>Você já utilizou ${ST.anteriores.length === 1 ? 'seu envio' : 'todas as suas ' + ST.anteriores.length + ' tentativas'} para esta atividade.</div></div><div id="sRes"></div>`;
-    sRenderResult(ult); return;
-  }
-  sUploadStep();
+  if (!id) return toast('Selecione seu nome', 'bad');
+  const btn = $('#sId button.primary'); if (btn) btn.disabled = true;
+  try {
+    const r = await api('/identificar', { a: ST.atv.id, alunoId: id, matricula: mat });
+    localStorage.setItem('catedra_aluno_' + ST.atv.turmaId, id);
+    ST.aluno = r.aluno; ST.s = r.sessao; ST.mat = mat; ST.anteriores = r.entregas || []; ST.restantes = r.restantes;
+    if (r.restantes <= 0) {
+      $('#sId').outerHTML = `<div class="alert info">${ic('check')}<div>Você já utilizou ${ST.anteriores.length === 1 ? 'seu envio' : 'todas as suas ' + ST.anteriores.length + ' tentativas'} para esta atividade.</div></div><div id="sRes"></div>`;
+      if (ST.anteriores[0]) sRenderResult(ST.anteriores[0], 0); return;
+    }
+    sUploadStep();
+  } catch (e) { toast(e.message, 'bad', 6000); if (btn) btn.disabled = false; }
 }
 function sUploadStep() {
-  const { atv, aluno, anteriores } = ST;
-  $('#sId').outerHTML = `<div class="card" id="sUp"><div class="card-head"><h3>${atv.tipo === 'prova' ? 'Envie as fotos da sua prova' : 'Envie seu trabalho'}</h3><span class="badge gray">${esc(aluno.nome)}</span></div>
-    ${anteriores.length ? `<div class="alert info">${ic('refresh')}<div>Tentativa ${anteriores.length + 1} de ${atv.tentativas}. Sua maior nota até agora: <b>${fmtN(Math.max(...anteriores.map(notaFinal)))}</b>.</div></div>` : ''}
+  const { atv, aluno, anteriores } = ST; const alvo = $('#sId') || $('#sUp');
+  const notas = anteriores.map(notaFinal).filter(n => n != null && !isNaN(n));
+  alvo.outerHTML = `<div class="card" id="sUp"><div class="card-head"><h3>${atv.tipo === 'prova' ? 'Envie sua prova' : 'Envie seu trabalho'}</h3><span class="badge gray">${esc(aluno.nome)}</span></div>
+    ${anteriores.length ? `<div class="alert info">${ic('refresh')}<div>Tentativa ${anteriores.length + 1} de ${atv.tentativas}.${notas.length ? ` Sua maior nota até agora: <b>${fmtN(Math.max(...notas))}</b>.` : ''}</div></div>` : ''}
     ${Upl.html(atv, ST.cfg)}
     <button class="btn primary big" style="width:100%;margin-top:16px" onclick="sSubmit()">${ic('sparkle')} Enviar para correção</button>
     <p class="hint" style="text-align:center">Ao enviar, seu trabalho será lido e corrigido automaticamente conforme os parâmetros do professor.</p></div>`;
   Upl.bind($('#sUp'));
 }
-const pendKey = () => `catedra_pend_${ST.atv.id}_${ST.aluno.id}`;
-function sGetPending() { try { return JSON.parse(localStorage.getItem(pendKey())); } catch { return null; } }
-async function sRefreshCfg() {
-  try { const g = await gh(`/gists/${ST.P.g}`, {}, ST.P.t); const c = JSON.parse(await fileContent(g.files['config.json']) || '{}'); if (c && c.ai) ST.cfg = c; ST.g = g;
-    if (verNum(c.appVersion) > verNum(APP_VERSION)) { toast('O sistema foi atualizado. Recarregando…'); sessionStorage.setItem('catedra_reload', c.appVersion); await sleep(900); hardReload(); return false; } } catch { }
-  return true;
-}
 async function sSubmit() {
-  const files = [...Upl.files], txt = Upl.text(), abertas = Upl.abertas();
-  const localProva = ST.atv.tipo === 'prova' && modoDe(ST.atv, ST.cfg) === 'local';
-  if (localProva && (ST.atv.gabarito || []).some(q => q.tipo === 'objetiva') && !files.length) return toast('Fotografe a folha de respostas', 'bad');
-  if (!localProva && !files.length && !txt) return toast(ST.atv.tipo === 'prova' ? 'Adicione as fotos da prova' : 'Selecione o arquivo ou cole o texto', 'bad');
+  const files = [...Upl.files], txt = Upl.text(), abertas = Upl.abertas(); const atv = ST.atv;
+  const modo = modoDe(atv, ST.cfg); const localProva = atv.tipo === 'prova' && modo === 'local';
+  const temObj = (atv.gabarito || []).some(q => q.tipo === 'objetiva');
+  if (localProva && temObj && !files.length) return toast('Escaneie a folha de respostas', 'bad');
+  if (!localProva && !files.length && !txt) return toast(atv.tipo === 'prova' ? 'Adicione as páginas da prova' : 'Selecione o arquivo ou cole o texto', 'bad');
   if (localProva && Object.values(abertas).some(v => !v) && !confirm('Há questões abertas em branco. Enviar assim mesmo?')) return;
-  if (!(await sRefreshCfg())) return;
   const box = $('#sUp'); box.innerHTML = `<h3>Corrigindo…</h3><p class="muted">Não feche esta página. Isso pode levar até um minuto.</p>${stepsHTML(0)}`;
-  const setStep = i => { const s = $('.steps', box); if (s) s.outerHTML = stepsHTML(i); };
-  let r;
-  try { r = await processSubmission(ST.cfg, ST.atv, files, txt, setStep, abertas); }
-  catch (err) { box.innerHTML = `<div class="alert bad">${ic('alert')}<div><b>Não foi possível corrigir:</b> ${esc(err.message)}<br><span class="small">Seu envio não foi contabilizado. Tente novamente.</span></div></div><button class="btn primary" onclick="sUploadStep2()">${ic('refresh')} Tentar novamente</button>`; return; }
-  const atrasado = ST.atv.prazo && Date.now() > new Date(ST.atv.prazo).getTime();
-  const e = { id: uid(), atividadeId: ST.atv.id, turmaId: ST.atv.turmaId, alunoId: ST.aluno.id, alunoNome: ST.aluno.nome, criadoEm: Date.now(), updatedAt: Date.now(), tentativa: ST.anteriores.length + 1, origem: 'aluno', atrasado: !!atrasado, notaManual: null, obsProfessor: '', ...r };
-  localStorage.setItem(pendKey(), JSON.stringify(e));
-  setStep(3);
-  await sShowResult(e, false);
-}
-function sUploadStep2() { $('#sUp').outerHTML = '<div id="sId"></div>'; sUploadStep(); }
-async function sSave(e) {
-  let last;
-  for (let i = 0; i < 3; i++) {
-    try { await gh(`/gists/${ST.P.g}`, { method: 'PATCH', body: JSON.stringify({ files: { [`e_${e.atividadeId}_${e.alunoId}_${e.criadoEm}.json`]: { content: JSON.stringify(e) } } }) }, ST.P.t); localStorage.removeItem(pendKey()); return true; }
-    catch (err) { last = err; await sleep(1200 * (i + 1)); }
+  const setStep = i => { const st = $('.steps', box); if (st) st.outerHTML = stepsHTML(i); };
+  try {
+    const body = { a: atv.id, s: ST.s, arquivos: files.map(f => f.name) };
+    if (localProva) {
+      if (temObj) { const img = files.find(f => f.type.startsWith('image/')); if (!img) throw new Error('Envie a imagem da folha de respostas.'); const o = await omrRead(img, atv); body.respostas = o.respostas; body.confianca = o.confianca; body.duvidas = o.duvidas; }
+      body.abertas = abertas;
+    } else {
+      const ex = await extractFiles(files, txt, modo === 'local' ? 2200 : 1600); body.text = ex.text;
+      if (modo === 'local') {
+        if (ex.images.length) { setStep(1); const o = await ocrImages(ex.images); if (countWords(o.text) < 30 || o.conf < 50) throw new Error(`Não foi possível ler o texto das imagens com segurança (confiança ${Math.round(o.conf)}%). Na correção gratuita só textos digitados ou impressos são lidos; manuscritos não. Envie o arquivo digital, cole o texto ou escaneie novamente com boa luz.`); body.text = (ex.text + '\n\n' + o.text).trim(); body.ocr = Math.round(o.conf); }
+      } else body.images = ex.images;
+    }
+    setStep(1);
+    const r = await api('/enviar', body);
+    setStep(3); ST.restantes = r.restantes; ST.anteriores = [r.entrega, ...ST.anteriores];
+    box.outerHTML = `<div class="alert ok">${ic('check')}<div><b>Envio registrado com sucesso!</b> Seu professor já recebeu ${atv.tipo === 'prova' ? 'sua prova' : 'seu trabalho'}. Protocolo: <b>${esc(String(r.entrega.id).toUpperCase())}</b></div></div><div id="sRes"></div>`;
+    sRenderResult(r.entrega, r.restantes); window.scrollTo({ top: 0, behavior: 'smooth' });
+  } catch (err) {
+    box.innerHTML = `<div class="alert bad">${ic('alert')}<div><b>Não foi possível concluir:</b> ${esc(err.message)}<br><span class="small">Se o problema persistir, avise o professor.</span></div></div><button class="btn primary" onclick="sUploadStep()">${ic('refresh')} Tentar novamente</button>`;
   }
-  throw last;
 }
-async function sShowResult(e, retrying) {
-  const target = $('#sUp') || $('#sId');
-  try { await sSave(e); }
-  catch (err) {
-    target.outerHTML = `<div class="card" id="sUp"><div class="alert bad">${ic('alert')}<div><b>Sua correção foi feita, mas não conseguimos registrá-la para o professor.</b><br>${esc(err.message)}. Verifique sua internet e toque em "Enviar novamente". Não feche esta página.</div></div><button class="btn primary big" style="width:100%" onclick="sShowResult(sGetPending(),true)">${ic('refresh')} Enviar novamente</button></div>`;
-    return;
-  }
-  target.outerHTML = `<div class="alert ok">${ic('check')}<div><b>Envio registrado com sucesso!</b> Seu professor já recebeu ${ST.atv.tipo === 'prova' ? 'sua prova' : 'seu trabalho'}. Protocolo: <b>${e.id.toUpperCase()}</b></div></div><div id="sRes"></div>`;
-  sRenderResult(e);
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-function sRenderResult(e) {
+function sRenderResult(e, restantes) {
   const { atv } = ST; const el = $('#sRes'); if (!el) return;
   if (atv.mostrarRelatorio === false && atv.mostrarNota === false) { el.innerHTML = `<div class="card empty"><div class="ei">${ic('check', 28)}</div><h3>Recebido!</h3><p>O professor divulgará a nota e o relatório posteriormente.</p></div>`; return; }
-  const restantes = (atv.tentativas || 1) - (ST.anteriores.length + (ST.anteriores.some(x => x.id === e.id) ? 0 : 1));
   el.innerHTML = (atv.mostrarRelatorio === false
     ? `<div class="card"><div class="report-head"><div class="ring" style="--p:${Math.round((pctE(e) || 0) * 100)};--rc:var(--primary)"><div><b>${fmtN(notaFinal(e))}</b><span>de ${fmtN(e.notaMax)}</span></div></div><div><h3>${esc(atv.titulo)}</h3><p class="muted">O relatório detalhado será liberado pelo professor.</p></div></div></div>`
     : renderRelatorio(e, atv, { student: true, aluno: ST.aluno }))
     + `<div class="actions" style="margin-top:16px;justify-content:center"><button class="btn primary" id="sPdf">${ic('download')} Baixar relatório em PDF</button>${restantes > 0 ? `<button class="btn" onclick="sNovaTentativa()">${ic('refresh')} Nova tentativa (${restantes} restante${restantes > 1 ? 's' : ''})</button>` : ''}</div>`;
   $('#sPdf').onclick = () => pdfStudentEntrega(e, atv, ST.aluno, ST.turma, ST.cfg).catch(err => toast(err.message, 'bad'));
 }
-async function sNovaTentativa() {
-  $('#main').innerHTML = sShell(`<div class="card" id="sId"><div class="spinner"></div></div>`);
-  ST.anteriores = await sCollectEntregas(ST.aluno.id);
-  if (ST.anteriores.length >= (ST.atv.tentativas || 1)) { toast('Você não tem mais tentativas', 'bad'); return sIntro(); }
-  sUploadStep();
-}
+function sNovaTentativa() { $('#main').innerHTML = sShell(`<div id="sId"></div>`); sUploadStep(); }
 
 /* =========================================================
    INICIALIZAÇÃO
