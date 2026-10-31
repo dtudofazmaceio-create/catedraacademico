@@ -477,12 +477,65 @@ async function loadLib(name) {
 }
 
 /* ---------- IndexedDB ---------- */
+/* =========================================================
+   CONTAS (login de professores) — a sessão fica só neste navegador;
+   chaves de IA e segredos ficam SOMENTE no servidor.
+   ========================================================= */
+const Auth = {
+  api: String(window.CATEDRA_API || localStorage.getItem('catedra_api') || (/^https?:/.test(location.protocol) && /workers\.dev$/.test(location.hostname) ? location.origin : '')).replace(/\/+$/, ''),
+  token: localStorage.getItem('catedra_tok') || '',
+  user: (() => { try { return JSON.parse(localStorage.getItem('catedra_user') || 'null'); } catch { return null; } })(),
+  get admin() { return this.user?.role === 'admin'; },
+  dbName() { return !this.user || this.user.role === 'admin' ? 'catedra' : 'catedra_' + this.user.id; },
+  async call(path, body) {
+    const r = await fetch(this.api + path, { method: body ? 'POST' : 'GET', cache: 'no-store', headers: { ...(body ? { 'content-type': 'application/json' } : {}), ...(this.token ? { Authorization: 'Bearer ' + this.token } : {}) }, body: body ? JSON.stringify(body) : undefined });
+    let j = {}; try { j = await r.json(); } catch { }
+    if (r.status === 401 && this.token) { this.logout(); }
+    if (!r.ok) { const e = new Error(j.erro || 'Erro ' + r.status); e.status = r.status; throw e; }
+    return j;
+  },
+  logout() { ['catedra_tok', 'catedra_user'].forEach(k => localStorage.removeItem(k)); location.hash = ''; location.reload(); }
+};
+function telaLogin(modo = 'entrar') {
+  document.body.classList.add('student'); const reg = modo === 'registro';
+  $('#main').innerHTML = `<div class="card" style="max-width:420px;margin:8vh auto"><h2 style="margin-top:0">Cátedra</h2><p class="muted small">${reg ? 'Crie sua conta de professor' : 'Entre com sua conta'}</p>
+  <form id="fAuth" onsubmit="return false">${!Auth.api ? '<div class="field"><label>Endereço do servidor</label><input name="api" placeholder="https://catedra.seunome.workers.dev"></div>' : ''}
+  ${reg ? '<div class="field"><label>Nome</label><input name="nome" autocomplete="name"></div>' : ''}
+  <div class="field"><label>E-mail</label><input name="email" type="email" autocomplete="username"></div>
+  <div class="field"><label>Senha ${reg ? '(mínimo 8 caracteres)' : ''}</label><input name="senha" type="password" autocomplete="${reg ? 'new-password' : 'current-password'}"></div>
+  ${reg ? '<div class="field"><label>Código de convite</label><input name="convite" autocomplete="off"><div class="hint">Fornecido pelo administrador do sistema.</div></div>' : ''}
+  <div id="authErr" class="small" style="color:#b3261e;min-height:18px;margin-bottom:6px"></div>
+  <button class="btn primary" style="width:100%" onclick="doAuth(${reg})">${reg ? 'Criar conta' : 'Entrar'}</button></form>
+  <p class="small" style="text-align:center;margin:14px 0 0"><a href="#" onclick="telaLogin('${reg ? 'entrar' : 'registro'}');return false"><u>${reg ? 'Já tenho conta' : 'Primeiro acesso? Criar conta'}</u></a></p></div>`;
+}
+async function doAuth(reg) {
+  const d = formData($('#fAuth')); const err = $('#authErr'); err.textContent = '';
+  try {
+    if (d.api) { Auth.api = d.api.trim().replace(/\/+$/, ''); localStorage.setItem('catedra_api', Auth.api); }
+    if (!Auth.api) throw new Error('Informe o endereço do servidor.'); delete d.api;
+    const r = await Auth.call(reg ? '/auth/registro' : '/auth/login', d);
+    localStorage.setItem('catedra_tok', r.sessao); localStorage.setItem('catedra_user', JSON.stringify(r.user)); location.hash = '#/painel'; location.reload();
+  } catch (e) { err.textContent = e.message; }
+}
+const Admin = {
+  async load() {
+    const box = $('#admProfs'); if (!box) return;
+    try {
+      const r = await Auth.call('/admin/profs'); const ok = (v, t) => `<span style="${v ? '' : 'color:#b3261e'}">${v ? '✓' : '✗'} ${t}</span>`;
+      box.innerHTML = `<div class="small" style="margin-bottom:10px">${ok(r.ia, 'IA configurada no servidor')} &nbsp; ${ok(r.convite, 'código de convite ativo')} &nbsp; Limite padrão: <b>${r.cotaPadrao}</b> correções por IA/mês por professor</div>`
+        + (r.profs.length ? `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><tr style="text-align:left"><th>Professor</th><th>E-mail</th><th>IA no mês</th><th></th></tr>${r.profs.map(p => `<tr style="border-top:1px solid #e6e2d8"><td>${esc(p.nome)}${p.bloqueado ? ' <span class="muted">(bloqueado)</span>' : ''}</td><td>${esc(p.email)}</td><td>${p.uso}/${p.cota ?? r.cotaPadrao}</td><td style="white-space:nowrap"><button class="btn sm" onclick="Admin.cota('${p.id}','${p.cota ?? ''}')">Limite</button> <button class="btn sm" onclick="Admin.bloq('${p.id}',${!p.bloqueado})">${p.bloqueado ? 'Desbloquear' : 'Bloquear'}</button></td></tr>`).join('')}</table></div>` : '<p class="muted small">Nenhum professor cadastrado ainda. Envie o link do sistema e o código de convite.</p>');
+    } catch (e) { box.innerHTML = `<div class="alert bad">${ic('alert')}<div>${esc(e.message)}</div></div>`; }
+  },
+  async cota(id, atual) { const v = prompt('Limite mensal de correções por IA deste professor (vazio = padrão):', atual); if (v === null) return; try { await Auth.call('/admin/prof', { id, cota: v }); this.load(); } catch (e) { toast(e.message, 'bad'); } },
+  async bloq(id, b) { if (b && !confirm('Bloquear este professor? Ele e os links dos alunos dele deixam de funcionar.')) return; try { await Auth.call('/admin/prof', { id, bloqueado: b }); this.load(); } catch (e) { toast(e.message, 'bad'); } }
+};
+
 const STORES = ['turmas', 'alunos', 'atividades', 'entregas', 'meta'];
 const DB = {
   db: null,
   open() {
     return new Promise((res, rej) => {
-      const r = indexedDB.open('catedra', 1);
+      const r = indexedDB.open(Auth.dbName(), 1);
       r.onupgradeneeded = () => { const d = r.result; STORES.forEach(s => { if (!d.objectStoreNames.contains(s)) d.createObjectStore(s, { keyPath: 'id' }); }); };
       r.onsuccess = () => { this.db = r.result; res(); };
       r.onerror = () => rej(r.error);
@@ -578,7 +631,7 @@ function setMain(html, title) {
 async function copyText(t) { try { await navigator.clipboard.writeText(t); toast('Copiado para a área de transferência', 'ok'); } catch { prompt('Copie o texto:', t); } }
 
 /* ---------- Navegação ---------- */
-const NAV = [['painel', 'home', 'Painel'], ['turmas', 'users', 'Turmas'], ['config', 'settings', 'Configurações']];
+const NAV = [['painel', 'home', 'Painel'], ['turmas', 'users', 'Turmas'], ['config', 'settings', Auth.admin ? 'Configurações' : 'Meu perfil']];
 function renderNav(active) {
   const map = { turma: 'turmas', atividade: 'turmas', 'atividade-form': 'turmas', entrega: 'turmas', aluno: 'turmas' };
   const a = map[active] || active;
@@ -630,12 +683,12 @@ function parseCfg(str) { const c = str ? JSON.parse(str) : {}; if (c.ai) { delet
 
 const Sync = {
   busy: false, again: false, timer: null, dirtyArq: new Set(), state: 'off', lastError: '',
-  configured() { return !!(S.local && S.local.token && S.local.gistId); },
+  configured() { return !!Auth.token; },
   schedule() { if (!this.configured()) return; clearTimeout(this.timer); this.timer = setTimeout(() => this.run(true), 1200); },
   start() {
     this.ui();
     if (this.configured()) this.run(true);
-    setInterval(() => { if (!document.hidden && this.configured()) this.run(true); }, 20000);
+    setInterval(() => { if (!document.hidden && this.configured()) this.run(true); }, 45000);
     window.addEventListener('focus', () => this.configured() && this.run(true));
     window.addEventListener('online', () => this.configured() && this.run(true));
   },
@@ -648,50 +701,22 @@ const Sync = {
     $('#syncBtn').innerHTML = this.configured() ? ic('refresh', 15) + ' Sincronizar agora' : ic('cloud', 15) + ' Configurar nuvem';
   },
   async run(silent = false) {
-    if (!this.configured()) { if (!silent) go('config'); return; }
+    if (!this.configured()) return;
     if (this.busy) { this.again = true; return; }
     this.busy = true; this.state = 'busy'; this.ui();
     let changed = false; const novas = [];
     try {
-      const { token, gistId } = S.local;
-      const g = await gh(`/gists/${gistId}`, {}, token);
-      // 1) data.json
-      const fd = g.files['data.json']; const remoteDataStr = await fileContent(fd);
-      if (remoteDataStr) {
-        const rd = JSON.parse(remoteDataStr);
-        for (const st of ['turmas', 'alunos', 'atividades']) for (const r of rd[st] || []) {
-          const l = byId(st, r.id); if (!l || (r.updatedAt || 0) > (l.updatedAt || 0)) { await putLocal(st, r); changed = true; }
-        }
-      }
-      // 2) config.json
-      const fc = g.files['config.json']; const remoteCfgStr = await fileContent(fc);
-      if (remoteCfgStr) {
-        const rc = parseCfg(remoteCfgStr); const ru = Math.min(rc.updatedAt || 0, Date.now() + 60000);
-        if (verNum(rc.appVersion) > verNum(APP_VERSION)) showUpdateBanner(rc.appVersion);
-        else if (ru > (S.cfg.updatedAt || 0)) { S.cfg = { ...rc, id: 'cfg', updatedAt: ru, ai: { ...(rc.ai || {}), key: S.cfg.ai?.key || '', workspace: rc.ai?.workspace || S.cfg.ai?.workspace || '' } }; await DB.put('meta', S.cfg); changed = true; }
-      }
-      // 3) entregas
-      const toDelete = [];
-      for (const [name, file] of Object.entries(g.files)) {
-        if (!/^(e|arq)_.*\.json$/.test(name)) continue;
-        let c; try { c = JSON.parse(await fileContent(file)); } catch { continue; }
-        const arr = Array.isArray(c) ? c : [c];
-        for (const r of arr) {
-          if (!r || !r.id) continue;
-          const l = byId('entregas', r.id);
-          if (!l || (r.updatedAt || 0) > (l.updatedAt || 0)) { if (!l && !r.deleted) novas.push(r); await putLocal('entregas', r); changed = true; }
-        }
-        if (name.startsWith('e_')) { toDelete.push(name); arr.forEach(r => r && this.dirtyArq.add(r.atividadeId)); }
-      }
-      // 4) envio das alterações locais
-      const files = {};
-      const ld = JSON.stringify(buildData()); if (ld !== remoteDataStr) files['data.json'] = { content: ld };
-      const lc = JSON.stringify(cfgPublic()); const remoteNewer = remoteCfgStr && verNum(JSON.parse(remoteCfgStr).appVersion) > verNum(APP_VERSION); if (lc !== remoteCfgStr && !remoteNewer) files['config.json'] = { content: lc };
-      for (const aid of this.dirtyArq) { const list = S.entregas.filter(e => e.atividadeId === aid); if (list.length) files[`arq_${aid}.json`] = { content: JSON.stringify(list) }; }
-      toDelete.forEach(n => files[n] = null);
-      if (Object.keys(files).length) await gh(`/gists/${gistId}`, { method: 'PATCH', body: JSON.stringify({ files }) }, token);
-      this.dirtyArq.clear();
-      S.local.lastSync = Date.now(); await saveLocal();
+      const t0 = Date.now(); const CAP = 300;
+      const pend = S.entregas.filter(e => (e.updatedAt || 0) > (S.local.pushed || 0)).sort((a, b) => (a.updatedAt || 0) - (b.updatedAt || 0));
+      const envio = pend.slice(0, CAP);
+      const r = await Auth.call('/sync', { since: S.local.since || 0, rev: S.local.rev || 0, data: buildData(), cfg: cfgPublic(), entregas: envio });
+      if (r.data) { for (const st of ['turmas', 'alunos', 'atividades']) for (const x of r.data[st] || []) { const l = byId(st, x.id); if (!l || (x.updatedAt || 0) > (l.updatedAt || 0)) { await putLocal(st, x); changed = true; } } S.local.rev = r.data.rev || 0; }
+      const rc = r.cfg || {}; const ru = Math.min(rc.updatedAt || 0, Date.now() + 60000);
+      if (verNum(rc.appVersion) > verNum(APP_VERSION)) showUpdateBanner(rc.appVersion);
+      else if (ru > (S.cfg.updatedAt || 0)) { S.cfg = { ...rc, id: 'cfg', updatedAt: ru, workerUrl: Auth.api, ai: S.cfg.ai }; await DB.put('meta', S.cfg); changed = true; }
+      for (const x of r.entregas || []) { const l = byId('entregas', x.id); if (!l || (x.updatedAt || 0) > (l.updatedAt || 0)) { if (!l && !x.deleted) novas.push(x); await putLocal('entregas', x); changed = true; } }
+      S.local.pushed = pend.length > CAP ? envio[envio.length - 1].updatedAt : t0; if (pend.length > CAP) this.again = true;
+      S.local.since = (r.agora || Date.now()) - 60000; S.local.lastSync = Date.now(); await saveLocal();
       this.state = 'ok'; this.lastError = '';
       if (!silent) toast('Sincronização concluída', 'ok');
     } catch (err) {
@@ -749,35 +774,9 @@ function aiErr(p, st, msg = '') {
   else if (st === 403) dica = 'acesso negado pelo provedor (permissão, região ou chave desativada).';
   return `IA (${p}): ${dica || 'erro ' + st}${m ? ` [${m.slice(0, 160)}]` : ''}`;
 }
+// A chave da IA fica só no servidor: o navegador envia o pedido e o servidor chama o provedor (com limite mensal por professor).
 async function aiCall(cfg, { system, text, images = [] }) {
-  const ai = cfg.ai || {}; const provider = ai.provider || 'anthropic'; const model = ai.model || MODELS[provider]; const key = cleanKey(ai.key);
-  if (!key) throw new Error('A chave da IA não foi configurada pelo professor.');
-  let r, j;
-  if (provider === 'anthropic') {
-    const content = [...images.map(d => ({ type: 'image', source: { type: 'base64', media_type: d.mime, data: d.b64 } })), { type: 'text', text }];
-    const base = { 'content-type': 'application/json', 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' };
-    const ws = String(ai.workspace || '').trim(); if (ws) base['anthropic-workspace-id'] = ws;
-    const body = JSON.stringify({ model, max_tokens: 8000, system, messages: [{ role: 'user', content }] });
-    const call = h => fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { ...base, ...h }, body });
-    const legacy = /^sk-ant-api/.test(key);
-    r = await call(legacy ? { 'x-api-key': key } : { Authorization: 'Bearer ' + key });
-    if (r.status === 401) { const r2 = await call(legacy ? { Authorization: 'Bearer ' + key } : { 'x-api-key': key }); if (r2.status !== 401) r = r2; }
-    j = await r.json(); if (!r.ok) throw new Error(aiErr('Anthropic', r.status, j.error?.message));
-    return j.content.filter(c => c.type === 'text').map(c => c.text).join('');
-  }
-  if (provider === 'openai') {
-    const content = [{ type: 'text', text }, ...images.map(d => ({ type: 'image_url', image_url: { url: `data:${d.mime};base64,${d.b64}` } }))];
-    r = await fetch('https://api.openai.com/v1/chat/completions', { method: 'POST', headers: { 'content-type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify({ model, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: system }, { role: 'user', content }] }) });
-    j = await r.json(); if (!r.ok) throw new Error(aiErr('OpenAI', r.status, j.error?.message));
-    return j.choices[0].message.content;
-  }
-  if (provider === 'gemini') {
-    const parts = [...images.map(d => ({ inline_data: { mime_type: d.mime, data: d.b64 } })), { text }];
-    r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents: [{ role: 'user', parts }], generationConfig: { responseMimeType: 'application/json', temperature: 0.2 } }) });
-    j = await r.json(); if (!r.ok) throw new Error(aiErr('Gemini', r.status, j.error?.message));
-    return (j.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
-  }
-  throw new Error('Provedor de IA desconhecido');
+  const r = await Auth.call('/ia', { system, text, images }); return r.texto;
 }
 function parseJSON(s) {
   s = String(s || '').trim().replace(/^```(?:json)?/i, '').replace(/```\s*$/, '');
@@ -2018,12 +2017,12 @@ async function delEntrega(id) { const e = byId('entregas', id); if (await confir
 /* ---------- Configurações ---------- */
 function viewConfig() {
   const c = S.cfg, l = S.local, ai = c.ai || {};
-  setMain(`<div class="page-head"><div><h2>Configurações</h2><p class="muted">Seus dados, sincronização e inteligência artificial</p></div></div>
+  setMain(`<div class="page-head"><div><h2>${Auth.admin ? 'Configurações' : 'Meu perfil'}</h2><p class="muted">${Auth.admin ? 'Professores, limites e dados do sistema' : 'Seus dados e modo de correção'}</p></div></div>
   <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(340px,1fr));align-items:start">
   <div class="card"><h3>${ic('user')} Professor</h3><form id="fProf" onsubmit="return false">
     <div class="field"><label>Nome</label><input name="professor" value="${esc(c.professor)}" placeholder="Prof. Dr. Nome Sobrenome"></div>
     <div class="field"><label>Instituição</label><input name="instituicao" value="${esc(c.instituicao)}"></div>
-    <div class="field"><label>URL pública do sistema</label><input name="publicUrl" value="${esc(c.publicUrl)}" placeholder="https://seuusuario.github.io/catedra/"><div class="hint">Endereço onde este arquivo está publicado. É a base dos links enviados aos alunos. Em branco = endereço atual.</div></div>
+    ${Auth.admin ? `<div class="field"><label>URL pública do sistema</label><input name="publicUrl" value="${esc(c.publicUrl)}" placeholder="https://seuusuario.github.io/catedra/"><div class="hint">Endereço onde este arquivo está publicado. É a base dos links enviados aos alunos. Em branco = endereço atual.</div></div>` : ''}
     <button class="btn primary" onclick="saveProf()">${ic('check')} Salvar</button></form></div>
 
   <div class="card"><h3>${ic('check')} Modo de correção</h3><form id="fModo" onsubmit="return false">
@@ -2033,39 +2032,14 @@ function viewConfig() {
     <div class="hint" style="margin-bottom:12px">Cada atividade pode usar outro modo (no formulário da atividade).</div>
     <button class="btn primary" onclick="saveModo()">${ic('check')} Salvar</button></form></div>
 
-  <div class="card"><h3>${ic('sparkle')} Inteligência artificial</h3>
-    <div class="alert info">${ic('sparkle')}<div><b>IA sem custo:</b> o Google oferece um plano gratuito da API Gemini, com limites de uso e apenas para alguns modelos. Crie a chave em <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener"><u>aistudio.google.com/apikey</u></a>, escolha "Google (Gemini)" e um modelo do plano gratuito (ex.: gemini-2.5-flash-lite). No plano gratuito, o Google pode usar o conteúdo enviado para melhorar seus produtos, e novas contas podem precisar ativar o plano pré-pago.</div></div><form id="fAi" onsubmit="return false">
-    <div class="field"><label>Provedor</label><select name="provider" onchange="this.form.model.value=MODELS[this.value];$('[data-anth]').style.display=this.value==='anthropic'?'':'none'">${Object.entries(PROVIDERS).map(([k, v]) => `<option value="${k}" ${ai.provider === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
-    <div class="field"><label>Modelo</label><input name="model" value="${esc(ai.model || MODELS[ai.provider || 'anthropic'])}"><div class="hint">Use um modelo com visão (leitura de imagens) para corrigir provas fotografadas.</div></div>
-    <div class="field" data-anth ${ai.provider && ai.provider !== 'anthropic' ? 'style="display:none"' : ''}><label>ID do workspace (Anthropic, opcional)</label><input name="workspace" value="${esc(ai.workspace || '')}" placeholder="wrkspc_…" autocomplete="off" spellcheck="false"><div class="hint">Necessário só se a chave não estiver vinculada a um workspace (chaves pessoais <code>sk-ant-usr</code> criadas sem workspace). Encontre o ID no Console em <b>Configurações → Workspaces</b>.</div></div>
-    <div class="field"><label>Chave de API</label><div style="display:flex;gap:6px"><input type="password" name="key" id="aiKey" value="${esc(ai.key)}" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore placeholder="${ai.provider === 'gemini' ? 'AIza…' : ai.provider === 'openai' ? 'sk-…' : 'sk-ant-…'}"><button type="button" class="btn" onclick="const k=$('#aiKey');k.type=k.type==='password'?'text':'password'" title="Mostrar/ocultar">${ic('eye', 16)}</button></div>
-      <div class="hint">${ai.key ? `Chave salva: <code>${esc(maskKey(ai.key))}</code> (${ai.key.length} caracteres). Confira se o início e o fim batem com a chave do provedor.` : 'Nenhuma chave salva.'} ${ai.provider === 'anthropic' || !ai.provider ? 'Gere a chave em <a href="https://platform.claude.com/settings/keys" target="_blank" rel="noopener"><u>platform.claude.com/settings/keys</u></a> (a assinatura do Claude.ai não fornece chave de API).' : ''}</div></div>
-    <div class="actions"><button class="btn primary" onclick="saveAi()">${ic('check')} Salvar</button><button class="btn" onclick="testAi()">${ic('sparkle')} Testar e diagnosticar</button></div></form></div>
-
-  <div class="card"><h3>${ic('cloud')} Sincronização (GitHub Gist)</h3>
-    <div class="alert ${Sync.configured() ? (Sync.state === 'err' ? 'bad' : 'ok') : 'warn'}">${ic(Sync.configured() ? 'check' : 'alert')}<div>${Sync.configured() ? (Sync.state === 'err' ? esc(Sync.lastError) : `Conectado ao Gist <b>${esc(l.gistId.slice(0, 10))}…</b>. Última sincronização: ${fmtDate(l.lastSync)}`) : 'Não configurado — os dados estão apenas neste navegador.'}</div></div>
-    <form id="fGh" onsubmit="return false">
-    <div class="field"><label>Token do GitHub (permissão "gist")</label><input type="password" name="token" value="${esc(l.token)}" autocomplete="off" placeholder="ghp_…"><div class="hint">Crie em <a href="https://github.com/settings/tokens/new?scopes=gist&description=Catedra" target="_blank" rel="noopener"><u>github.com/settings/tokens</u></a> marcando apenas <b>gist</b>.</div></div>
-    <div class="field"><label>ID do Gist</label><input name="gistId" value="${esc(l.gistId)}" placeholder="Deixe vazio e clique em Criar Gist"></div>
-    <div class="actions"><button class="btn primary" onclick="ghConnect()">${ic('link')} Conectar</button><button class="btn" onclick="ghCreate()">${ic('plus')} Criar Gist</button><button class="btn" onclick="ghFind()">${ic('refresh')} Buscar existente</button>${Sync.configured() ? `<button class="btn ghost" onclick="ghDisconnect()">Desconectar</button>` : ''}</div></form>
-    <p class="hint" style="margin-top:14px">A sincronização ocorre automaticamente a cada alteração e a cada 20 segundos. Use o mesmo token e Gist em outro dispositivo para acessar seus dados.</p></div>
-
-  <div class="card"><h3>${ic('shield')} Servidor de envio dos alunos</h3>
-    <p class="small muted" style="margin-top:0">Os alunos enviam e recebem a correção por um pequeno servidor gratuito (Cloudflare Worker) que guarda o token do GitHub e a chave da IA. O link do aluno não contém nenhum segredo, e o gabarito nunca chega ao aparelho do aluno.</p>
-    <form id="fSrv" onsubmit="return false"><div class="field"><label>Endereço do servidor</label><input name="workerUrl" value="${esc(c.workerUrl || '')}" placeholder="https://catedra.seunome.workers.dev" spellcheck="false"></div>
-    <div class="actions"><button class="btn primary" onclick="saveSrv()">${ic('check')} Salvar</button><button class="btn" onclick="testSrv()">${ic('refresh')} Testar servidor</button><button class="btn ghost" onclick="guiaServidor()">${ic('list')} Como instalar</button></div></form>
-    <div id="srvStatus" style="margin-top:12px"></div></div>
-
-  <div class="card"><h3>${ic('shield')} Segurança</h3>
-    <ul class="blist small" style="margin-top:0"><li>Token do GitHub e chave da IA <b>nunca</b> vão para o Gist nem para o link do aluno.</li><li>O gabarito, as instruções internas e as entregas dos colegas não são enviados ao aluno.</li><li>Matrícula, prazo e número de tentativas são conferidos no servidor; a nota é calculada no servidor.</li><li>Defina um <b>limite de gastos</b> no painel do provedor da IA.</li></ul>
-    <p class="small" style="margin:10px 0 6px"><b>Migração (recomendado se você já enviou links antigos):</b> os links antigos continham o token e o ID do Gist. Revogue o token antigo no GitHub, crie um novo, informe-o acima e clique em:</p>
-    <button class="btn" onclick="ghMigrar()">${ic('refresh')} Migrar para um novo Gist</button></div>
+  ${Auth.admin ? `<div class="card" style="grid-column:1/-1"><h3>${ic('users')} Professores</h3><div id="admProfs" class="small muted">Carregando…</div><div class="actions" style="margin-top:12px"><button class="btn" onclick="Admin.load()">${ic('refresh')} Atualizar</button><button class="btn" onclick="Auth.logout()">Sair</button></div><p class="hint">Chave da IA, código de convite e senha de administrador ficam como segredos no Cloudflare e nunca chegam ao navegador.</p></div>`
+  : `<div class="card"><h3>${ic('user')} Minha conta</h3><p class="small" style="margin-top:0">${esc(Auth.user?.email || '')}</p><p class="small muted" id="iaUso">${S.ia ? (S.ia.disponivel ? `Correções por IA neste mês: <b>${S.ia.uso}</b>${S.ia.limite != null ? ' de <b>' + S.ia.limite + '</b>' : ''}` : 'Correção por IA indisponível no momento (use a gratuita).') : ''}</p><div class="actions"><button class="btn" onclick="Auth.logout()">Sair</button></div></div>`}
 
   <div class="card"><h3>${ic('download')} Backup global</h3><p class="muted small" style="margin-top:0">Leva <b>tudo</b> para outro aparelho: turmas, alunos, atividades e entregas, token do GitHub e ID do Gist, chave e configuração da IA, endereço do servidor e URL pública. O arquivo é <b>criptografado com uma senha</b> definida por você.</p>
     <p class="hint">Versão do sistema: <b>${APP_VERSION}</b></p>
     <div class="actions"><button class="btn primary" onclick="exportBackup()">${ic("download")} Exportar backup global</button><label class="btn">${ic("upload")} Importar backup<input type="file" accept=".json" hidden onchange="importBackup(this.files[0]);this.value=''"></label><button class="btn danger" onclick="wipeAll()">${ic('trash')} Apagar dados locais</button></div></div>
   </div>`, 'Configurações');
-  testSrv();
+  if (Auth.admin) Admin.load();
 }
 async function saveSrv() { const v = String(formData($('#fSrv')).workerUrl || '').trim().replace(/\/+$/, ''); if (v && !/^https:\/\/[a-z0-9.-]+(:\d+)?(\/[\w./-]*)?$/i.test(v)) return toast('Informe um endereço https válido', 'bad'); S.cfg.workerUrl = v; await saveCfg(); toast('Servidor salvo', 'ok'); testSrv(); }
 async function testSrv() {
@@ -2523,6 +2497,7 @@ function sNovaTentativa() { $('#main').innerHTML = sShell(`<div id="sId"></div>`
    ========================================================= */
 async function boot() {
   const student = /^#\/?enviar\//.test(location.hash);
+  if (!student && !Auth.token) return telaLogin();
   try {
     await DB.open();
     S.local = await DB.get('meta', 'local') || { id: 'local', token: '', gistId: '', lastSync: 0 };
@@ -2531,6 +2506,15 @@ async function boot() {
   } catch (e) {
     if (!student) { $('#main').innerHTML = `<div class="alert bad">${ic('alert')}<div>Não foi possível abrir o banco de dados local (IndexedDB): ${esc(e.message)}. Saia do modo anônimo ou use outro navegador.</div></div>`; return; }
     S.local = { token: '', gistId: '' }; S.cfg = {};
+  }
+  if (!student) {
+    try {
+      const me = await Auth.call('/me'); Auth.user = me.user; localStorage.setItem('catedra_user', JSON.stringify(me.user)); S.ia = me.ia;
+      S.cfg.workerUrl = Auth.api; S.cfg.ai = { provider: me.ia.provider, model: me.ia.model, key: me.ia.disponivel ? 'servidor' : '' };
+      if (!S.cfg.professor && me.user.role !== 'admin') S.cfg.professor = me.user.nome;
+      await DB.put('meta', S.cfg); // remove do navegador qualquer chave de IA antiga
+      if (S.local.token || S.local.gistId) { S.local.token = ''; S.local.gistId = ''; await saveLocal(); } // o token do GitHub não é mais usado
+    } catch (e) { if (e.status === 401) return; }
   }
   window.addEventListener('hashchange', router);
   router();
