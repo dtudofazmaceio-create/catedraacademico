@@ -313,7 +313,7 @@ const LIBS = {
   tessCore: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1',
   tessLang: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/por@1.0.0/4.0.0_best_int'
 };
-const APP_VERSION = '2026.10.30-13';
+const APP_VERSION = '2026.10.31-1';
 const sha16 = async t => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(t || ''))))].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
 const verNum = v => { const m = String(v || '').match(/^(\d+)\.(\d+)\.(\d+)-(\d+)$/); return m ? ((+m[1] * 100 + +m[2]) * 100 + +m[3]) * 1000 + +m[4] : 0; };
 const BC = (() => { try { return new BroadcastChannel('catedra'); } catch { return null; } })();
@@ -2061,9 +2061,9 @@ function viewConfig() {
     <p class="small" style="margin:10px 0 6px"><b>Migração (recomendado se você já enviou links antigos):</b> os links antigos continham o token e o ID do Gist. Revogue o token antigo no GitHub, crie um novo, informe-o acima e clique em:</p>
     <button class="btn" onclick="ghMigrar()">${ic('refresh')} Migrar para um novo Gist</button></div>
 
-  <div class="card"><h3>${ic('download')} Backup</h3><p class="muted small" style="margin-top:0">Exporte todos os dados em JSON ou restaure um backup (os registros são mesclados).</p>
+  <div class="card"><h3>${ic('download')} Backup global</h3><p class="muted small" style="margin-top:0">Leva <b>tudo</b> para outro aparelho: turmas, alunos, atividades e entregas, token do GitHub e ID do Gist, chave e configuração da IA, endereço do servidor e URL pública. O arquivo é <b>criptografado com uma senha</b> definida por você.</p>
     <p class="hint">Versão do sistema: <b>${APP_VERSION}</b></p>
-    <div class="actions"><button class="btn" onclick="exportBackup()">${ic('download')} Exportar</button><label class="btn">${ic('upload')} Importar<input type="file" accept=".json" hidden onchange="importBackup(this.files[0])"></label><button class="btn danger" onclick="wipeAll()">${ic('trash')} Apagar dados locais</button></div></div>
+    <div class="actions"><button class="btn primary" onclick="exportBackup()">${ic("download")} Exportar backup global</button><label class="btn">${ic("upload")} Importar backup<input type="file" accept=".json" hidden onchange="importBackup(this.files[0]);this.value=''"></label><button class="btn danger" onclick="wipeAll()">${ic('trash')} Apagar dados locais</button></div></div>
   </div>`, 'Configurações');
   testSrv();
 }
@@ -2071,7 +2071,12 @@ async function saveSrv() { const v = String(formData($('#fSrv')).workerUrl || ''
 async function testSrv() {
   const box = $('#srvStatus'); if (!box) return; if (!workerUrl()) { box.innerHTML = ''; return; }
   box.innerHTML = '<div class="muted small">Testando…</div>';
-  try { const h = await (await fetch(workerUrl() + '/health', { cache: 'no-store' })).json();
+  try {
+    const resp = await fetch(workerUrl() + '/health', { cache: 'no-store' }); const raw = await resp.text(); let h;
+    try { h = JSON.parse(raw); } catch {
+      const site = /<html|<!doctype/i.test(raw);
+      box.innerHTML = `<div class="alert bad">${ic('alert')}<div><b>O endereço respondeu, mas sem o servidor de envio</b> (HTTP ${resp.status}${site ? ', devolveu uma página' : raw ? '' : ', resposta vazia'}).<br>Isso acontece quando o worker contém só o site (index.html) e não o código do servidor. Abra o worker na Cloudflare → <b>Editar código</b>, apague tudo, cole o arquivo <b>catedra-completo.js</b> (site + servidor) ou o <b>worker.js</b> (só servidor) e clique em <b>Implantar</b>.</div></div>`; return;
+    }
     const V = h.vars || {};
     const itens = [[h.ok, `Servidor online (versão ${h.versao})`],
       ...(h.vars ? ['GITHUB_TOKEN', 'GIST_ID', 'AI_KEY', 'SESSION_SECRET', 'ALLOWED_ORIGIN'].map(k => [V[k], `${k}: ${V[k] ? 'encontrada' : 'NÃO encontrada pelo servidor'}`]) : []),
@@ -2175,16 +2180,94 @@ async function ghFind() {
   try { const list = await gh('/gists?per_page=100', {}, d.token.trim()); const g = list.find(x => (x.description || '').startsWith('Cátedra') && x.files['data.json']); if (!g) return toast('Nenhum Gist da Cátedra encontrado nesta conta', 'bad'); $('#fGh [name=gistId]').value = g.id; toast('Gist encontrado — clique em Conectar', 'ok'); } catch (e) { toast(e.message, 'bad'); }
 }
 async function ghDisconnect() { if (!await confirmDlg('Desconectar a sincronização? Os dados locais serão mantidos.', 'Desconectar')) return; S.local.token = ''; S.local.gistId = ''; await saveLocal(); Sync.state = 'off'; Sync.ui(); router(); }
+/* ---------- Backup global criptografado (AES-GCM 256 + PBKDF2-SHA256) ---------- */
+const BK_ITER = 310000;
+function bytesParaB64(u8) { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
+function b64ParaBytes(b) { const s = atob(b); const u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
+async function comprimir(u8, modo) { if (!window.CompressionStream) return null; const st = new Blob([u8]).stream().pipeThrough(new (modo ? CompressionStream : DecompressionStream)('gzip')); return new Uint8Array(await new Response(st).arrayBuffer()); }
+async function chaveBackup(senha, salt, it, uso) { const km = await crypto.subtle.importKey('raw', new TextEncoder().encode(senha), 'PBKDF2', false, ['deriveKey']); return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: it, hash: 'SHA-256' }, km, { name: 'AES-GCM', length: 256 }, false, [uso]); }
+async function cifrarBackup(obj, senha) {
+  let dados = new TextEncoder().encode(JSON.stringify(obj)); const gz = await comprimir(dados, true); if (gz) dados = gz;
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await chaveBackup(senha, salt, BK_ITER, 'encrypt'), dados));
+  return { app: 'catedra', formato: 'backup-cifrado', v: 3, tipo: obj.tipo, versao: APP_VERSION, criadoEm: new Date().toISOString(), cifra: { alg: 'AES-GCM-256', kdf: 'PBKDF2-SHA256', iteracoes: BK_ITER, salt: bytesParaB64(salt), iv: bytesParaB64(iv), gzip: !!gz }, dados: bytesParaB64(ct) };
+}
+async function decifrarBackup(env, senha) {
+  let pt;
+  try { pt = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64ParaBytes(env.cifra.iv) }, await chaveBackup(senha, b64ParaBytes(env.cifra.salt), +env.cifra.iteracoes || BK_ITER, 'decrypt'), b64ParaBytes(env.dados))); }
+  catch { throw new Error('Senha incorreta ou arquivo corrompido.'); }
+  if (env.cifra.gzip) { const d = await comprimir(pt, false); if (!d) throw new Error('Este navegador não consegue descompactar o backup. Use Chrome, Edge, Firefox ou Safari atualizados.'); pt = d; }
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+function baixarJSON(obj, nome) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(obj)], { type: 'application/json' })); a.download = nome; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
+function conteudoBackup() {
+  return {
+    tipo: 'backup-global', versao: APP_VERSION, criadoEm: new Date().toISOString(),
+    dados: { turmas: S.turmas, alunos: S.alunos, atividades: S.atividades, entregas: S.entregas },
+    configuracao: JSON.parse(JSON.stringify(S.cfg)),
+    conexao: { token: S.local.token || '', gistId: S.local.gistId || '', workerUrl: S.cfg.workerUrl || '', publicUrl: S.cfg.publicUrl || '' }
+  };
+}
 function exportBackup() {
-  const data = { app: 'catedra', v: 1, exportadoEm: new Date().toISOString(), ...buildData(), entregas: S.entregas, cfg: { ...cfgPublic(), ai: { ...S.cfg.ai, key: '' } } };
-  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' })); a.download = `catedra-backup-${new Date().toISOString().slice(0, 10)}.json`; a.click();
+  const c = conteudoBackup(); const n = ['turmas', 'alunos', 'atividades', 'entregas'].map(k => live(c.dados[k]).length);
+  modal({
+    title: 'Exportar backup global', body: `<form onsubmit="return false">
+      <p style="margin-top:0" class="small">O arquivo terá: <b>${n[0]}</b> turmas, <b>${n[1]}</b> alunos, <b>${n[2]}</b> atividades e <b>${n[3]}</b> entregas;
+      ${c.conexao.token ? 'token do GitHub' : '<span class="muted">sem token do GitHub</span>'}${c.conexao.gistId ? ' e ID do Gist' : ''}; ${c.configuracao.ai?.key ? 'chave da IA (' + esc(PROVIDERS[c.configuracao.ai.provider] || c.configuracao.ai.provider) + ')' : '<span class="muted">sem chave de IA</span>'}; ${c.conexao.workerUrl ? 'endereço do servidor' : '<span class="muted">sem servidor</span>'}.</p>
+      <div class="field"><label>Senha do backup (mínimo 8 caracteres)</label><input type="password" name="s1" autocomplete="new-password" required></div>
+      <div class="field"><label>Repita a senha</label><input type="password" name="s2" autocomplete="new-password" required></div>
+      <div class="alert warn" style="margin:0">${ic('shield')}<div class="small">Guarde esta senha: <b>sem ela o backup não pode ser aberto</b>, nem por você. Não envie a senha junto com o arquivo.</div></div></form>`,
+    actions: [{ label: 'Cancelar' }, {
+      label: ic('download') + ' Exportar', cls: 'primary', onClick: async el => {
+        const d = formData(el); if (d.s1.length < 8) throw new Error('A senha deve ter pelo menos 8 caracteres.'); if (d.s1 !== d.s2) throw new Error('As senhas não conferem.');
+        toast('Criptografando…'); const env = await cifrarBackup(conteudoBackup(), d.s1);
+        baixarJSON(env, `catedra-backup-global-${new Date().toISOString().slice(0, 10)}.json`); toast('Backup exportado', 'ok');
+      }
+    }]
+  });
+}
+function pedirSenhaBackup(info) {
+  return new Promise(res => {
+    const m = modal({ title: 'Abrir backup', body: `<form onsubmit="return false"><p class="small" style="margin-top:0">Backup criado em <b>${esc(fmtDate(info.criadoEm))}</b> (versão ${esc(info.versao || '?')}). Digite a senha usada ao exportar.</p><div class="field"><label>Senha do backup</label><input type="password" name="s" autocomplete="off" required></div></form>`,
+      actions: [{ label: 'Cancelar', onClick: () => { res(null); } }, { label: 'Abrir', cls: 'primary', onClick: el => { res(formData(el).s); } }] });
+    m.el.parentElement.addEventListener('mousedown', e => { if (e.target === m.el.parentElement) res(null); });
+  });
 }
 async function importBackup(f) {
-  if (!f) return; try {
-    const d = JSON.parse(await f.text()); let n = 0;
+  if (!f) return;
+  let d; try { d = JSON.parse(await f.text()); } catch { return toast('Arquivo inválido: não é um backup do Cátedra.', 'bad'); }
+  if (d.formato === 'backup-cifrado') {
+    for (;;) { const senha = await pedirSenhaBackup(d); if (senha == null) return; try { d = await decifrarBackup(d, senha); break; } catch (e) { toast(e.message, 'bad'); } }
+  }
+  if (d.tipo !== 'backup-global') { // backups antigos (apenas dados)
+    let n = 0;
     for (const st of ['turmas', 'alunos', 'atividades', 'entregas']) for (const r of d[st] || []) { const l = byId(st, r.id); if (!l || (r.updatedAt || 0) > (l.updatedAt || 0)) { await putLocal(st, r); if (st === 'entregas') Sync.dirtyArq.add(r.atividadeId); n++; } }
-    toast(`${n} registro(s) importado(s)`, 'ok'); Sync.schedule(); router();
-  } catch (e) { toast('Arquivo inválido: ' + e.message, 'bad'); }
+    toast(`${n} registro(s) importado(s)`, 'ok'); Sync.schedule(); router(); return;
+  }
+  const c = d.conexao || {}, cfg = d.configuracao || {}, dd = d.dados || {};
+  const mudaGist = c.gistId && S.local.gistId && c.gistId !== S.local.gistId;
+  modal({
+    title: 'Restaurar backup global', body: `<form onsubmit="return false"><p class="small" style="margin-top:0">Backup de <b>${esc(fmtDate(d.criadoEm))}</b>. Escolha o que restaurar neste aparelho:</p>
+      <label class="check"><input type="checkbox" name="dados" checked> <span><b>Dados</b>: ${live(dd.turmas || []).length} turmas, ${live(dd.alunos || []).length} alunos, ${live(dd.atividades || []).length} atividades, ${live(dd.entregas || []).length} entregas <span class="muted small">(mesclados com os atuais; vale o registro mais recente)</span></span></label>
+      <label class="check"><input type="checkbox" name="conexao" ${c.token || c.gistId ? 'checked' : 'disabled'}> <span><b>Sincronização</b>: ${c.token ? 'token do GitHub' : 'sem token'}${c.gistId ? ' + Gist <code>' + esc(c.gistId.slice(0, 10)) + '…</code>' : ''}${mudaGist ? ' <span class="badge warn">diferente do Gist atual</span>' : ''}</span></label>
+      <label class="check"><input type="checkbox" name="ia" ${cfg.ai?.key ? 'checked' : 'disabled'}> <span><b>Inteligência artificial</b>: ${cfg.ai?.key ? esc(PROVIDERS[cfg.ai.provider] || cfg.ai.provider) + ' · ' + esc(cfg.ai.model || '') + ' · chave ' + esc(maskKey(cfg.ai.key)) + (cfg.ai.workspace ? ' · ' + esc(cfg.ai.workspace) : '') : 'sem chave'}</span></label>
+      <label class="check"><input type="checkbox" name="servidor" ${cfg.workerUrl || c.workerUrl ? 'checked' : 'disabled'}> <span><b>Servidor de envio e URL pública</b>: ${esc(c.workerUrl || cfg.workerUrl || '—')}</span></label>
+      <label class="check"><input type="checkbox" name="perfil" checked> <span><b>Professor, instituição e modo de correção</b>: ${esc(cfg.professor || '—')}${cfg.instituicao ? ' · ' + esc(cfg.instituicao) : ''}</span></label></form>`,
+    actions: [{ label: 'Cancelar' }, {
+      label: ic('check') + ' Restaurar', cls: 'primary', onClick: async el => {
+        const o = formData(el); let n = 0;
+        if (o.dados) for (const st of ['turmas', 'alunos', 'atividades', 'entregas']) for (const r of dd[st] || []) { const l = byId(st, r.id); if (!l || (r.updatedAt || 0) > (l.updatedAt || 0)) { await putLocal(st, r); if (st === 'entregas') Sync.dirtyArq.add(r.atividadeId); n++; } }
+        if (o.perfil) ['professor', 'instituicao', 'modoPadrao', 'fallbackLocal'].forEach(k => { if (cfg[k] !== undefined) S.cfg[k] = cfg[k]; });
+        if (o.ia && cfg.ai) S.cfg.ai = { ...S.cfg.ai, ...cfg.ai, key: cleanKey(cfg.ai.key) };
+        if (o.servidor) { S.cfg.workerUrl = c.workerUrl || cfg.workerUrl || S.cfg.workerUrl; S.cfg.publicUrl = c.publicUrl || cfg.publicUrl || S.cfg.publicUrl; }
+        if (o.perfil || o.ia || o.servidor) { S.cfg.updatedAt = Date.now(); await DB.put('meta', S.cfg); }
+        if (o.conexao) { if (c.token) S.local.token = c.token; if (c.gistId) S.local.gistId = c.gistId; await saveLocal(); }
+        toast(`Backup restaurado${o.dados ? ` (${n} registro(s) de dados)` : ''}. Sincronizando…`, 'ok', 5000);
+        if (Sync.configured()) { await Sync.run(true); }
+        router();
+      }
+    }]
+  });
 }
 async function wipeAll() {
   if (!await confirmDlg('Apagar TODOS os dados deste navegador? (O Gist não é afetado; ao reconectar, os dados voltam.)', 'Apagar tudo')) return;
