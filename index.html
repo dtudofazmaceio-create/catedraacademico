@@ -170,6 +170,7 @@ legend{font:700 15px Fraunces,serif;padding:0 8px}
 .conf .ci.bad{background:var(--bad-soft);color:var(--bad)}
 .blist{margin:0;padding-left:18px}
 .blist li{margin-bottom:6px;font-size:14px}
+.quote{border-left:3px solid #d6d1c4;background:#faf8f3;padding:6px 10px;margin:6px 0 0;font-size:13px;font-style:italic;color:#4a5265;border-radius:0 8px 8px 0}
 .parecer{background:#faf8f3;border-left:4px solid var(--accent);border-radius:10px;padding:14px 16px;font-size:14.5px}
 details.raw summary{cursor:pointer;font-weight:600;color:var(--muted);font-size:14px}
 details.raw pre{white-space:pre-wrap;font-size:13px;background:#f7f6f2;padding:14px;border-radius:10px;max-height:340px;overflow:auto}
@@ -312,7 +313,7 @@ const LIBS = {
   tessCore: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1',
   tessLang: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/por@1.0.0/4.0.0_best_int'
 };
-const APP_VERSION = '2026.10.30-12';
+const APP_VERSION = '2026.10.30-13';
 const sha16 = async t => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(t || ''))))].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
 const verNum = v => { const m = String(v || '').match(/^(\d+)\.(\d+)\.(\d+)-(\d+)$/); return m ? ((+m[1] * 100 + +m[2]) * 100 + +m[3]) * 1000 + +m[4] : 0; };
 const BC = (() => { try { return new BroadcastChannel('catedra'); } catch { return null; } })();
@@ -329,6 +330,64 @@ const CRIT_PADRAO = {
   ensaio: [['Tese e originalidade',2.5,'Clareza e originalidade da ideia central'],['Argumentação',3,'Profundidade e consistência'],['Fundamentação',2,'Diálogo com autores e conceitos'],['Coesão e estilo',1.5,'Fluidez e organização'],['Norma culta',1,'Correção gramatical']],
   estudo_caso: [['Compreensão do caso',2,'Identificação dos fatos e do problema central'],['Aplicação de conceitos',3,'Uso correto da teoria para analisar o caso'],['Análise e diagnóstico',2.5,'Profundidade da análise'],['Soluções / recomendações',1.5,'Propostas viáveis e justificadas'],['Clareza e organização',1,'Estrutura e linguagem']],
   outro: [['Atendimento ao enunciado',3,'Cumpre o que foi solicitado'],['Domínio do conteúdo',3,'Uso correto dos conceitos'],['Organização e clareza',2,'Estrutura lógica e linguagem clara'],['Norma culta e formatação',2,'Correção e apresentação']]
+};
+const MODELOS = {
+  redacao_enem: {
+    nome: 'Redação dissertativa-argumentativa (modelo ENEM, 5 competências)', subtipo: 'redacao', genero: 'texto dissertativo-argumentativo em prosa', politicaTema: 'zerar', limiteFuga: 0, limiteTangencia: 40, exigirGenero: true, rigor: 'rigoroso',
+    criterios: [
+      ['Competência 1 — Norma padrão da língua', 2, '10: no máximo 1 ou 2 desvios leves e estrutura sintática excelente; 8: poucos desvios e boa estrutura sintática; 6: desvios medianos e estrutura regular; 4: muitos desvios e estrutura deficitária; 2: desvios graves e frequentes; 0: desconhecimento da norma. Considere ortografia, acentuação, concordância, regência, crase, pontuação, paralelismo e registro formal (sem marcas de oralidade).'],
+      ['Competência 2 — Tema, tipo textual e repertório', 2, '10: desenvolve plenamente o recorte do tema, com tipo dissertativo-argumentativo consolidado e repertório sociocultural legitimado, pertinente e produtivo (articulado à argumentação); 8: bom desenvolvimento do tema e repertório pertinente; 6: desenvolvimento mediano, repertório previsível ou pouco articulado; 4: desenvolvimento insuficiente ou apoiado em cópia dos textos motivadores; 2: tangencia o tema ou mistura outro tipo textual; 0: fuga ao tema ou não atende ao tipo dissertativo-argumentativo.'],
+      ['Competência 3 — Seleção e organização dos argumentos', 2, '10: projeto de texto estratégico, tese clara e argumentos consistentes, bem selecionados, desenvolvidos e relacionados entre si; 8: organizado, com poucas falhas no desenvolvimento; 6: argumentos pouco desenvolvidos ou limitados aos textos de apoio; 4: informações desorganizadas ou contraditórias; 2: argumentos pouco relacionados ao tema; 0: não defende ponto de vista.'],
+      ['Competência 4 — Coesão textual', 2, '10: articula muito bem as partes do texto, com repertório diversificado de recursos coesivos (conectivos, retomadas pronominais e lexicais, sinônimos, elipses) entre e dentro dos parágrafos, sem inadequações; 8: boa articulação, poucas inadequações; 6: articulação mediana, com repetições ou conectivos inadequados; 4: insuficiente, muitas repetições e inadequações; 2: precária; 0: não articula as informações.'],
+      ['Competência 5 — Proposta de intervenção', 2, '10: proposta completa e detalhada, articulada à discussão, com os cinco elementos — agente, ação, modo/meio, finalidade/efeito e detalhamento — respeitando os direitos humanos; 8: bem elaborada (quatro elementos); 6: mediana (três elementos); 4: insuficiente (dois elementos); 2: vaga ou precária (um elemento); 0: ausente, desconectada do tema ou que desrespeite os direitos humanos.']
+    ],
+    instrucoes: 'Corrija como um avaliador experiente de redações do ENEM. Antes de tudo, verifique se o texto enfrenta o RECORTE ESPECÍFICO do tema (e não apenas o assunto geral). Enquadre cada competência no nível descrito (0, 2, 4, 6, 8 ou 10) e cite o trecho que justifica. Trechos copiados dos textos motivadores não contam como produção do aluno. Textos muito curtos (até cerca de 7 linhas) são insuficientes. Seja rigoroso e coerente: a mesma falha deve gerar o mesmo desconto.'
+  },
+  artigo: {
+    nome: 'Artigo científico (ABNT)', subtipo: 'artigo', genero: 'artigo científico', politicaTema: 'limitar', limiteFuga: 20, limiteTangencia: 60, exigirGenero: true, rigor: 'rigoroso', normas: 'ABNT', minReferencias: 5, secoes: 'Resumo, Introdução, Metodologia, Resultados, Conclusão, Referências',
+    criterios: [
+      ['Estrutura e resumo', 1.5, '10: resumo com objetivo, método, resultados e conclusão + palavras-chave; todas as seções presentes e proporcionais; 6: seções presentes, mas resumo incompleto ou seções desequilibradas; 2: faltam seções essenciais; 0: não segue a estrutura de artigo.'],
+      ['Problema, objetivos e justificativa', 1.5, '10: problema de pesquisa claro, objetivos coerentes e verificáveis, justificativa relevante; 6: problema ou objetivos vagos; 2: ausentes ou desconexos do tema.'],
+      ['Fundamentação teórica', 2, '10: diálogo crítico com autores pertinentes e atualizados, conceitos bem definidos; 6: revisão descritiva, pouco crítica ou com fontes frágeis; 2: fundamentação ausente ou inadequada.'],
+      ['Metodologia', 2, '10: tipo de pesquisa, procedimentos, instrumentos, amostra e análise descritos de forma replicável e coerente com os objetivos; 6: método descrito de forma incompleta; 2: método ausente ou incoerente.'],
+      ['Resultados, discussão e conclusão', 2, '10: resultados apresentados com clareza, discutidos à luz da teoria, conclusão responde ao problema; 6: discussão superficial ou conclusão genérica; 2: conclusão não decorre dos resultados.'],
+      ['Linguagem científica e normas ABNT', 1, '10: linguagem impessoal, precisa e correta; citações (NBR 10520) e referências (NBR 6023) corretas; 6: falhas pontuais de linguagem ou formatação; 2: muitas falhas, citações sem referência.']
+    ],
+    instrucoes: 'Avalie como um parecerista de periódico acadêmico. Verifique se o artigo trata do tema proposto e se há coerência entre problema, objetivos, método, resultados e conclusão. Aponte citações sem referência e referências fora da ABNT. Cite trechos que justificam cada nota.'
+  },
+  resenha: {
+    nome: 'Resenha crítica', subtipo: 'resenha', genero: 'resenha crítica', politicaTema: 'zerar', limiteFuga: 0, limiteTangencia: 50, exigirGenero: true, rigor: 'moderado',
+    criterios: [
+      ['Apresentação da obra', 1.5, '10: referência completa da obra, credenciais do autor, contexto e objetivo da obra; 6: apresentação incompleta; 2: ausente.'],
+      ['Síntese fiel do conteúdo', 2.5, '10: resume com fidelidade a ideia central e a organização da obra, sem distorções; 6: síntese parcial ou com imprecisões; 2: síntese incorreta ou ausente.'],
+      ['Análise crítica fundamentada', 3, '10: avalia pontos fortes e limitações com argumentos e exemplos da obra, dialogando com outras referências; 6: crítica superficial ou opinativa sem fundamentação; 2: apenas resumo, sem crítica.'],
+      ['Posicionamento e recomendação', 1.5, '10: posicionamento claro e coerente com a análise, indicando público e relevância; 6: posicionamento vago; 2: ausente.'],
+      ['Coesão, coerência e norma culta', 1.5, '10: texto bem articulado e correto; 6: falhas pontuais; 2: muitos problemas de articulação e de norma.']
+    ],
+    instrucoes: 'Verifique se a resenha trata da obra indicada no tema. Diferencie resumo de crítica: um texto que apenas resume a obra não atende ao gênero resenha crítica. Cite trechos que justificam cada nota.'
+  },
+  estudo_caso: {
+    nome: 'Estudo de caso', subtipo: 'estudo_caso', genero: 'estudo de caso (análise aplicada)', politicaTema: 'limitar', limiteFuga: 20, limiteTangencia: 60, exigirGenero: false, rigor: 'moderado',
+    criterios: [
+      ['Compreensão do caso', 2, '10: identifica corretamente os fatos, atores e o problema central do caso; 6: compreensão parcial; 2: compreensão equivocada.'],
+      ['Aplicação dos conceitos da disciplina', 3, '10: aplica corretamente os conceitos/teorias pertinentes ao caso, com precisão técnica; 6: aplicação genérica ou com imprecisões; 2: conceitos ausentes ou errados.'],
+      ['Análise e diagnóstico', 2.5, '10: análise profunda, causas e consequências bem relacionadas; 6: análise superficial; 2: apenas descreve o caso.'],
+      ['Soluções e recomendações', 1.5, '10: propostas viáveis, justificadas e coerentes com o diagnóstico; 6: propostas genéricas; 2: ausentes.'],
+      ['Clareza, coesão e norma culta', 1, '10: texto claro, articulado e correto; 6: falhas pontuais; 2: muitos problemas.']
+    ],
+    instrucoes: 'Verifique se a análise trata do caso apresentado no enunciado. Valorize a aplicação correta dos conceitos da disciplina e desconte afirmações tecnicamente incorretas. Cite trechos que justificam cada nota.'
+  },
+  relatorio: {
+    nome: 'Relatório técnico / de atividade', subtipo: 'relatorio', genero: 'relatório técnico', politicaTema: 'limitar', limiteFuga: 20, limiteTangencia: 60, exigirGenero: false, rigor: 'moderado', secoes: 'Introdução, Objetivos, Metodologia, Resultados, Conclusão',
+    criterios: [
+      ['Estrutura do relatório', 1.5, '10: todas as seções presentes e bem delimitadas; 6: seções incompletas; 2: estrutura ausente.'],
+      ['Descrição dos procedimentos', 2.5, '10: procedimentos, materiais e condições descritos com precisão e reprodutibilidade; 6: descrição incompleta; 2: vaga.'],
+      ['Resultados e análise', 3, '10: dados apresentados com clareza (tabelas/figuras), interpretados corretamente e comparados ao esperado; 6: análise superficial; 2: sem análise.'],
+      ['Conclusão', 1.5, '10: conclui com base nos resultados e responde aos objetivos; 6: conclusão genérica; 2: ausente.'],
+      ['Linguagem técnica e norma', 1.5, '10: linguagem objetiva, impessoal e correta; 6: falhas pontuais; 2: muitos problemas.']
+    ],
+    instrucoes: 'Verifique se o relatório trata da atividade/experimento proposto no enunciado. Desconte dados sem análise e conclusões que não decorrem dos resultados. Cite trechos que justificam cada nota.'
+  }
 };
 const RIGOR = {
   flexivel: 'FLEXÍVEL: seja encorajador, valorize o esforço e desconte apenas falhas relevantes.',
@@ -737,6 +796,52 @@ function critsOf(atv) {
   const c = (atv.params?.criterios || []).filter(x => x.nome);
   return c.length ? c : (CRIT_PADRAO[atv.subtipo] || CRIT_PADRAO.outro).map(([nome, peso, descricao]) => ({ nome, peso, descricao }));
 }
+const TEMA_GENERICO = new Set(['desafi', 'problem', 'importanc', 'papel', 'impact', 'quest', 'caminh', 'combat', 'perspectiv', 'discuss', 'enfrent', 'debat', 'consequenc', 'caus', 'reflex', 'atual', 'contemporan', 'relac', 'influenc', 'aspect', 'fator', 'efeit', 'manei', 'form', 'context', 'cenari', 'process', 'temat', 'analis', 'brasil', 'brasileir', 'nacional', 'socied', 'sociedad', 'mund']);
+function temaLocal(p, text) {
+  // ignora a linha de título (até 12 palavras, sem ponto final): citar o tema no título não é desenvolvê-lo
+  const linhas = String(text).split('\n'); const i0 = linhas.findIndex(l => l.trim());
+  const corpo = (i0 >= 0 && countWords(linhas[i0]) <= 12 && !/[.!?]\s*$/.test(linhas[i0].trim())) ? linhas.slice(i0 + 1).join('\n') : String(text);
+  const tk = toks(corpo); const set = new Set(tk); const freq = {}; tk.forEach(w => freq[w] = (freq[w] || 0) + 1);
+  const palavrasTema = deacc(p.tema || '').split(/[^a-z0-9]+/).filter(w => w.length > 2 && !STOP.has(w));
+  const core = [...new Set(palavrasTema.map(stem))].filter(t => !TEMA_GENERICO.has(t));
+  const originais = String(p.tema || '').split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  const nomeDe = t => originais.find(w => stem(deacc(w)) === t) || t;
+  const grupos = splitConceitos(p.palavrasChave);
+  // um termo central também conta como presente se um sinônimo cadastrado (expressão completa) aparecer no texto
+  const presente = t => set.has(t) || grupos.some(g => g.split('/').some(alt => toks(alt).includes(t)) && conceitoPresente(g, set));
+  const hit = core.filter(presente); const coreCov = core.length ? hit.length / core.length : null;
+  const ocorr = hit.reduce((a, t) => a + (freq[t] || 1), 0);
+  const kwRes = grupos.length ? cobertura(grupos, corpo) : null;
+  if (coreCov == null && !kwRes) return null;
+  let situacao;
+  if (core.length) {
+    if (coreCov === 0) situacao = (kwRes && kwRes.ok.length >= 3 && kwRes.cov >= 0.5) ? 'tangencia' : 'fuga';
+    else if (coreCov < 1) situacao = (kwRes && kwRes.cov >= 0.6) ? 'adequado' : 'tangencia';
+    else situacao = (ocorr < 2 * core.length && !(kwRes && kwRes.cov >= 0.5)) || (kwRes && kwRes.cov < 0.3) ? 'tangencia' : 'adequado';
+  } else situacao = kwRes.cov < 0.3 ? 'fuga' : kwRes.cov < 0.6 ? 'tangencia' : 'adequado';
+  const score = kwRes ? (coreCov == null ? kwRes.cov : 0.5 * kwRes.cov + 0.5 * coreCov) : coreCov;
+  return {
+    situacao, generoAdequado: null, tese: '', automatico: true, cobertura: round2(score),
+    justificativa: `Verificação automática por vocabulário (sem IA), desconsiderando o título: ${core.length ? `${hit.length} de ${core.length} termos centrais do tema desenvolvidos no texto (${core.map(t => (presente(t) ? '✓ ' : '✗ ') + nomeDe(t)).join(', ')})` : ''}${kwRes ? `${core.length ? '; ' : ''}conceitos esperados encontrados: ${kwRes.ok.join(', ') || 'nenhum'}${kwRes.falta.length ? ' — ausentes: ' + kwRes.falta.join(', ') : ''}` : ''}. Esta verificação não interpreta o sentido do texto: em caso de dúvida, revise ou use a correção por IA.`,
+    evidencias: []
+  };
+}
+function aplicarRegraTema(p, tema, nota, notaMax) {
+  if (!tema) return { nota, regra: '' };
+  const pol = p.politicaTema || 'zerar';
+  const genFalha = p.exigirGenero !== false && !!p.genero && tema.generoAdequado === false;
+  const motivo = tema.situacao === 'fuga' ? 'fuga ao tema' : genFalha ? 'não atender ao gênero/tipo textual exigido' : '';
+  if (motivo) {
+    if (pol === 'avisar') return { nota, regra: `Identificado: ${motivo} (apenas aviso — nota não alterada pela regra).` };
+    if (pol === 'limitar') { const pc = clamp(+(p.limiteFuga ?? 20), 0, 100); const lim = notaMax * pc / 100; return { nota: Math.min(nota, lim), regra: `Nota limitada a ${pc}% do valor por ${motivo}, conforme regra do professor.` }; }
+    return { nota: 0, regra: `Nota zerada por ${motivo}, conforme regra definida pelo professor.` };
+  }
+  if (tema.situacao === 'tangencia' && pol !== 'avisar') {
+    const pc = clamp(+(p.limiteTangencia ?? 50), 0, 100); const lim = notaMax * pc / 100;
+    if (pc > 0 && pc < 100 && nota > lim) return { nota: lim, regra: `Nota limitada a ${pc}% do valor por tangenciamento do tema, conforme regra do professor.` };
+  }
+  return { nota, regra: '' };
+}
 async function gradeTrabalho(cfg, atv, text, images) {
   const p = atv.params || {}; const crits = critsOf(atv);
   const palavras = text.trim() ? countWords(text) : null;
@@ -748,6 +853,8 @@ async function gradeTrabalho(cfg, atv, text, images) {
   if (+p.minReferencias) par.push(`Mínimo de referências bibliográficas: ${p.minReferencias}`);
   if (p.idioma) par.push(`Idioma: ${p.idioma}`);
   if (p.palavrasChave) par.push(`Conceitos/palavras-chave que devem ser abordados: ${p.palavrasChave}`);
+  if (p.genero) par.push(`Gênero / tipo textual exigido: ${p.genero}`);
+  const temaRef = p.tema ? `"${p.tema}"` : `(não informado — use o enunciado como referência: "${String(atv.descricao || atv.titulo).slice(0, 600)}")`;
   const prompt = `ATIVIDADE: ${atv.titulo}
 TIPO DE TRABALHO: ${SUBTIPOS[atv.subtipo] || 'Trabalho'}
 ENUNCIADO / ORIENTAÇÕES AO ALUNO:
@@ -758,32 +865,64 @@ ${par.length ? par.map(x => '- ' + x).join('\n') : '- (nenhum parâmetro adicion
 
 NÍVEL DE RIGOR: ${RIGOR[atv.rigor || 'moderado']}
 ${p.instrucoes ? `\nINSTRUÇÕES ADICIONAIS DO PROFESSOR PARA A CORREÇÃO:\n${p.instrucoes}\n` : ''}
-CRITÉRIOS DE AVALIAÇÃO (atribua a cada um uma nota de 0 a 10, com decimais se necessário):
-${crits.map((c, i) => `${i + 1}. ${c.nome} (peso ${c.peso})${c.descricao ? ': ' + c.descricao : ''}`).join('\n')}
-
 ${text.trim() ? `TEXTO DO ALUNO (entre <<<INICIO>>> e <<<FIM>>>):\n<<<INICIO>>>\n${text.slice(0, 60000)}\n<<<FIM>>>` : ''}
 ${images.length ? `\nO trabalho (ou parte dele) está nas ${images.length} imagem(ns) anexada(s). Leia-as com atenção.` : ''}
 
-Verifique cada parâmetro em "conformidade". Retorne exatamente este JSON:
-{"criterios":[{"nome":"<nome do critério exatamente como listado>","nota":0,"comentario":"justificativa objetiva"}],
+FAÇA A CORREÇÃO EM ETAPAS, NESTA ORDEM:
+
+ETAPA 1 — ADEQUAÇÃO AO TEMA (obrigatória, antes de qualquer critério)
+Tema proposto: ${temaRef}
+a) Identifique o assunto real do texto e a tese/ideia central defendida pelo aluno.
+b) Classifique em "situacao":
+   - "adequado": o texto discute o tema proposto e enfrenta o seu recorte específico (as palavras centrais do tema são efetivamente desenvolvidas, não apenas mencionadas).
+   - "tangencia": trata apenas do assunto amplo ou de parte do tema, sem enfrentar o recorte proposto (ex.: tema "Os desafios enfrentados pelos países subdesenvolvidos" e o texto fala de pobreza em geral, sem relacioná-la aos desafios desses países).
+   - "fuga": o texto trata de outro assunto, ou apenas cita o tema e desenvolve outra coisa.
+   Mencionar o tema no título ou numa frase isolada NÃO basta para "adequado".
+c) ${p.genero ? `Verifique se o texto pertence ao gênero/tipo exigido ("${p.genero}") e informe em "generoAdequado" (true/false).` : 'Informe "generoAdequado": true, salvo se o texto claramente não for um trabalho do tipo solicitado.'}
+d) Justifique e cite de 1 a 3 trechos curtos (copiados literalmente do texto) que comprovem a classificação.
+
+ETAPA 2 — CRITÉRIOS (nota de 0 a 10 para cada um, decimais permitidos)
+${crits.map((c, i) => `${i + 1}. ${c.nome} (peso ${c.peso})${c.descricao ? ': ' + c.descricao : ''}`).join('\n')}
+Para cada critério: enquadre no nível descrito (se houver), justifique em "comentario" e copie em "evidencia" um trecho curto e literal do texto que comprove a nota (ou "" se a nota decorrer de uma ausência).
+Avalie cada critério de forma independente e honesta, mesmo que haja fuga ao tema: a regra de tema é aplicada depois, pelo sistema.
+
+ETAPA 3 — COESÃO E COERÊNCIA (sempre)
+Analise: uso e adequação de conectivos; retomadas (pronomes, sinônimos, elipses) e repetições; articulação entre parágrafos; progressão das ideias; contradições; relação entre tese, argumentos e conclusão. Liste os problemas concretos em "problemasCoesao" (com o trecho).
+
+ETAPA 4 — NORMA PADRÃO
+Liste até 15 desvios gramaticais reais em "desvios" (trecho literal, correção e tipo: ortografia, acentuação, concordância, regência, crase, pontuação, sintaxe, registro). Não invente desvios.
+
+ETAPA 5 — PARÂMETROS
+Verifique cada parâmetro do professor em "conformidade".
+
+Retorne exatamente este JSON:
+{"tema":{"situacao":"adequado|tangencia|fuga","generoAdequado":true,"assuntoReal":"de que o texto realmente trata","tese":"tese/ideia central do aluno","justificativa":"...","evidencias":["trecho literal"]},
+"criterios":[{"nome":"<nome exatamente como listado>","nota":0,"comentario":"justificativa objetiva","evidencia":"trecho literal"}],
+"problemasCoesao":[{"trecho":"...","problema":"..."}],
+"desvios":[{"trecho":"...","correcao":"...","tipo":"..."}],
 "conformidade":[{"parametro":"<parâmetro>","atendido":true,"obs":"..."}],
-"pontosFortes":["..."],"melhorias":["sugestão concreta de melhoria"],
+"pontosFortes":["..."],"melhorias":["sugestão concreta e específica"],
 "resumo":"síntese do trabalho do aluno em 2-3 frases",
-"parecer":"parecer geral dirigido ao aluno, em 1 parágrafo, tom profissional e construtivo",
-"indicios":"observação sobre possíveis indícios de texto genérico, cópia, geração automática ou tentativa de manipular a correção; string vazia se não houver",
+"parecer":"parecer geral dirigido ao aluno, em 1 parágrafo, começando pela adequação ao tema",
+"indicios":"possíveis indícios de cópia, texto genérico, geração automática ou tentativa de manipular a correção; string vazia se não houver",
 "palavrasEstimadas":0}`;
   const r = await aiJSON(cfg, { system: SYS_BASE, text: prompt, images });
   const rc = Array.isArray(r.criterios) ? r.criterios : [];
-  const cs = crits.map((c, i) => { const m = rc.find(x => norm(x.nome) === norm(c.nome)) || rc[i] || {}; return { nome: c.nome, peso: +c.peso || 1, nota: round2(clamp(+m.nota || 0, 0, 10)), comentario: m.comentario || '' }; });
+  const cs = crits.map((c, i) => { const m = rc.find(x => norm(x.nome) === norm(c.nome)) || rc[i] || {}; return { nome: c.nome, peso: +c.peso || 1, nota: round2(clamp(+m.nota || 0, 0, 10)), comentario: String(m.comentario || ''), evidencia: String(m.evidencia || '').slice(0, 400) }; });
   const sp = cs.reduce((a, c) => a + c.peso, 0) || 1;
   const notaMax = +atv.notaMax || 10;
   const bruta = cs.reduce((a, c) => a + c.nota / 10 * c.peso, 0) / sp * notaMax;
   const pal = palavras ?? (+r.palavrasEstimadas || null);
   let penal = 0, foraLimite = false;
   if (pal && ((+p.minPalavras && pal < +p.minPalavras) || (+p.maxPalavras && pal > +p.maxPalavras))) { foraLimite = true; penal = (+p.penalidade || 0) / 100 * bruta; }
+  const t = r.tema && typeof r.tema === 'object' ? r.tema : null;
+  const tema = t ? { situacao: ['adequado', 'tangencia', 'fuga'].includes(t.situacao) ? t.situacao : 'adequado', generoAdequado: t.generoAdequado === false ? false : true, assuntoReal: String(t.assuntoReal || ''), tese: String(t.tese || ''), justificativa: String(t.justificativa || ''), evidencias: (Array.isArray(t.evidencias) ? t.evidencias : []).slice(0, 3).map(String), automatico: false } : null;
+  const reg = aplicarRegraTema(p, tema, Math.max(0, bruta - penal), notaMax);
+  const conf = Array.isArray(r.conformidade) ? r.conformidade : [];
+  if (tema) conf.unshift({ parametro: 'Adequação ao tema', atendido: tema.situacao === 'adequado', obs: { adequado: 'Tema atendido', tangencia: 'Tangenciamento do tema', fuga: 'Fuga ao tema' }[tema.situacao] });
   return {
-    nota: round2(Math.max(0, bruta - penal)), notaMax,
-    relatorio: { tipo: 'trabalho', criterios: cs, conformidade: Array.isArray(r.conformidade) ? r.conformidade : [], pontosFortes: r.pontosFortes || [], melhorias: r.melhorias || [], resumo: r.resumo || '', parecer: r.parecer || '', indicios: r.indicios || '', palavras: pal, palavrasEstimadas: palavras == null, foraLimite, penalidade: round2(penal), notaBruta: round2(bruta) }
+    nota: round2(reg.nota), notaMax,
+    relatorio: { tipo: 'trabalho', tema, regraTema: reg.regra, criterios: cs, conformidade: conf, problemasCoesao: (Array.isArray(r.problemasCoesao) ? r.problemasCoesao : []).slice(0, 12), desvios: (Array.isArray(r.desvios) ? r.desvios : []).slice(0, 15), pontosFortes: r.pontosFortes || [], melhorias: r.melhorias || [], resumo: r.resumo || '', parecer: r.parecer || '', indicios: r.indicios || '', palavras: pal, palavrasEstimadas: palavras == null, foraLimite, penalidade: round2(penal), notaBruta: round2(bruta) }
   };
 }
 const normAns = s => String(s || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z0-9]/g, '');
@@ -792,7 +931,7 @@ async function gradeProva(cfg, atv, text, images) {
   const gab = atv.gabarito || []; if (!gab.length) throw new Error('Esta prova ainda não possui gabarito cadastrado.');
   const linhas = gab.map(q => q.tipo === 'objetiva'
     ? `Questão ${q.numero} [OBJETIVA] — identifique apenas a alternativa/resposta marcada pelo aluno.`
-    : `Questão ${q.numero} [ABERTA, valor ${q.valor}] — Resposta esperada (gabarito): ${q.resposta}${q.conceitos ? ` | Conceitos-chave que devem aparecer: ${q.conceitos}` : ''}`).join('\n');
+    : `Questão ${q.numero} [ABERTA, valor ${q.valor}]${q.pergunta ? `\n   Pergunta: ${q.pergunta}` : ''}\n   Resposta esperada (gabarito): ${q.resposta}${q.conceitos ? `\n   Conceitos-chave que devem aparecer: ${q.conceitos}` : ''}${q.rubrica ? `\n   CRITÉRIOS DE PONTUAÇÃO DO PROFESSOR (siga estritamente; a "fracao" é a proporção do valor obtido): ${q.rubrica}` : ''}`).join('\n');
   const prompt = `PROVA: ${atv.titulo}
 ${atv.descricao ? 'Orientações: ' + atv.descricao + '\n' : ''}${atv.params?.instrucoesProva ? 'Como ler a prova: ' + atv.params.instrucoesProva + '\n' : ''}
 NÍVEL DE RIGOR: ${RIGOR[atv.rigor || 'moderado']}
@@ -804,7 +943,7 @@ ${linhas}
 
 REGRAS:
 - OBJETIVAS: informe em "respostaAluno" somente a alternativa marcada (ex.: "C", "V", "F", "VFFV", número). Use "" se estiver em branco e "MULTIPLA" se houver mais de uma marcação. Não avalie, apenas leia.
-- ABERTAS: transcreva fielmente a resposta do aluno e avalie se ele demonstra domínio do CONCEITO esperado, mesmo com outras palavras. Atribua "fracao" entre 0 e 1 (ex.: 1 = completa e correta; 0.5 = parcialmente correta; 0 = errada/em branco) e justifique em "comentario".
+- ABERTAS: transcreva fielmente a resposta do aluno. Depois avalie, nesta ordem: (1) a resposta responde ao que foi perguntado? Se não responde (outro assunto, resposta genérica ou cópia do enunciado), fracao 0; (2) o aluno demonstra domínio do CONCEITO esperado, mesmo com outras palavras? (3) há afirmações erradas ou contraditórias? Elas reduzem a nota mesmo que o restante esteja certo. Se o professor definiu critérios de pontuação, siga-os estritamente. Atribua "fracao" entre 0 e 1 (1 = completa e correta; 0.5 = parcialmente correta; 0 = errada/em branco) e justifique em "comentario" citando o que faltou ou o que estava errado.
 - Se não conseguir ler alguma questão, informe em "comentario" e use fracao 0.
 ${text.trim() ? `\nTEXTO EXTRAÍDO:\n<<<INICIO>>>\n${text.slice(0, 40000)}\n<<<FIM>>>\n` : ''}
 Retorne exatamente:
@@ -925,7 +1064,8 @@ function gradeTrabalhoLocal(atv, text) {
   const lenScore = +p.minPalavras ? Math.min(10, 10 * A.palavras / +p.minPalavras) : Math.min(10, A.palavras / 25);
   const dens = A.totCon * per100; const densScore = Math.min(10, 4 + dens * 3);
   const ttrScore = clamp((A.ttr - 0.35) / 0.3 * 10, 3, 10);
-  const cov = A.kwRes ? (A.temaCov != null ? A.kwRes.cov * 0.7 + A.temaCov * 0.3 : A.kwRes.cov) : A.temaCov;
+  const temaL = temaLocal(p, text);
+  const cov = temaL ? temaL.cobertura : (A.kwRes ? (A.temaCov != null ? A.kwRes.cov * 0.7 + A.temaCov * 0.3 : A.kwRes.cov) : A.temaCov);
   const refScoreBase = +p.minReferencias ? Math.min(10, 10 * A.refs / +p.minReferencias) : A.refs ? Math.min(10, 8 + A.refs / 3) : (A.citacoes ? 5 : 2);
   const fmtRatio = A.refs ? (p.normas === 'APA' ? A.apa : A.abnt) / A.refs : 0;
   const S10 = {
@@ -984,11 +1124,14 @@ function gradeTrabalhoLocal(atv, text) {
   const melh = [...new Set(ord.filter(c => c.nota < 7).reverse().map(c => DICA[c._k]))].slice(0, 4);
   if (foraLimite) melh.unshift(`Ajuste a extensão ao limite de ${p.minPalavras || '—'} a ${p.maxPalavras || '—'} palavras.`);
   cs.forEach(c => delete c._k);
-  const nota = round2(Math.max(0, bruta - penal));
+  if (temaL) conformidade.unshift({ parametro: 'Adequação ao tema', atendido: temaL.situacao === 'adequado', obs: { adequado: 'Tema atendido (verificação por vocabulário)', tangencia: 'Possível tangenciamento (verificação por vocabulário)', fuga: 'Possível fuga ao tema (verificação por vocabulário)' }[temaL.situacao] });
+  if (temaL && temaL.situacao !== 'adequado') melh.unshift(`Desenvolva diretamente o tema proposto: "${p.tema || atv.titulo}".`);
+  const regT = aplicarRegraTema(p, temaL, Math.max(0, bruta - penal), notaMax);
+  const nota = round2(regT.nota);
   return {
     nota, notaMax,
     relatorio: {
-      tipo: 'trabalho', modo: 'local', criterios: cs, conformidade, pontosFortes: fortes, melhorias: melh, resumo: '',
+      tipo: 'trabalho', modo: 'local', tema: temaL, regraTema: regT.regra, criterios: cs, conformidade, pontosFortes: fortes, melhorias: melh, resumo: '',
       parecer: `Correção automática gratuita, baseada em métricas do texto. O trabalho tem ${A.palavras} palavras em ${A.paras} parágrafo(s). O ponto de maior destaque foi "${ord[0].nome}"${ord[ord.length - 1].nota < 7 ? ` e o principal aspecto a melhorar é "${ord[ord.length - 1].nome}"` : ''}. Esta nota é uma estimativa e pode ser revisada pelo professor.`,
       indicios: '', palavras: A.palavras, palavrasEstimadas: false, foraLimite, penalidade: round2(penal), notaBruta: round2(bruta),
       metricas: { palavras: A.palavras, paragrafos: A.paras, frases: A.frases, mediaFrase: round2(A.mediaFrase), conectivos: A.totCon, tiposConectivos: A.catsUsadas, citacoes: A.citacoes, referencias: A.refs, desvios: A.nErros, diversidade: Math.round(A.ttr * 100) }
@@ -1486,8 +1629,20 @@ function renderRelatorio(e, atv, { student = false, aluno = null } = {}) {
     ${!student && R.fallback ? `<div class="alert warn" style="margin:14px 0 0">${ic('alert')}<div>A IA falhou (${esc(R.fallback)}) e foi usada a correção gratuita. Você pode revisar a nota.</div></div>` : ''}
     ${e.obsProfessor ? `<div class="alert info" style="margin:14px 0 0">${ic('user')}<div><b>Comentário do professor:</b> ${esc(e.obsProfessor)}</div></div>` : ''}
   </div>`;
+  if (R.tema) {
+    const T = R.tema; const sit = { adequado: ['ok', 'Tema atendido'], tangencia: ['warn', 'Tangenciamento do tema'], fuga: ['bad', 'Fuga ao tema'] }[T.situacao] || ['gray', T.situacao];
+    h += `<div class="card" style="margin-top:16px"><div class="card-head"><h3>Adequação ao tema</h3><span class="badge ${sit[0]}">${sit[1]}</span></div>
+      ${atv.params?.tema ? `<p class="small muted" style="margin:0 0 8px">Tema proposto: <b>${esc(atv.params.tema)}</b></p>` : ''}
+      ${T.assuntoReal ? `<p class="small" style="margin:0 0 6px"><b>Assunto do texto:</b> ${esc(T.assuntoReal)}</p>` : ''}${T.tese ? `<p class="small" style="margin:0 0 6px"><b>Tese identificada:</b> ${esc(T.tese)}</p>` : ''}
+      ${T.generoAdequado === false ? `<p class="small" style="margin:0 0 6px;color:var(--bad)"><b>Gênero/tipo textual não atendido</b>${atv.params?.genero ? ` (exigido: ${esc(atv.params.genero)})` : ''}</p>` : ''}
+      <p class="small" style="margin:0">${esc(T.justificativa)}</p>
+      ${(T.evidencias || []).length ? `<div style="margin-top:8px">${T.evidencias.map(e => `<div class="quote">“${esc(e)}”</div>`).join('')}</div>` : ''}
+      ${R.regraTema ? `<div class="alert ${T.situacao === 'adequado' ? 'warn' : 'bad'}" style="margin:12px 0 0">${ic('alert')}<div><b>${esc(R.regraTema)}</b>${!student && R.notaBruta != null ? ` Nota antes da regra: ${fmtN(Math.max(0, R.notaBruta - (R.penalidade || 0)))}.` : ''}</div></div>` : ''}</div>`;
+  }
   if (R.metricas) { const M = R.metricas; h += `<div class="card" style="margin-top:16px"><h3>Métricas do texto</h3><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px">${[['Palavras', M.palavras], ['Parágrafos', M.paragrafos], ['Frases', M.frases], ['Palavras/frase', fmtN(M.mediaFrase)], ['Conectivos', `${M.conectivos} (${M.tiposConectivos} tipos)`], ['Citações', M.citacoes], ['Referências', M.referencias], ['Desvios detectados', M.desvios], ['Diversidade vocabular', M.diversidade + '%'], ...(M.ocr != null ? [['Leitura (OCR)', M.ocr + '% de confiança']] : [])].map(([k, v]) => `<div style="background:#f7f6f2;border-radius:10px;padding:10px 12px"><div class="muted small">${k}</div><b>${v}</b></div>`).join('')}</div></div>`; }
-  if (R.criterios?.length) h += `<div class="card" style="margin-top:16px"><h3>Critérios de avaliação</h3>${R.criterios.map(c => `<div class="crit"><div class="crit-top"><span>${esc(c.nome)} <span class="muted small">· peso ${fmtN(c.peso)}</span></span><span class="nota ${cls(c.nota / 10)}">${fmtN(c.nota)}</span></div><div class="bar" style="--c:${c.nota >= 7 ? 'var(--ok)' : c.nota >= 5 ? 'var(--warn)' : 'var(--bad)'}"><i style="width:${c.nota * 10}%"></i></div>${c.comentario ? `<p>${esc(c.comentario)}</p>` : ''}</div>`).join('')}</div>`;
+  if (R.criterios?.length) h += `<div class="card" style="margin-top:16px"><h3>Critérios de avaliação</h3>${R.criterios.map(c => `<div class="crit"><div class="crit-top"><span>${esc(c.nome)} <span class="muted small">· peso ${fmtN(c.peso)}</span></span><span class="nota ${cls(c.nota / 10)}">${fmtN(c.nota)}</span></div><div class="bar" style="--c:${c.nota >= 7 ? 'var(--ok)' : c.nota >= 5 ? 'var(--warn)' : 'var(--bad)'}"><i style="width:${c.nota * 10}%"></i></div>${c.comentario ? `<p>${esc(c.comentario)}</p>` : ''}${c.evidencia ? `<div class="quote">“${esc(c.evidencia)}”</div>` : ''}</div>`).join('')}</div>`;
+  if ((R.problemasCoesao || []).length) h += `<div class="card" style="margin-top:16px"><h3>Coesão e coerência — pontos a corrigir</h3>${R.problemasCoesao.map(x => `<div class="conf"><span class="ci bad">${ic('x', 13)}</span><div class="small">${x.trecho ? `<div class="quote" style="margin:0 0 4px">“${esc(x.trecho)}”</div>` : ''}${esc(x.problema || x)}</div></div>`).join('')}</div>`;
+  if ((R.desvios || []).length) h += `<div class="card" style="margin-top:16px"><h3>Desvios da norma padrão (${R.desvios.length})</h3><div class="table-wrap"><table class="tbl"><thead><tr><th>Trecho</th><th>Correção</th><th class="hide-sm">Tipo</th></tr></thead><tbody>${R.desvios.map(d => `<tr><td style="color:var(--bad)">${esc(d.trecho)}</td><td style="color:var(--ok)">${esc(d.correcao)}</td><td class="hide-sm small muted">${esc(d.tipo || '')}</td></tr>`).join('')}</tbody></table></div></div>`;
   if (R.questoes?.length) h += `<div class="card" style="margin-top:16px"><h3>Questões</h3><div class="table-wrap"><table class="tbl"><thead><tr><th>Q</th><th>Tipo</th><th>Resposta do aluno</th>${student && atv.mostrarGabarito === false ? '' : '<th>Gabarito</th>'}<th class="num">Pontos</th><th>Comentário</th></tr></thead><tbody>${R.questoes.map(q => `<tr><td><b>${esc(q.numero)}</b></td><td><span class="badge ${q.tipo === 'objetiva' ? 'gray' : ''}">${q.tipo === 'objetiva' ? 'Objetiva' : 'Aberta'}</span></td><td style="max-width:280px">${esc(q.respostaAluno || '—')}</td>${student && atv.mostrarGabarito === false ? '' : `<td style="max-width:240px" class="small muted">${esc(q.esperada)}</td>`}<td class="num"><span class="nota ${cls(q.fracao)}">${fmtN(q.pontos)}/${fmtN(q.valor)}</span></td><td class="small" style="min-width:180px">${esc(q.comentario)}</td></tr>`).join('')}</tbody></table></div></div>`;
   if (R.conformidade?.length) h += `<div class="card" style="margin-top:16px"><h3>Parâmetros exigidos</h3>${R.conformidade.map(c => `<div class="conf"><span class="ci ${c.atendido ? 'ok' : 'bad'}">${ic(c.atendido ? 'check' : 'x', 13)}</span><div><b>${esc(c.parametro)}</b>${c.obs ? `<div class="muted small">${esc(c.obs)}</div>` : ''}</div></div>`).join('')}</div>`;
   if (R.pontosFortes?.length || R.melhorias?.length) h += `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));margin-top:16px">
@@ -1642,13 +1797,27 @@ function viewAtividadeForm(tid, aid) {
     <div class="field"><label>Enunciado / orientações para o aluno</label><textarea name="descricao" rows="4" placeholder="O que o aluno deve fazer…">${esc(a.descricao)}</textarea></div>
     <div class="row"><div class="field"><label>Valor (nota máxima)</label><input type="number" step="0.1" min="0.1" name="notaMax" value="${a.notaMax}"></div><div class="field"><label>Prazo de entrega</label><input type="datetime-local" name="prazo" value="${esc(a.prazo)}"></div><div class="field"><label>Tentativas por aluno</label><input type="number" min="1" max="10" name="tentativas" value="${a.tentativas || 1}"></div><div class="field"><label>Rigor da correção</label><select name="rigor">${Object.keys(RIGOR).map(k => `<option value="${k}" ${a.rigor === k ? 'selected' : ''}>${{ flexivel: 'Flexível', moderado: 'Moderado', rigoroso: 'Rigoroso' }[k]}</option>`).join('')}</select></div></div>
 
+    <fieldset data-only="trabalho"><legend>Modelo de correção</legend>
+      <div class="field"><label>Aplicar um modelo pronto (preenche critérios com níveis de desempenho, gênero, regra de tema e instruções)</label><div style="display:flex;gap:8px;flex-wrap:wrap"><select id="faModelo" style="flex:1;min-width:220px"><option value="">Escolha um modelo…</option>${Object.entries(MODELOS).map(([k, m]) => `<option value="${k}">${esc(m.nome)}</option>`).join('')}</select><button type="button" class="btn" onclick="faAplicarModelo()">${ic('check', 15)} Aplicar modelo</button></div><div class="hint">Depois de aplicar, você pode ajustar qualquer campo.</div></div>
+    </fieldset>
+
+    <fieldset data-only="trabalho"><legend>Tema e adequação</legend>
+      <div class="field"><label>Tema (exatamente como na proposta) *</label><input name="p_tema" value="${esc(a.params.tema)}" placeholder="Ex.: Os desafios enfrentados pelos países subdesenvolvidos"><div class="hint">A correção verifica primeiro se o texto trata deste tema (e do seu recorte). Sem tema, usa o enunciado como referência.</div></div>
+      <div class="field"><label>Conceitos / palavras-chave esperados (com sinônimos)</label><input name="p_palavrasChave" value="${esc(a.params.palavrasChave)}" placeholder="Ex.: países subdesenvolvidos/países em desenvolvimento/nações periféricas, desigualdade social, dívida externa/dependência econômica"><div class="hint">Separe os conceitos por vírgula e os sinônimos por "/". Use <b>expressões completas</b> como sinônimos (ex.: "países em desenvolvimento", e não só "desenvolvimento"). Essencial na correção gratuita, que verifica o tema pelo vocabulário; na IA, orienta a análise.</div></div>
+      <div class="row">
+        <div class="field"><label>Gênero / tipo textual exigido</label><input name="p_genero" value="${esc(a.params.genero || '')}" placeholder="Ex.: dissertativo-argumentativo"></div>
+        <div class="field"><label>Se houver fuga ao tema</label><select name="p_politicaTema">${[['zerar', 'Zerar a nota'], ['limitar', 'Limitar a nota'], ['avisar', 'Apenas avisar']].map(([k, l]) => `<option value="${k}" ${(a.params.politicaTema || 'zerar') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+        <div class="field"><label>Limite na fuga (% do valor)</label><input type="number" min="0" max="100" name="p_limiteFuga" value="${esc(a.params.limiteFuga ?? 20)}"><div class="hint">Usado em "Limitar a nota".</div></div>
+        <div class="field"><label>Limite no tangenciamento (%)</label><input type="number" min="0" max="100" name="p_limiteTangencia" value="${esc(a.params.limiteTangencia ?? 50)}"><div class="hint">0 = não limitar.</div></div>
+      </div>
+      <label class="check"><input type="checkbox" name="p_exigirGenero" ${a.params.exigirGenero !== false ? 'checked' : ''}> <span>Tratar como fuga se o texto não pertencer ao gênero/tipo textual exigido</span></label>
+    </fieldset>
+
     <fieldset data-only="trabalho"><legend>Parâmetros do trabalho</legend>
-      <div class="field"><label>Tema</label><input name="p_tema" value="${esc(a.params.tema)}" placeholder="Ex.: Os desafios da inteligência artificial na educação brasileira"></div>
       <div class="row"><div class="field"><label>Mín. palavras</label><input type="number" name="p_minPalavras" value="${esc(a.params.minPalavras)}"></div><div class="field"><label>Máx. palavras</label><input type="number" name="p_maxPalavras" value="${esc(a.params.maxPalavras)}"></div><div class="field"><label>Penalidade fora do limite (%)</label><input type="number" min="0" max="100" name="p_penalidade" value="${esc(a.params.penalidade ?? 10)}"></div></div>
       <div class="row"><div class="field" style="grid-column:span 2"><label>Seções / partes obrigatórias</label><input name="p_secoes" value="${esc(a.params.secoes)}" placeholder="Ex.: Resumo, Introdução, Metodologia, Conclusão, Referências"></div><div class="field"><label>Normas</label><select name="p_normas">${['ABNT', 'APA', 'Vancouver', 'Chicago', 'nenhuma'].map(n => `<option ${a.params.normas === n ? 'selected' : ''} value="${n}">${n === 'nenhuma' ? 'Nenhuma' : n}</option>`).join('')}</select></div><div class="field"><label>Mín. de referências</label><input type="number" min="0" name="p_minReferencias" value="${esc(a.params.minReferencias)}"></div></div>
-      <div class="field"><label>Conceitos / palavras-chave esperados</label><input name="p_palavrasChave" value="${esc(a.params.palavrasChave)}" placeholder="Ex.: privacidade, viés algorítmico, formação docente/capacitação de professores"><div class="hint">Separe por vírgula; use "/" para sinônimos. Usado para verificar a abordagem do tema (na correção gratuita e na IA).</div></div>
       <div class="lbl" style="margin-top:6px">Critérios de avaliação e pesos</div>
-      <div class="dyn-row dyn-head hide-sm"><span>Critério</span><span>Peso</span><span>O que será avaliado</span><span></span></div>
+      <div class="dyn-row dyn-head hide-sm"><span>Critério</span><span>Peso</span><span>O que será avaliado e níveis de desempenho</span><span></span></div>
       <div id="critList"></div>
       <div class="actions"><button type="button" class="btn sm" onclick="faAddCrit()">${ic('plus', 15)} Critério</button><button type="button" class="btn sm ghost" onclick="faResetCrit()">${ic('refresh', 15)} Usar critérios padrão do tipo</button></div>
     </fieldset>
@@ -1659,7 +1828,7 @@ function viewAtividadeForm(tid, aid) {
       <div class="actions" style="margin-bottom:12px"><button type="button" class="btn sm" onclick="faAddQ('objetiva')">${ic('plus', 15)} Questão objetiva</button><button type="button" class="btn sm" onclick="faAddQ('aberta')">${ic('plus', 15)} Questão aberta</button><button type="button" class="btn sm ghost" onclick="faGabRapido()">${ic('list', 15)} Gabarito rápido</button></div>
       <div id="gabList"></div>
       <div class="hint" id="gabTot"></div>
-      <p class="hint">Objetivas: aceite mais de uma resposta com "/" (ex.: <b>A/C</b>); use <b>*</b> para anular a questão (todos pontuam). Abertas: escreva a resposta esperada e os conceitos-chave — a IA avalia o conceito, não as palavras exatas, e pode atribuir nota parcial.</p>
+      <p class="hint">Objetivas: aceite mais de uma resposta com "/" (ex.: <b>A/C</b>); use <b>*</b> para anular a questão (todos pontuam). Abertas: informe a pergunta, a resposta esperada, os conceitos-chave (usados nas duas correções) e, para a IA, os critérios de pontuação com as porcentagens de crédito parcial.</p>
     </fieldset>
 
     <fieldset><legend>Correção e envio</legend>
@@ -1679,10 +1848,19 @@ function faTipo() { const t = $('#fa [name=tipo]:checked').value; FA.tipo = t; $
 function faSubtipo() { faReadLists(); const s = $('#fa [name=subtipo]').value; const def = (CRIT_PADRAO[FA.subtipo] || []).map(c => c[0]).join('|'); FA.subtipo = s; if (FA.params.criterios.map(c => c.nome).join('|') === def) faResetCrit(); }
 function faReadLists() {
   FA.params.criterios = $$('#critList .dyn-row').map(r => ({ nome: $('[data-k=nome]', r).value.trim(), peso: +$('[data-k=peso]', r).value || 1, descricao: $('[data-k=descricao]', r).value.trim() }));
-  FA.gabarito = $$('#gabList .gab-row').map(r => ({ numero: $('[data-k=numero]', r).value.trim(), tipo: r.dataset.tipo, resposta: $('[data-k=resposta]', r).value.trim(), valor: +$('[data-k=valor]', r).value || 1, conceitos: $('[data-k=conceitos]', r)?.value.trim() || '' }));
+  FA.gabarito = $$('#gabList .gab-row').map(r => ({ numero: $('[data-k=numero]', r).value.trim(), tipo: r.dataset.tipo, resposta: $('[data-k=resposta]', r).value.trim(), valor: +$('[data-k=valor]', r).value || 1, conceitos: $('[data-k=conceitos]', r)?.value.trim() || '', pergunta: $('[data-k=pergunta]', r)?.value.trim() || '', rubrica: $('[data-k=rubrica]', r)?.value.trim() || '' }));
 }
 function faRenderCrit() {
-  $('#critList').innerHTML = FA.params.criterios.map((c, i) => `<div class="dyn-row"><input data-k="nome" value="${esc(c.nome)}" placeholder="Critério"><input data-k="peso" type="number" step="0.5" min="0" value="${c.peso}" title="Peso"><input class="desc" data-k="descricao" value="${esc(c.descricao)}" placeholder="Descrição"><button type="button" class="icon-btn" onclick="faDelCrit(${i})">${ic('trash', 16)}</button></div>`).join('');
+  $('#critList').innerHTML = FA.params.criterios.map((c, i) => `<div class="dyn-row"><input data-k="nome" value="${esc(c.nome)}" placeholder="Critério"><input data-k="peso" type="number" step="0.5" min="0" value="${c.peso}" title="Peso"><textarea class="desc" data-k="descricao" rows="2" placeholder="O que avaliar e níveis de desempenho (ex.: 10: …; 6: …; 2: …)">${esc(c.descricao)}</textarea><button type="button" class="icon-btn" onclick="faDelCrit(${i})">${ic('trash', 16)}</button></div>`).join('');
+}
+function faAplicarModelo() {
+  const k = $('#faModelo').value; const m = MODELOS[k]; if (!m) return toast('Escolha um modelo', 'bad');
+  faReadLists(); const f = $('#fa'); const set = (n, v) => { const el = f.querySelector(`[name="${n}"]`); if (el && v != null) { if (el.type === 'checkbox') el.checked = !!v; else el.value = v; } };
+  set('subtipo', m.subtipo); FA.subtipo = m.subtipo; set('rigor', m.rigor); set('p_genero', m.genero); set('p_politicaTema', m.politicaTema); set('p_limiteFuga', m.limiteFuga); set('p_limiteTangencia', m.limiteTangencia); set('p_exigirGenero', m.exigirGenero);
+  if (m.normas) set('p_normas', m.normas); if (m.minReferencias) set('p_minReferencias', m.minReferencias); if (m.secoes && !f.querySelector('[name=p_secoes]').value) set('p_secoes', m.secoes);
+  const ins = f.querySelector('[name=p_instrucoes]'); ins.value = ins.value.trim() ? ins.value.trim() + '\n\n' + m.instrucoes : m.instrucoes;
+  FA.params.criterios = m.criterios.map(([nome, peso, descricao]) => ({ nome, peso, descricao })); faRenderCrit();
+  toast('Modelo aplicado. Confira o tema e as palavras-chave.', 'ok');
 }
 function faAddCrit() { faReadLists(); FA.params.criterios.push({ nome: '', peso: 1, descricao: '' }); faRenderCrit(); }
 function faDelCrit(i) { faReadLists(); FA.params.criterios.splice(i, 1); faRenderCrit(); }
@@ -1694,7 +1872,9 @@ function faRenderGab() {
     ${q.tipo === 'objetiva' ? `<input class="resp" data-k="resposta" value="${esc(q.resposta)}" placeholder="Resposta correta (ex.: C)">` : `<textarea class="resp" data-k="resposta" rows="2" placeholder="Resposta esperada">${esc(q.resposta)}</textarea>`}
     <input data-k="valor" type="number" step="0.1" min="0" value="${q.valor}" title="Valor da questão">
     <button type="button" class="icon-btn" onclick="faDelQ(${i})">${ic('trash', 16)}</button>
-    ${q.tipo === 'aberta' ? `<input class="conc" data-k="conceitos" value="${esc(q.conceitos)}" placeholder="Conceitos-chave (opcional), separados por vírgula">` : ''}
+    ${q.tipo === 'aberta' ? `<textarea class="conc" data-k="pergunta" rows="2" placeholder="Pergunta da questão (recomendado: ajuda a verificar se o aluno respondeu ao que foi pedido)">${esc(q.pergunta || '')}</textarea>
+    <input class="conc" data-k="conceitos" value="${esc(q.conceitos)}" placeholder="Conceitos-chave, separados por vírgula; sinônimos com / (ex.: oxigênio, glicose/açúcar)">
+    <textarea class="conc" data-k="rubrica" rows="2" placeholder="Critérios de pontuação (IA). Ex.: 100% se explicar a conversão de energia luminosa em química citando glicose e O2; 50% se citar só um produto; 0% se confundir com respiração.">${esc(q.rubrica || '')}</textarea>` : ''}
   </div>`).join('') : '<p class="muted small">Nenhuma questão. Adicione questões ou use o gabarito rápido.</p>';
   const tot = FA.gabarito.reduce((s, q) => s + (+q.valor || 0), 0);
   $('#gabTot').innerHTML = FA.gabarito.length ? `<b>${FA.gabarito.length}</b> questões · soma dos valores: <b>${fmtN(tot)}</b> (a nota final é convertida proporcionalmente para o valor da prova)` : '';
@@ -1720,9 +1900,11 @@ function faGabRapido() {
 async function faSave(tid, aid) {
   faReadLists(); const f = $('#fa'); const d = Object.fromEntries(new FormData(f).entries());
   if (!d.titulo.trim()) { toast('Informe o título', 'bad'); return $('#fa [name=titulo]').focus(); }
+  if (d.tipo === 'trabalho' && !String(d.p_tema || '').trim() && !confirm('O tema não foi informado. Sem ele, a verificação de fuga ao tema usa apenas o enunciado (IA) ou não é feita (correção gratuita). Salvar assim mesmo?')) return;
   const a = FA;
   Object.assign(a, { tipo: d.tipo, subtipo: d.subtipo || a.subtipo, titulo: d.titulo.trim(), descricao: d.descricao, notaMax: +d.notaMax || 10, prazo: d.prazo, prazoTs: d.prazo ? new Date(d.prazo).getTime() : null, tentativas: Math.max(1, +d.tentativas || 1), rigor: d.rigor, modoCorrecao: d.modoCorrecao || 'padrao', aberta: !!d.aberta, aceitarAtraso: !!d.aceitarAtraso, mostrarNota: !!d.mostrarNota, mostrarRelatorio: !!d.mostrarRelatorio, mostrarGabarito: !!d.mostrarGabarito });
   for (const k of Object.keys(d)) if (k.startsWith('p_')) a.params[k.slice(2)] = d[k];
+  a.params.exigirGenero = !!d.p_exigirGenero;
   a.params.criterios = a.params.criterios.filter(c => c.nome);
   a.gabarito = a.gabarito.filter(q => q.numero);
   if (a.tipo === 'prova' && !a.gabarito.length) { toast('Cadastre o gabarito da prova', 'bad'); return; }
@@ -2057,14 +2239,17 @@ function pdfEntregaSection(doc, e, atv, aluno, { student = false } = {}) {
   if (R.tipo === 'trabalho' && R.palavras) kv.push(['Extensão', `${R.palavras} palavras${R.palavrasEstimadas ? ' (estimado)' : ''}${R.foraLimite ? ' - fora do limite' + (R.penalidade ? ` (-${fmtN(R.penalidade)} pts)` : '') : ''}`]);
   pTable(doc, [], kv, { theme: 'plain', showHead: 'never', styles: { fontSize: 9.5, cellPadding: 1.3 }, columnStyles: { 0: { fontStyle: 'bold', cellWidth: 34 } }, margin: { left: M, right: M + 40 } }); doc._y -= 2;
   if (student && atv.mostrarRelatorio === false) return;
+  if (R.tema) { const sit = { adequado: 'Tema atendido', tangencia: 'Tangenciamento do tema', fuga: 'Fuga ao tema' }[R.tema.situacao] || R.tema.situacao; pH3(doc, 'Adequação ao tema: ' + sit); pPara(doc, [R.tema.assuntoReal && 'Assunto do texto: ' + R.tema.assuntoReal, R.tema.tese && 'Tese: ' + R.tema.tese, R.tema.generoAdequado === false && 'Gênero/tipo textual não atendido.', R.tema.justificativa].filter(Boolean).join(' ')); if (R.regraTema) pPara(doc, R.regraTema); }
   if (R.parecer) { pH3(doc, 'Parecer'); pPara(doc, R.parecer); }
   if (e.obsProfessor) { pH3(doc, 'Comentário do professor'); pPara(doc, e.obsProfessor); }
-  if (R.criterios?.length) { pH3(doc, 'Critérios de avaliação'); pTable(doc, ['Critério', 'Peso', 'Nota (0-10)', 'Comentário'], R.criterios.map(c => [c.nome, fmtN(c.peso), { content: fmtN(c.nota), styles: { textColor: notaColor(c.nota / 10), fontStyle: 'bold', halign: 'center' } }, c.comentario]), { columnStyles: { 0: { cellWidth: 42, fontStyle: 'bold' }, 1: { cellWidth: 13, halign: 'center' }, 2: { cellWidth: 20 } } }); }
+  if (R.criterios?.length) { pH3(doc, 'Critérios de avaliação'); pTable(doc, ['Critério', 'Peso', 'Nota (0-10)', 'Comentário'], R.criterios.map(c => [c.nome, fmtN(c.peso), { content: fmtN(c.nota), styles: { textColor: notaColor(c.nota / 10), fontStyle: 'bold', halign: 'center' } }, c.comentario + (c.evidencia ? `\nTrecho: "${c.evidencia}"` : '')]), { columnStyles: { 0: { cellWidth: 42, fontStyle: 'bold' }, 1: { cellWidth: 13, halign: 'center' }, 2: { cellWidth: 20 } } }); }
   if (R.questoes?.length) {
     const sg = !(student && atv.mostrarGabarito === false);
     pH3(doc, 'Questões');
     pTable(doc, ['Q', 'Tipo', 'Resposta do aluno', ...(sg ? ['Gabarito'] : []), 'Pontos', 'Comentário'], R.questoes.map(q => [q.numero, q.tipo === 'objetiva' ? 'Obj.' : 'Aberta', q.respostaAluno || '-', ...(sg ? [q.esperada] : []), { content: `${fmtN(q.pontos)}/${fmtN(q.valor)}`, styles: { textColor: notaColor(q.fracao), fontStyle: 'bold', halign: 'center' } }, q.comentario]), { columnStyles: { 0: { cellWidth: 9 }, 1: { cellWidth: 14 } } });
   }
+  if (R.problemasCoesao?.length) { pH3(doc, 'Coesão e coerência — pontos a corrigir'); pTable(doc, ['Trecho', 'Problema'], R.problemasCoesao.map(x => [x.trecho || '', x.problema || String(x)]), { columnStyles: { 0: { cellWidth: 70 } } }); }
+  if (R.desvios?.length) { pH3(doc, 'Desvios da norma padrão'); pTable(doc, ['Trecho', 'Correção', 'Tipo'], R.desvios.map(d => [d.trecho || '', d.correcao || '', d.tipo || '']), { columnStyles: { 2: { cellWidth: 28 } } }); }
   if (R.conformidade?.length) { pH3(doc, 'Parâmetros exigidos'); pTable(doc, ['Parâmetro', 'Atendido', 'Observação'], R.conformidade.map(c => [c.parametro, { content: c.atendido ? 'Sim' : 'Não', styles: { textColor: c.atendido ? [27, 143, 98] : [201, 59, 59], fontStyle: 'bold' } }, c.obs || '']), { columnStyles: { 0: { cellWidth: 50 }, 1: { cellWidth: 18 } } }); }
   if (R.pontosFortes?.length) { pH3(doc, 'Pontos fortes'); pList(doc, R.pontosFortes); }
   if (R.melhorias?.length) { pH3(doc, 'O que melhorar'); pList(doc, R.melhorias); }
