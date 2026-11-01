@@ -8,7 +8,8 @@
 <link rel="manifest" href="manifest.webmanifest"><link rel="icon" type="image/png" href="icon-192.png"><link rel="apple-touch-icon" href="apple-touch-icon.png">
 
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net blob:; worker-src 'self' blob: https://cdn.jsdelivr.net; connect-src 'self' https://*.workers.dev https://cdn.jsdelivr.net data: blob:; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net blob:; worker-src 'self' blob: https://cdn.jsdelivr.net; connect-src 'self' https://catedra-api.peixoto-adm85.workers.dev https://cdn.jsdelivr.net data: blob:; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; manifest-src 'self'; upgrade-insecure-requests">
+<script>if(window.top!==window.self){try{window.top.location=window.self.location}catch(e){document.documentElement.style.display='none'}}</script>
 <title>Cátedra · Turmas, avaliações e correção inteligente</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -503,6 +504,10 @@ const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
+const jq = v => esc(JSON.stringify(String(v ?? ''))); /* literal JS seguro dentro de atributo HTML (onclick) */
+const idOk = id => typeof id === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(id);
+const corOk = c => /^#[0-9a-fA-F]{3,8}$/.test(String(c || '')) ? c : '#2948d1';
+const httpsOk = u => /^https:\/\/[a-z0-9.-]+(:\d+)?(\/[\w./~%-]*)?$/i.test(String(u || ''));
 const round2 = n => Math.round((+n || 0) * 100) / 100;
 const fmtN = n => (n == null || isNaN(n)) ? '—' : (Math.round(n * 10) / 10).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const fmtDate = ts => ts ? new Date(ts).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
@@ -564,19 +569,29 @@ function pintaUsuario() {
   su.innerHTML = `<div class="av">${esc(n.trim().charAt(0).toUpperCase() || '?')}</div><div class="ui"><b>${esc(n)}</b><small>${Auth.admin ? 'Administrador' : 'Professor'}</small></div><button class="sair" onclick="Auth.logout()">Sair</button>`; App.refresh();
 }
 const Auth = {
-  api: String(window.CATEDRA_API || localStorage.getItem('catedra_api') || 'https://catedra-api.peixoto-adm85.workers.dev').replace(/\/+$/, ''),
+  api: (() => { const u = String(window.CATEDRA_API || localStorage.getItem('catedra_api') || 'https://catedra-api.peixoto-adm85.workers.dev').replace(/\/+$/, ''); return /^https:\/\/[a-z0-9.-]+(:\d+)?$/i.test(u) ? u : ''; })(),
   token: localStorage.getItem('catedra_tok') || '',
   user: (() => { try { return JSON.parse(localStorage.getItem('catedra_user') || 'null'); } catch { return null; } })(),
   get admin() { return this.user?.role === 'admin'; },
   dbName() { return !this.user || this.user.role === 'admin' ? 'catedra' : 'catedra_' + this.user.id; },
   async call(path, body) {
-    const r = await fetch(this.api + path, { method: body ? 'POST' : 'GET', cache: 'no-store', headers: { ...(body ? { 'content-type': 'application/json' } : {}), ...(this.token ? { Authorization: 'Bearer ' + this.token } : {}) }, body: body ? JSON.stringify(body) : undefined });
+    const r = await fetch(this.api + path, { method: body ? 'POST' : 'GET', cache: 'no-store', headers: { ...(body ? { 'content-type': 'application/json' } : {}), ...(this.token ? { Authorization: 'Bearer ' + this.token } : {}) }, body: body ? JSON.stringify(body) : undefined, credentials: 'omit', referrerPolicy: 'no-referrer', signal: AbortSignal.timeout ? AbortSignal.timeout(path === '/ia' || path === '/sync' ? 120000 : 30000) : undefined });
     let j = {}; try { j = await r.json(); } catch { }
-    if (r.status === 401 && this.token) { this.logout(); }
+    if (r.status === 401 && this.token) { this.logout(false); }
     if (!r.ok) { const e = new Error(j.erro || 'Erro ' + r.status); e.status = r.status; throw e; }
     return j;
   },
-  logout() { ['catedra_tok', 'catedra_user'].forEach(k => localStorage.removeItem(k)); location.hash = ''; location.reload(); }
+  async logout(manual = true) {
+    const tok = this.token, api = this.api, db = this.dbName(), admin = this.admin;
+    try { if (manual && tok && typeof Sync !== 'undefined' && Sync.configured()) await Promise.race([Sync.run(true), sleep(8000)]); } catch { }
+    const synced = admin || (typeof Sync !== 'undefined' && Sync.state === 'ok');
+    try { if (tok && api) fetch(api + '/auth/logout', { method: 'POST', headers: { Authorization: 'Bearer ' + tok }, keepalive: true, credentials: 'omit' }).catch(() => { }); } catch { }
+    ['catedra_tok', 'catedra_user', 'catedra_avisados', 'catedra_sol_visto', 'catedra_conv_tpl'].forEach(k => { try { localStorage.removeItem(k); } catch { } });
+    try { sessionStorage.clear(); } catch { }
+    this.token = '';
+    try { if (manual && synced) { if (DB.db) DB.db.close(); indexedDB.deleteDatabase(db); } } catch { }
+    location.hash = ''; location.reload();
+  }
 };
 function telaLogin(modo = 'entrar') {
   document.body.classList.add('student'); const reg = modo === 'registro';
@@ -585,7 +600,7 @@ function telaLogin(modo = 'entrar') {
   ${reg ? '<div class="field"><label>Nome</label><input name="nome" autocomplete="name"></div>' : ''}
   <div class="field"><label>E-mail</label><input name="email" type="email" autocomplete="username"></div>
   ${reg ? '<div class="field"><label>WhatsApp com DDD (opcional)</label><input name="telefone" type="tel" autocomplete="tel" placeholder="(82) 99999-9999"><div class="hint">Usado para avisos sobre o seu plano.</div></div>' : ''}
-  <div class="field"><label>Senha ${reg ? '(mínimo 8 caracteres)' : ''}</label><input name="senha" type="password" autocomplete="${reg ? 'new-password' : 'current-password'}"></div>
+  <div class="field"><label>Senha ${reg ? '(mínimo 10, com letras e números)' : ''}</label><input name="senha" type="password" maxlength="128" autocomplete="${reg ? 'new-password' : 'current-password'}"></div>
   ${reg ? '<div class="field"><label>Código de convite</label><input name="convite" autocomplete="off"><div class="hint">Fornecido pelo administrador do sistema.</div></div>' : ''}
   <div id="authErr" class="small" style="color:#b3261e;min-height:18px;margin-bottom:6px"></div>
   <button class="btn primary" style="width:100%" onclick="doAuth(${reg})">${reg ? 'Criar conta' : 'Entrar'}</button></form>
@@ -595,10 +610,12 @@ async function doAuth(reg) {
   const d = formData($('#fAuth')); const err = $('#authErr'); err.textContent = '';
   try {
     if (d.api) { Auth.api = d.api.trim().replace(/\/+$/, ''); localStorage.setItem('catedra_api', Auth.api); }
-    if (!Auth.api) throw new Error('Informe o endereço do servidor.'); delete d.api;
+    if (!Auth.api) throw new Error('Informe o endereço do servidor (https).'); delete d.api;
+    const lk = +(sessionStorage.getItem('catedra_lock') || 0); if (Date.now() < lk) throw new Error('Muitas tentativas. Aguarde ' + Math.ceil((lk - Date.now()) / 1000) + 's.');
+    if (reg && (String(d.senha || '').length < 10 || !/[A-Za-z]/.test(d.senha) || !/\d/.test(d.senha))) throw new Error('A senha deve ter ao menos 10 caracteres, com letras e números.');
     const r = await Auth.call(reg ? '/auth/registro' : '/auth/login', d);
     localStorage.setItem('catedra_tok', r.sessao); localStorage.setItem('catedra_user', JSON.stringify(r.user)); location.hash = '#/painel'; location.reload();
-  } catch (e) { err.textContent = e.message; }
+  } catch (e) { err.textContent = e.message; try { const n = +(sessionStorage.getItem('catedra_fail') || 0) + 1; sessionStorage.setItem('catedra_fail', n); if (n >= 4 && !/Aguarde/.test(e.message)) sessionStorage.setItem('catedra_lock', Date.now() + Math.min(300, 2 ** (n - 3) * 5) * 1000); } catch { } }
 }
 const Admin = {
   async load() {
@@ -606,7 +623,7 @@ const Admin = {
     try {
       const r = await Auth.call('/admin/profs'); const ok = (v, t) => `<span style="${v ? '' : 'color:#b3261e'}">${v ? '✓' : '✗'} ${t}</span>`;
       box.innerHTML = `<div class="small" style="margin-bottom:10px">${ok(r.ia, 'IA configurada no servidor')} &nbsp; ${ok(r.convite, 'código de convite ativo')} &nbsp; Limite padrão: <b>${r.cotaPadrao}</b> correções por IA/mês por professor</div>`
-        + (r.profs.length ? `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><tr style="text-align:left"><th>Professor</th><th>E-mail</th><th>IA no mês</th><th></th></tr>${r.profs.map(p => `<tr style="border-top:1px solid #e6e2d8"><td>${esc(p.nome)}${p.bloqueado ? ' <span class="muted">(bloqueado)</span>' : ''}</td><td>${esc(p.email)}</td><td>${p.uso}/${p.cota ?? r.cotaPadrao}</td><td style="white-space:nowrap"><button class="btn sm" onclick="Admin.cota('${p.id}','${p.cota ?? ''}')">Limite</button> <button class="btn sm" onclick="Admin.bloq('${p.id}',${!p.bloqueado})">${p.bloqueado ? 'Desbloquear' : 'Bloquear'}</button></td></tr>`).join('')}</table></div>` : '<p class="muted small">Nenhum professor cadastrado ainda. Envie o link do sistema e o código de convite.</p>');
+        + (r.profs.length ? `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><tr style="text-align:left"><th>Professor</th><th>E-mail</th><th>IA no mês</th><th></th></tr>${r.profs.map(p => `<tr style="border-top:1px solid #e6e2d8"><td>${esc(p.nome)}${p.bloqueado ? ' <span class="muted">(bloqueado)</span>' : ''}</td><td>${esc(p.email)}</td><td>${p.uso}/${p.cota ?? r.cotaPadrao}</td><td style="white-space:nowrap"><button class="btn sm" onclick="Admin.cota(${jq(p.id)},${jq(p.cota ?? '')})">Limite</button> <button class="btn sm" onclick="Admin.bloq(${jq(p.id)},${!p.bloqueado})">${p.bloqueado ? 'Desbloquear' : 'Bloquear'}</button></td></tr>`).join('')}</table></div>` : '<p class="muted small">Nenhum professor cadastrado ainda. Envie o link do sistema e o código de convite.</p>');
     } catch (e) { box.innerHTML = `<div class="alert bad">${ic('alert')}<div>${esc(e.message)}</div></div>`; }
   },
   async cota(id, atual) { const v = prompt('Limite mensal de correções por IA deste professor (vazio = padrão):', atual); if (v === null) return; try { await Auth.call('/admin/prof', { id, cota: v }); this.load(); } catch (e) { toast(e.message, 'bad'); } },
@@ -665,13 +682,13 @@ Object.assign(Admin, {
   }
 });
 const brl = n => (+n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-const dBR = iso => iso ? String(iso).split('-').reverse().join('/') : '—';
+const dBR = iso => { const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[3] + '/' + m[2] + '/' + m[1] : '—'; };
 const hojeISO = () => new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
 const CHIP = { ativo: ['Em dia', '#1b8f62', '#e2f4ec'], isento: ['Sem cobrança', '#5b6478', '#eceae3'], vencido: ['Vencido', '#8a5a0a', '#fff2d6'], suspenso: ['Suspenso', '#b3261e', '#fde8e6'], bloqueado: ['Bloqueado', '#b3261e', '#fde8e6'] };
 const chip = s => { const c = CHIP[s] || CHIP.isento; return `<span style="background:${c[2]};color:${c[1]};padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700;white-space:nowrap">${c[0]}</span>`; };
 function waLink(tel, msg) { const t = String(tel || '').replace(/\D/g, ''); return `https://wa.me/${t ? (t.length <= 11 ? '55' + t : t) : ''}?text=${encodeURIComponent(msg)}`; }
 function baixarCSV(nome, linhas) {
-  const cel = c => { let s = String(c ?? ''); if (/^[=+\-@]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
+  const cel = c => { let s = String(c ?? ''); if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff' + linhas.map(l => l.map(cel).join(';')).join('\r\n')], { type: 'text/csv;charset=utf-8' }));
   a.download = nome; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 600);
 }
@@ -722,9 +739,9 @@ const Gestao = {
     let h = this.pend() ? `<div class="alert warn" style="margin-bottom:16px">${ic('clipboard')}<div style="flex:1"><b>${this.pend()} solicitação(ões) de mudança de plano</b> aguardando a sua decisão.</div><button class="btn sm primary" onclick="Gestao.aba('solicitacoes')">Analisar</button></div>` : '';
     if (L.length) h += `<div class="card" style="margin-bottom:16px;border-color:#f0d9a8;background:#fffaf0"><div class="card-head"><h3 style="font-size:17px">${ic('clock')} Vencem amanhã (${L.length})</h3></div>
       <p class="muted small" style="margin:-6px 0 6px">O professor já vê o aviso no topo do sistema e numa janela ao entrar. Envie também pelo WhatsApp:</p>
-      ${L.map(p => `<div class="warn-row"><div><b>${esc(p.nome)}</b><div class="muted small">${dBR(p.venc)} · ${brl(p.valor)} · ${esc(p.plano)}</div></div><div style="display:flex;gap:8px;align-items:center">${this.foiAvisado(p) ? `<span class="tag-ok">${ic('check', 14)} avisado</span>` : ''}<button class="btn sm primary" onclick="Gestao.avisar('${p.id}')">${ic('send', 14)} Enviar aviso</button></div></div>`).join('')}</div>`;
+      ${L.map(p => `<div class="warn-row"><div><b>${esc(p.nome)}</b><div class="muted small">${dBR(p.venc)} · ${brl(p.valor)} · ${esc(p.plano)}</div></div><div style="display:flex;gap:8px;align-items:center">${this.foiAvisado(p) ? `<span class="tag-ok">${ic('check', 14)} avisado</span>` : ''}<button class="btn sm primary" onclick="Gestao.avisar(${jq(p.id)})">${ic('send', 14)} Enviar aviso</button></div></div>`).join('')}</div>`;
     if (atr.length) h += `<div class="card" style="margin-bottom:16px;border-color:#f0c4c4;background:#fff7f7"><div class="card-head"><h3 style="font-size:17px">${ic('alert')} Em atraso, ainda com acesso (${atr.length})</h3><button class="btn sm danger" onclick="Gestao.bloquearAtrasados()">Bloquear todos os inadimplentes</button></div>
-      ${atr.map(p => `<div class="warn-row"><div><b>${esc(p.nome)}</b><div class="muted small">venceu em ${dBR(p.venc)} · ${p.atraso} dia(s) de atraso · ${brl(p.valor)}</div></div><div style="display:flex;gap:8px"><button class="btn sm" onclick="Gestao.avisar('${p.id}')">Cobrar</button><button class="btn sm danger" onclick="Gestao.bloq('${p.id}',true)">Bloquear</button></div></div>`).join('')}</div>`;
+      ${atr.map(p => `<div class="warn-row"><div><b>${esc(p.nome)}</b><div class="muted small">venceu em ${dBR(p.venc)} · ${p.atraso} dia(s) de atraso · ${brl(p.valor)}</div></div><div style="display:flex;gap:8px"><button class="btn sm" onclick="Gestao.avisar(${jq(p.id)})">Cobrar</button><button class="btn sm danger" onclick="Gestao.bloq(${jq(p.id)},true)">Bloquear</button></div></div>`).join('')}</div>`;
     return h;
   },
   async bloquearAtrasados() {
@@ -747,7 +764,7 @@ const Gestao = {
       <td class="hide-sm">${esc(p.plano)}<div class="muted small">${brl(p.valor)}/mês</div></td>
       <td>${chip(p.status)}<div class="muted small">${p.venc ? dBR(p.venc) + (p.status === 'ativo' ? ` · ${p.diasRestantes === 0 ? 'hoje' : p.diasRestantes + ' dia(s)'}` : p.atraso ? ` · ${p.atraso} dia(s) de atraso` : '') : 'sem vencimento'}</div></td>
       <td class="hide-sm">${p.uso}/${p.cota ?? this.d.cotaPadrao}</td>
-      <td style="white-space:nowrap;text-align:right"><button class="btn sm primary" onclick="Gestao.pagar('${p.id}')">Pagamento</button> <button class="btn sm" onclick="Gestao.avisar('${p.id}')">Avisar</button> <button class="btn sm" onclick="Gestao.editar('${p.id}')">Editar</button> <button class="btn sm ${p.bloqueado ? '' : 'danger'}" onclick="Gestao.bloq('${p.id}',${!p.bloqueado})">${p.bloqueado ? 'Desbloquear' : 'Bloquear'}</button></td></tr>`).join('')}</tbody></table></div>`;
+      <td style="white-space:nowrap;text-align:right"><button class="btn sm primary" onclick="Gestao.pagar(${jq(p.id)})">Pagamento</button> <button class="btn sm" onclick="Gestao.avisar(${jq(p.id)})">Avisar</button> <button class="btn sm" onclick="Gestao.editar(${jq(p.id)})">Editar</button> <button class="btn sm ${p.bloqueado ? '' : 'danger'}" onclick="Gestao.bloq(${jq(p.id)},${!p.bloqueado})">${p.bloqueado ? 'Desbloquear' : 'Bloquear'}</button></td></tr>`).join('')}</tbody></table></div>`;
   },
   pagar(id) {
     const p = this.byId(id);
@@ -825,7 +842,7 @@ const Gestao = {
     <div class="card"><h3>Recebimentos por mês</h3><div style="display:flex;align-items:flex-end;gap:10px;height:150px;margin-top:14px">${rec.map((v, i) => `<div style="flex:1;text-align:center"><div class="muted small" style="font-size:11px">${v ? brl(v) : ''}</div><div style="height:${Math.max(3, v / mx * 100)}px;background:var(--primary);border-radius:6px 6px 0 0"></div><div class="muted small">${meses[i].slice(5)}/${meses[i].slice(2, 4)}</div></div>`).join('')}</div></div>
     <div class="card"><h3>Situação dos professores</h3><div style="display:grid;gap:10px;margin-top:12px">${Object.entries(CHIP).map(([k, c]) => { const q = P.filter(p => p.status === k).length; return `<div><div style="display:flex;justify-content:space-between;font-size:13px"><span>${c[0]}</span><b>${q}</b></div>${bar(P.length ? q / P.length * 100 : 0, c[1])}</div>`; }).join('')}</div></div>
     <div class="card"><h3>Professores com mais alunos</h3><div style="display:grid;gap:10px;margin-top:12px">${top.length ? top.map(p => `<div><div style="display:flex;justify-content:space-between;font-size:13px"><span>${esc(p.nome)}</span><b>${p.alunos}</b></div>${bar(p.alunos / mxA * 100, 'var(--accent)')}</div>`).join('') : '<p class="muted small">Sem dados.</p>'}</div></div>
-    <div class="card"><h3>Vencimentos e atrasos</h3>${prox.length ? `<div style="display:grid;gap:8px;margin-top:10px">${prox.map(p => `<div style="display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap"><div><b>${esc(p.nome)}</b><div class="muted small">${dBR(p.venc)} · ${brl(p.valor)}</div></div><div style="display:flex;gap:8px;align-items:center">${chip(p.status)}<button class="btn sm" onclick="Gestao.avisar('${p.id}')">Avisar</button></div></div>`).join('')}</div>` : '<p class="muted small">Nenhum vencimento nos próximos 7 dias e nenhum atraso.</p>'}</div></div>`;
+    <div class="card"><h3>Vencimentos e atrasos</h3>${prox.length ? `<div style="display:grid;gap:8px;margin-top:10px">${prox.map(p => `<div style="display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap"><div><b>${esc(p.nome)}</b><div class="muted small">${dBR(p.venc)} · ${brl(p.valor)}</div></div><div style="display:flex;gap:8px;align-items:center">${chip(p.status)}<button class="btn sm" onclick="Gestao.avisar(${jq(p.id)})">Avisar</button></div></div>`).join('')}</div>` : '<p class="muted small">Nenhum vencimento nos próximos 7 dias e nenhum atraso.</p>'}</div></div>`;
   },
   convites() { return `<div class="card" id="admConvite"><div class="muted small">Carregando…</div></div>`; },
   /* ---- plano e cobrança ---- */
@@ -868,7 +885,7 @@ Object.assign(Gestao, {
     const fl = x => `<div class="sol-arrow"><span>${esc(x.antPlano || 'plano atual')}${x.antValor != null ? ' · ' + brl(x.antValor) : ''}</span>${ic('send', 14)}<span><b>${esc(x.novoPlano)}</b>${x.novoValor != null ? ' · ' + brl(x.novoValor) : ''}</span></div>`;
     return `<div class="card" style="margin-bottom:16px"><div class="card-head"><h3>Aguardando decisão (${pend.length})</h3></div>
       ${pend.length ? pend.map(x => `<div class="sol-card"><div style="flex:1;min-width:240px"><b>${esc(x.nome || 'Professor')}</b> <span class="muted small">${esc(x.email || '')} · ${dtc(x.criadoEm)}</span>${fl(x)}${x.obs ? `<div class="small muted" style="margin-top:4px">“${esc(x.obs)}”</div>` : ''}</div>
-        <div style="display:flex;gap:8px"><button class="btn sm primary" onclick="Gestao.decidir('${esc(String(x.id))}',true)">${ic('check', 14)} Aprovar</button><button class="btn sm danger" onclick="Gestao.decidir('${esc(String(x.id))}',false)">${ic('x', 14)} Recusar</button></div></div>`).join('') : '<p class="muted small" style="margin:0">Nenhuma solicitação pendente.</p>'}</div>
+        <div style="display:flex;gap:8px"><button class="btn sm primary" onclick="Gestao.decidir(${jq(x.id)},true)">${ic('check', 14)} Aprovar</button><button class="btn sm danger" onclick="Gestao.decidir(${jq(x.id)},false)">${ic('x', 14)} Recusar</button></div></div>`).join('') : '<p class="muted small" style="margin:0">Nenhuma solicitação pendente.</p>'}</div>
       ${hist.length ? `<div class="card"><div class="card-head"><h3>Histórico</h3></div><div style="overflow-x:auto"><table class="gt"><thead><tr><th>Data</th><th>Professor</th><th>Mudança</th><th>Situação</th><th class="hide-sm">Resposta</th></tr></thead><tbody>${hist.map(x => `<tr><td>${dtc(x.decididoEm || x.criadoEm)}</td><td>${esc(x.nome || '')}</td><td>${esc(x.antPlano || '—')} → <b>${esc(x.novoPlano)}</b></td><td>${solChip(x.status)}</td><td class="hide-sm muted">${esc(x.resposta || '')}</td></tr>`).join('')}</tbody></table></div></div>` : ''}`;
   },
   decidir(id, ap) {
@@ -1053,6 +1070,8 @@ function aprovTurma(tid) {
 function isOpen(a) { return a.aberta !== false && (!a.prazo || Date.now() <= new Date(a.prazo).getTime()); }
 
 async function putLocal(st, obj) {
+  if (!obj || !idOk(obj.id)) return;
+  if (st === 'turmas' && obj.cor) obj.cor = corOk(obj.cor);
   await DB.put(st, obj);
   const arr = S[st]; const i = arr.findIndex(x => x.id === obj.id);
   if (i >= 0) arr[i] = obj; else arr.push(obj);
@@ -1135,7 +1154,7 @@ function router() {
   }
   renderNav(name);
   const views = { painel: viewPainel, turmas: viewTurmas, turma: viewTurma, atividade: viewAtividade, 'atividade-form': viewAtividadeForm, entrega: viewEntrega, aluno: viewAluno, config: viewConfig, gestao: viewGestao, convidar: () => { Gestao.tab = 'convites'; viewGestao(); } };
-  (views[name] || viewPainel)(...rest);
+  (Object.prototype.hasOwnProperty.call(views, name) ? views[name] : viewPainel)(...rest);
   window.scrollTo(0, 0);
 }
 
@@ -1245,7 +1264,7 @@ function b64u(bytes) { let s = ''; bytes.forEach(b => s += String.fromCharCode(b
 function unb64u(s) { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; return Uint8Array.from(atob(s), c => c.charCodeAt(0)); }
 function encodePayload(o) { const b = new TextEncoder().encode(JSON.stringify(o)); return b64u(b.map((x, i) => x ^ OBF[i % OBF.length])); }
 function decodePayload(s) { const b = unb64u(s); return JSON.parse(new TextDecoder().decode(b.map((x, i) => x ^ OBF[i % OBF.length]))); }
-function baseUrl() { return (S.cfg.publicUrl || location.href.split('#')[0]).trim(); }
+function baseUrl() { const u = String(S.cfg.publicUrl || '').trim(); return httpsOk(u) ? u : location.href.split('#')[0]; }
 const workerUrl = () => String(S.cfg.workerUrl || '').trim().replace(/\/+$/, '');
 function linkAluno(atv) { return workerUrl() ? `${baseUrl()}#/enviar/${encodePayload({ w: workerUrl(), a: atv.id })}` : null; }
 
@@ -1545,6 +1564,7 @@ function critKey(nome) {
   return 'geral';
 }
 function gradeTrabalhoLocal(atv, text) {
+  text = String(text).slice(0, 120000); /* evita regex lenta (ReDoS) em textos enormes */
   if (!String(text).trim()) throw new Error('A correção gratuita lê apenas texto digital. Envie o trabalho em PDF (com texto selecionável), DOCX ou TXT, ou cole o texto.');
   const p = atv.params || {}; const A = analisarTexto(text, p); const notaMax = +atv.notaMax || 10;
   const per100 = A.palavras ? 100 / A.palavras : 1;
@@ -2017,6 +2037,7 @@ async function extractPdf(file) {
 async function extractFiles(files, pasted, maxImg = 1600) {
   let text = pasted ? pasted + '\n' : ''; const images = []; const nomes = [];
   for (const f of files) {
+    if (f.size > 20 * 1024 * 1024) throw new Error('O arquivo "' + f.name + '" excede 20 MB.');
     nomes.push(f.name); const n = f.name.toLowerCase();
     if (f.type.startsWith('image/') || /\.(jpe?g|png|webp|heic|heif)$/.test(n)) images.push(await compressImage(f, maxImg));
     else if (f.type === 'application/pdf' || n.endsWith('.pdf')) { const r = await extractPdf(f); text += r.text; images.push(...r.images); }
@@ -2109,9 +2130,9 @@ function renderRelatorio(e, atv, { student = false, aluno = null } = {}) {
     ${showNota ? `<div class="ring" style="--p:${Math.round((p || 0) * 100)};--rc:${rc}"><div><b>${fmtN(nf)}</b><span>de ${fmtN(e.notaMax)}</span></div></div>` : ''}
     <div style="flex:1;min-width:220px"><div class="actions" style="margin-bottom:8px"><span class="badge ${atv.tipo === 'prova' ? 'dark' : ''}">${atv.tipo === 'prova' ? 'Prova' : esc(SUBTIPOS[atv.subtipo] || 'Trabalho')}</span>${e.notaManual != null && e.notaManual !== '' ? '<span class="badge warn">Nota ajustada pelo professor</span>' : ''}${e.atrasado ? '<span class="badge bad">Entregue após o prazo</span>' : ''}${e.origem === 'professor' ? '<span class="badge gray">Lançada pelo professor</span>' : ''}${R.modo === 'local' ? '<span class="badge ok">Correção gratuita</span>' : R.fallback ? '<span class="badge warn">Correção gratuita (reserva)</span>' : '<span class="badge">Corrigida por IA</span>'}</div>
     <h3 style="font-size:22px;margin-bottom:4px">${esc(atv.titulo)}</h3>
-    <div class="muted small">${esc(aluno?.nome || e.alunoNome || '')} · ${fmtDate(e.criadoEm)} · tentativa ${e.tentativa || 1}${e.arquivos?.length ? ' · ' + esc(e.arquivos.join(', ')) : ''}</div>
-    ${R.tipo === 'prova' ? `<div class="muted small" style="margin-top:6px">${fmtN(R.pontosObtidos)} de ${fmtN(R.pontosTotais)} pontos${R.totalObjetivas ? ` · ${R.acertosObjetivas}/${R.totalObjetivas} objetivas corretas` : ''}${R.legibilidade ? ' · Legibilidade: ' + esc(R.legibilidade) : ''}</div>` : ''}
-    ${R.tipo === 'trabalho' && R.palavras ? `<div class="muted small" style="margin-top:6px">${R.palavras} palavras${R.palavrasEstimadas ? ' (estimado)' : ''}${R.foraLimite ? ` · <b style="color:var(--bad)">fora do limite${R.penalidade ? ` (−${fmtN(R.penalidade)} pts)` : ''}</b>` : ''}</div>` : ''}
+    <div class="muted small">${esc(aluno?.nome || e.alunoNome || '')} · ${fmtDate(e.criadoEm)} · tentativa ${esc(e.tentativa || 1)}${e.arquivos?.length ? ' · ' + esc(e.arquivos.join(', ')) : ''}</div>
+    ${R.tipo === 'prova' ? `<div class="muted small" style="margin-top:6px">${fmtN(R.pontosObtidos)} de ${fmtN(R.pontosTotais)} pontos${R.totalObjetivas ? ` · ${esc(R.acertosObjetivas)}/${esc(R.totalObjetivas)} objetivas corretas` : ''}${R.legibilidade ? ' · Legibilidade: ' + esc(R.legibilidade) : ''}</div>` : ''}
+    ${R.tipo === 'trabalho' && R.palavras ? `<div class="muted small" style="margin-top:6px">${esc(R.palavras)} palavras${R.palavrasEstimadas ? ' (estimado)' : ''}${R.foraLimite ? ` · <b style="color:var(--bad)">fora do limite${R.penalidade ? ` (−${fmtN(R.penalidade)} pts)` : ''}</b>` : ''}</div>` : ''}
     </div></div>
     ${R.parecer ? `<div class="parecer" style="margin-top:18px">${esc(R.parecer)}</div>` : ''}
     ${!student && R.fallback ? `<div class="alert warn" style="margin:14px 0 0">${ic('alert')}<div>A IA falhou (${esc(R.fallback)}) e foi usada a correção gratuita. Você pode revisar a nota.</div></div>` : ''}
@@ -2127,7 +2148,7 @@ function renderRelatorio(e, atv, { student = false, aluno = null } = {}) {
       ${(T.evidencias || []).length ? `<div style="margin-top:8px">${T.evidencias.map(e => `<div class="quote">“${esc(e)}”</div>`).join('')}</div>` : ''}
       ${R.regraTema ? `<div class="alert ${T.situacao === 'adequado' ? 'warn' : 'bad'}" style="margin:12px 0 0">${ic('alert')}<div><b>${esc(R.regraTema)}</b>${!student && R.notaBruta != null ? ` Nota antes da regra: ${fmtN(Math.max(0, R.notaBruta - (R.penalidade || 0)))}.` : ''}</div></div>` : ''}</div>`;
   }
-  if (R.metricas) { const M = R.metricas; h += `<div class="card" style="margin-top:16px"><h3>Métricas do texto</h3><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px">${[['Palavras', M.palavras], ['Parágrafos', M.paragrafos], ['Frases', M.frases], ['Palavras/frase', fmtN(M.mediaFrase)], ['Conectivos', `${M.conectivos} (${M.tiposConectivos} tipos)`], ['Citações', M.citacoes], ['Referências', M.referencias], ['Desvios detectados', M.desvios], ['Diversidade vocabular', M.diversidade + '%'], ...(M.ocr != null ? [['Leitura (OCR)', M.ocr + '% de confiança']] : [])].map(([k, v]) => `<div style="background:#f7f6f2;border-radius:10px;padding:10px 12px"><div class="muted small">${k}</div><b>${v}</b></div>`).join('')}</div></div>`; }
+  if (R.metricas) { const M = R.metricas; h += `<div class="card" style="margin-top:16px"><h3>Métricas do texto</h3><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px">${[['Palavras', M.palavras], ['Parágrafos', M.paragrafos], ['Frases', M.frases], ['Palavras/frase', fmtN(M.mediaFrase)], ['Conectivos', `${M.conectivos} (${M.tiposConectivos} tipos)`], ['Citações', M.citacoes], ['Referências', M.referencias], ['Desvios detectados', M.desvios], ['Diversidade vocabular', M.diversidade + '%'], ...(M.ocr != null ? [['Leitura (OCR)', M.ocr + '% de confiança']] : [])].map(([k, v]) => `<div style="background:#f7f6f2;border-radius:10px;padding:10px 12px"><div class="muted small">${k}</div><b>${esc(v)}</b></div>`).join('')}</div></div>`; }
   if (R.criterios?.length) h += `<div class="card" style="margin-top:16px"><h3>Critérios de avaliação</h3>${R.criterios.map(c => `<div class="crit"><div class="crit-top"><span>${esc(c.nome)} <span class="muted small">· peso ${fmtN(c.peso)}</span></span><span class="nota ${cls(c.nota / 10)}">${fmtN(c.nota)}</span></div><div class="bar" style="--c:${c.nota >= 7 ? 'var(--ok)' : c.nota >= 5 ? 'var(--warn)' : 'var(--bad)'}"><i style="width:${c.nota * 10}%"></i></div>${c.comentario ? `<p>${esc(c.comentario)}</p>` : ''}${c.evidencia ? `<div class="quote">“${esc(c.evidencia)}”</div>` : ''}</div>`).join('')}</div>`;
   if ((R.problemasCoesao || []).length) h += `<div class="card" style="margin-top:16px"><h3>Coesão e coerência — pontos a corrigir</h3>${R.problemasCoesao.map(x => `<div class="conf"><span class="ci bad">${ic('x', 13)}</span><div class="small">${x.trecho ? `<div class="quote" style="margin:0 0 4px">“${esc(x.trecho)}”</div>` : ''}${esc(x.problema || x)}</div></div>`).join('')}</div>`;
   if ((R.desvios || []).length) h += `<div class="card" style="margin-top:16px"><h3>Desvios da norma padrão (${R.desvios.length})</h3><div class="table-wrap"><table class="tbl"><thead><tr><th>Trecho</th><th>Correção</th><th class="hide-sm">Tipo</th></tr></thead><tbody>${R.desvios.map(d => `<tr><td style="color:var(--bad)">${esc(d.trecho)}</td><td style="color:var(--ok)">${esc(d.correcao)}</td><td class="hide-sm small muted">${esc(d.tipo || '')}</td></tr>`).join('')}</tbody></table></div></div>`;
@@ -2416,7 +2437,7 @@ function viewAtividade(id) {
   <div class="actions">${a.tipo === 'prova' ? `<button class="btn" onclick="pdfFolhaRespostas('${id}')">${ic('file')} Folha de respostas</button>` : ''}<button class="btn" onclick="pdfAtividade('${id}')">${ic('download')} PDF</button><a class="btn" href="#/atividade-form/${t.id}/${id}">${ic('edit')} Editar</a><button class="btn" onclick="toggleAberta('${id}')">${isOpen(a) ? ic('x') + ' Encerrar' : ic('check') + ' Reabrir'}</button><button class="btn danger" onclick="delAtividade('${id}')">${ic('trash')}</button></div></div>
 
   <div class="card" style="margin-bottom:16px"><div class="card-head"><h3>${ic('link')} Link de envio para os alunos</h3></div>
-    ${link ? `<div id="linkCheck" class="small muted" style="margin-bottom:8px">Verificando o link no servidor…</div><div class="linkbox"><code>${esc(link)}</code><button class="btn sm primary" onclick="copyText('${esc(link)}')">${ic('copy', 15)} Copiar</button></div>
+    ${link ? `<div id="linkCheck" class="small muted" style="margin-bottom:8px">Verificando o link no servidor…</div><div class="linkbox"><code>${esc(link)}</code><button class="btn sm primary" onclick="copyText(${jq(link)})">${ic('copy', 15)} Copiar</button></div>
       <div class="actions" style="margin-top:10px"><a class="btn sm" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(`${a.titulo} — envie sua ${a.tipo === 'prova' ? 'prova' : 'atividade'} por aqui: ${link}`)}">${ic('share', 15)} WhatsApp</a><a class="btn sm" href="mailto:?subject=${encodeURIComponent(a.titulo)}&body=${encodeURIComponent('Envie sua atividade pelo link: ' + link)}">${ic('send', 15)} E-mail</a><a class="btn sm ghost" target="_blank" href="${esc(link)}">${ic('eye', 15)} Abrir como aluno</a></div>
       ${/^(file:|http:\/\/localhost|http:\/\/127)/.test(baseUrl()) ? `<div class="alert warn" style="margin:12px 0 0">${ic('alert')}<div>O sistema está aberto localmente (${esc(baseUrl().slice(0, 40))}…). Para que os alunos consigam abrir o link, publique este arquivo (ex.: GitHub Pages) e informe a <b>URL pública</b> em Configurações.</div></div>` : ''}
       ${a.tipo === 'prova' && modoDe(a, S.cfg) === 'local' && (a.gabarito || []).some(q => q.tipo === 'objetiva') ? `<div class="alert info" style="margin:12px 0 0">${ic('file')}<div><b>Correção gratuita:</b> imprima a <a href="javascript:pdfFolhaRespostas('${id}')"><u>folha de respostas</u></a> (uma por aluno, já com o nome). Ao final da prova, o aluno fotografa a folha pelo link${(a.gabarito || []).some(q => q.tipo === 'aberta') ? ' e digita as respostas das questões abertas' : ''}.</div></div>` : ''}
@@ -2585,7 +2606,7 @@ function arquivosCompletos() {
   [...new Set(S.entregas.map(e => e.atividadeId))].forEach(aid => { files[`arq_${aid}.json`] = { content: JSON.stringify(S.entregas.filter(e => e.atividadeId === aid)) }; });
   return files;
 }
-async function saveProf() { Object.assign(S.cfg, formData($('#fProf'))); await saveCfg(); toast('Dados salvos', 'ok'); }
+async function saveProf() { const d = formData($('#fProf')); if (d.publicUrl && !httpsOk(d.publicUrl.trim())) return toast('A URL pública deve começar com https://', 'bad'); Object.assign(S.cfg, d); await saveCfg(); toast('Dados salvos', 'ok'); }
 async function saveModo() { const f = $('#fModo'); S.cfg.modoPadrao = $('[name=modoPadrao]:checked', f).value; S.cfg.fallbackLocal = $('[name=fallbackLocal]', f).checked; await saveCfg(); toast('Modo de correção salvo', 'ok'); }
 const cleanKey = k => String(k || '').replace(/[\s\u200B-\u200D\uFEFF\u00A0"'`]/g, '');
 const maskKey = k => k.length > 14 ? k.slice(0, 10) + '…' + k.slice(-4) : '•'.repeat(k.length);
@@ -2652,7 +2673,7 @@ async function ghFind() {
 }
 async function ghDisconnect() { if (!await confirmDlg('Desconectar a sincronização? Os dados locais serão mantidos.', 'Desconectar')) return; S.local.token = ''; S.local.gistId = ''; await saveLocal(); Sync.state = 'off'; Sync.ui(); router(); }
 /* ---------- Backup global criptografado (AES-GCM 256 + PBKDF2-SHA256) ---------- */
-const BK_ITER = 310000;
+const BK_ITER = 600000;
 function bytesParaB64(u8) { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
 function b64ParaBytes(b) { const s = atob(b); const u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
 async function comprimir(u8, modo) { if (!window.CompressionStream) return null; const st = new Blob([u8]).stream().pipeThrough(new (modo ? CompressionStream : DecompressionStream)('gzip')); return new Uint8Array(await new Response(st).arrayBuffer()); }
@@ -2685,12 +2706,12 @@ function exportBackup() {
     title: 'Exportar backup global', body: `<form onsubmit="return false">
       <p style="margin-top:0" class="small">O arquivo terá: <b>${n[0]}</b> turmas, <b>${n[1]}</b> alunos, <b>${n[2]}</b> atividades e <b>${n[3]}</b> entregas;
       ${c.conexao.token ? 'token do GitHub' : '<span class="muted">sem token do GitHub</span>'}${c.conexao.gistId ? ' e ID do Gist' : ''}; ${c.configuracao.ai?.key ? 'chave da IA (' + esc(PROVIDERS[c.configuracao.ai.provider] || c.configuracao.ai.provider) + ')' : '<span class="muted">sem chave de IA</span>'}; ${c.conexao.workerUrl ? 'endereço do servidor' : '<span class="muted">sem servidor</span>'}.</p>
-      <div class="field"><label>Senha do backup (mínimo 8 caracteres)</label><input type="password" name="s1" autocomplete="new-password" required></div>
+      <div class="field"><label>Senha do backup (mínimo 12 caracteres)</label><input type="password" name="s1" autocomplete="new-password" required></div>
       <div class="field"><label>Repita a senha</label><input type="password" name="s2" autocomplete="new-password" required></div>
       <div class="alert warn" style="margin:0">${ic('shield')}<div class="small">Guarde esta senha: <b>sem ela o backup não pode ser aberto</b>, nem por você. Não envie a senha junto com o arquivo.</div></div></form>`,
     actions: [{ label: 'Cancelar' }, {
       label: ic('download') + ' Exportar', cls: 'primary', onClick: async el => {
-        const d = formData(el); if (d.s1.length < 8) throw new Error('A senha deve ter pelo menos 8 caracteres.'); if (d.s1 !== d.s2) throw new Error('As senhas não conferem.');
+        const d = formData(el); if (d.s1.length < 12) throw new Error('A senha deve ter pelo menos 12 caracteres.'); if (d.s1 !== d.s2) throw new Error('As senhas não conferem.');
         toast('Criptografando…'); const env = await cifrarBackup(conteudoBackup(), d.s1);
         baixarJSON(env, `catedra-backup-global-${new Date().toISOString().slice(0, 10)}.json`); toast('Backup exportado', 'ok');
       }
@@ -2730,7 +2751,7 @@ async function importBackup(f) {
         if (o.dados) for (const st of ['turmas', 'alunos', 'atividades', 'entregas']) for (const r of dd[st] || []) { const l = byId(st, r.id); if (!l || (r.updatedAt || 0) > (l.updatedAt || 0)) { await putLocal(st, r); if (st === 'entregas') Sync.dirtyArq.add(r.atividadeId); n++; } }
         if (o.perfil) ['professor', 'instituicao', 'modoPadrao', 'fallbackLocal'].forEach(k => { if (cfg[k] !== undefined) S.cfg[k] = cfg[k]; });
         if (o.ia && cfg.ai) S.cfg.ai = { ...S.cfg.ai, ...cfg.ai, key: cleanKey(cfg.ai.key) };
-        if (o.servidor) { S.cfg.workerUrl = c.workerUrl || cfg.workerUrl || S.cfg.workerUrl; S.cfg.publicUrl = c.publicUrl || cfg.publicUrl || S.cfg.publicUrl; }
+        if (o.servidor) { const w = c.workerUrl || cfg.workerUrl, pu = c.publicUrl || cfg.publicUrl; if (httpsOk(w)) S.cfg.workerUrl = w; if (httpsOk(pu)) S.cfg.publicUrl = pu; }
         if (o.perfil || o.ia || o.servidor) { S.cfg.updatedAt = Date.now(); await DB.put('meta', S.cfg); }
         if (o.conexao) { if (c.token) S.local.token = c.token; if (c.gistId) S.local.gistId = c.gistId; await saveLocal(); }
         toast(`Backup restaurado${o.dados ? ` (${n} registro(s) de dados)` : ''}. Sincronizando…`, 'ok', 5000);
@@ -2789,7 +2810,7 @@ function pdfEntregaSection(doc, e, atv, aluno, { student = false } = {}) {
   const kv = [['Aluno', aluno?.nome || e.alunoNome], ['Data de envio', fmtDate(e.criadoEm) + (e.atrasado ? ' (após o prazo)' : '')], ['Tentativa', String(e.tentativa || 1)]];
   if (showNota) kv.push(['Nota', `${fmtN(nf)} de ${fmtN(e.notaMax)}${e.notaManual != null && e.notaManual !== '' ? ` (ajustada pelo professor; IA: ${fmtN(e.nota)})` : ''}`]);
   kv.push(['Método', R.modo === 'local' ? 'Correção automática gratuita (estimativa)' : R.fallback ? 'Correção automática gratuita (reserva)' : 'Inteligência artificial']);
-  if (R.tipo === 'prova') kv.push(['Pontuação', `${fmtN(R.pontosObtidos)} de ${fmtN(R.pontosTotais)} pontos${R.totalObjetivas ? ` - ${R.acertosObjetivas}/${R.totalObjetivas} objetivas corretas` : ''}`]);
+  if (R.tipo === 'prova') kv.push(['Pontuação', `${fmtN(R.pontosObtidos)} de ${fmtN(R.pontosTotais)} pontos${R.totalObjetivas ? ` - ${esc(R.acertosObjetivas)}/${esc(R.totalObjetivas)} objetivas corretas` : ''}`]);
   if (R.tipo === 'trabalho' && R.palavras) kv.push(['Extensão', `${R.palavras} palavras${R.palavrasEstimadas ? ' (estimado)' : ''}${R.foraLimite ? ' - fora do limite' + (R.penalidade ? ` (-${fmtN(R.penalidade)} pts)` : '') : ''}`]);
   pTable(doc, [], kv, { theme: 'plain', showHead: 'never', styles: { fontSize: 9.5, cellPadding: 1.3 }, columnStyles: { 0: { fontStyle: 'bold', cellWidth: 34 } }, margin: { left: M, right: M + 40 } }); doc._y -= 2;
   if (student && atv.mostrarRelatorio === false) return;
@@ -2881,7 +2902,7 @@ async function viewEnviar(payload) {
   main.innerHTML = `<div class="card empty"><div class="spinner"></div><p>Carregando atividade…</p></div>`;
   let P; try { P = decodePayload(payload); } catch { main.innerHTML = sErr('Link inválido', 'Verifique se você copiou o link completo enviado pelo professor.'); return; }
   if (P.t || P.g) { main.innerHTML = sErr('Link desatualizado', 'Este link foi gerado por uma versão antiga do sistema e foi desativado por segurança. Peça ao professor o link novo da atividade.'); return; }
-  if (!P.w || !P.a || !/^https:\/\/[a-z0-9.-]+(:\d+)?(\/[\w./-]*)?$/i.test(P.w)) { main.innerHTML = sErr('Link inválido', 'Verifique se você copiou o link completo enviado pelo professor.'); return; }
+  if (!P.w || !P.a || !idOk(String(P.a)) || String(P.w).replace(/\/+$/, '') !== Auth.api) { main.innerHTML = sErr('Link inválido', 'Verifique se você copiou o link completo enviado pelo professor.'); return; }
   ST = { P: { w: P.w.replace(/\/+$/, ''), a: String(P.a) } };
   try {
     const d = await api('/atividade?a=' + encodeURIComponent(ST.P.a));
@@ -2999,7 +3020,7 @@ async function boot() {
     await DB.open();
     S.local = await DB.get('meta', 'local') || { id: 'local', token: '', gistId: '', lastSync: 0 };
     S.cfg = await DB.get('meta', 'cfg') || { id: 'cfg', professor: '', instituicao: '', publicUrl: '', ai: { provider: 'anthropic', model: MODELS.anthropic, key: '' }, updatedAt: 0 };
-    for (const st of ['turmas', 'alunos', 'atividades', 'entregas']) S[st] = await DB.all(st);
+    for (const st of ['turmas', 'alunos', 'atividades', 'entregas']) { S[st] = (await DB.all(st)).filter(r => r && idOk(r.id)); if (st === 'turmas') S[st].forEach(t => { if (t.cor) t.cor = corOk(t.cor); }); }
   } catch (e) {
     if (!student) { $('#main').innerHTML = `<div class="alert bad">${ic('alert')}<div>Não foi possível abrir o banco de dados local (IndexedDB): ${esc(e.message)}. Saia do modo anônimo ou use outro navegador.</div></div>`; return; }
     S.local = { token: '', gistId: '' }; S.cfg = {};
