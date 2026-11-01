@@ -308,6 +308,15 @@ button,.btn,a{touch-action:manipulation}
  .modal-bg{padding-top:env(safe-area-inset-top)}.modal{padding-bottom:env(safe-area-inset-bottom)}
 }
 @media (display-mode:standalone){body{-webkit-touch-callout:none}a{-webkit-touch-callout:none}}
+
+.gtabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:20px 0 16px;overflow-x:auto}
+.gtabs button{background:none;border:0;padding:11px 14px;font-weight:600;font-size:14px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+.gtabs button.on{color:var(--primary);border-color:var(--primary)}
+.gt{width:100%;border-collapse:collapse;font-size:13.5px}.gt th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:8px 10px;white-space:nowrap}.gt td{padding:11px 10px;border-top:1px solid var(--line);vertical-align:middle}
+.gt tbody tr:hover{background:rgba(41,72,209,.03)}
+.btn.sm{padding:6px 11px;font-size:12.5px;min-height:0!important;border-radius:9px}
+input[type=date],input[type=tel]{width:100%;border:1px solid #dcd8ce;border-radius:11px;padding:10px 12px;font:inherit;background:#fff}
+@media print{.side,.top,.bottom,.gtabs,.page-head .actions,.actions,.btn,#toasts{display:none!important}.app{display:block}main{padding:0!important;max-width:none}.card{break-inside:avoid;box-shadow:none}}
 </style>
 <script src="config.js"></script>
 </head>
@@ -348,7 +357,7 @@ const LIBS = {
   tessCore: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1',
   tessLang: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/por@1.0.0/4.0.0_best_int'
 };
-const APP_VERSION = '2026.10.31-3';
+const APP_VERSION = '2026.10.31-4';
 const sha16 = async t => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(t || ''))))].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
 const verNum = v => { const m = String(v || '').match(/^(\d+)\.(\d+)\.(\d+)-(\d+)$/); return m ? ((+m[1] * 100 + +m[2]) * 100 + +m[3]) * 1000 + +m[4] : 0; };
 const BC = (() => { try { return new BroadcastChannel('catedra'); } catch { return null; } })();
@@ -554,6 +563,7 @@ function telaLogin(modo = 'entrar') {
   <form id="fAuth" onsubmit="return false">${!Auth.api ? '<div class="field"><label>Endereço do servidor</label><input name="api" placeholder="https://catedra.seunome.workers.dev"></div>' : ''}
   ${reg ? '<div class="field"><label>Nome</label><input name="nome" autocomplete="name"></div>' : ''}
   <div class="field"><label>E-mail</label><input name="email" type="email" autocomplete="username"></div>
+  ${reg ? '<div class="field"><label>WhatsApp com DDD (opcional)</label><input name="telefone" type="tel" autocomplete="tel" placeholder="(82) 99999-9999"><div class="hint">Usado para avisos sobre o seu plano.</div></div>' : ''}
   <div class="field"><label>Senha ${reg ? '(mínimo 8 caracteres)' : ''}</label><input name="senha" type="password" autocomplete="${reg ? 'new-password' : 'current-password'}"></div>
   ${reg ? '<div class="field"><label>Código de convite</label><input name="convite" autocomplete="off"><div class="hint">Fornecido pelo administrador do sistema.</div></div>' : ''}
   <div id="authErr" class="small" style="color:#b3261e;min-height:18px;margin-bottom:6px"></div>
@@ -633,6 +643,165 @@ Object.assign(Admin, {
     try { const r = await Auth.call('/admin/convite', { codigo: c }); this.codigo = r.codigo; this.origem = r.origem; this.draw(); this.load(); toast('Código atualizado', 'ok'); } catch (e) { toast(e.message, 'bad'); }
   }
 });
+const brl = n => (+n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const dBR = iso => iso ? String(iso).split('-').reverse().join('/') : '—';
+const hojeISO = () => new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+const CHIP = { ativo: ['Em dia', '#1b8f62', '#e2f4ec'], isento: ['Sem cobrança', '#5b6478', '#eceae3'], vencido: ['Vencido', '#8a5a0a', '#fff2d6'], suspenso: ['Suspenso', '#b3261e', '#fde8e6'], bloqueado: ['Bloqueado', '#b3261e', '#fde8e6'] };
+const chip = s => { const c = CHIP[s] || CHIP.isento; return `<span style="background:${c[2]};color:${c[1]};padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700;white-space:nowrap">${c[0]}</span>`; };
+function waLink(tel, msg) { const t = String(tel || '').replace(/\D/g, ''); return `https://wa.me/${t ? (t.length <= 11 ? '55' + t : t) : ''}?text=${encodeURIComponent(msg)}`; }
+function baixarCSV(nome, linhas) {
+  const cel = c => { let s = String(c ?? ''); if (/^[=+\-@]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff' + linhas.map(l => l.map(cel).join(';')).join('\r\n')], { type: 'text/csv;charset=utf-8' }));
+  a.download = nome; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 600);
+}
+const kpi = (t, v, s) => `<div class="card" style="padding:14px 16px"><div class="muted small">${t}</div><div style="font-family:Fraunces,Georgia,serif;font-size:26px;font-weight:700;line-height:1.2">${v}</div><div class="muted small">${s || '&nbsp;'}</div></div>`;
+const Gestao = {
+  d: null, tab: 'professores', q: '', f: '',
+  byId(id) { return this.d.profs.find(p => p.id === id); },
+  async carregar() { try { this.d = await Auth.call('/admin/profs'); this.draw(); } catch (e) { const b = $('#gBody'); if (b) b.innerHTML = `<div class="alert bad">${ic('alert')}<div>${esc(e.message)}</div></div>`; } },
+  aba(t) { this.tab = t; this.draw(); },
+  draw() {
+    if (!$('#gBody') || !this.d) return; const d = this.d, P = d.profs, mes = hojeISO().slice(0, 7);
+    const n = f => P.filter(f).length, soma = (L, f) => L.reduce((s, x) => s + f(x), 0);
+    const ativos = P.filter(p => p.status === 'ativo'), atraso = P.filter(p => p.status === 'vencido' || p.status === 'suspenso');
+    $('#gKpi').innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px">
+      ${kpi('Professores', P.length, `${n(p => p.status === 'ativo' || p.status === 'isento')} com acesso ativo`)}
+      ${kpi('Alunos gerenciados', soma(P, p => p.alunos), `${soma(P, p => p.turmas)} turma(s)`)}
+      ${kpi('Vencem em 7 dias', n(p => p.status === 'ativo' && p.diasRestantes <= 7), 'avisar para renovar')}
+      ${kpi('Em atraso', atraso.length, brl(soma(atraso, p => p.valor)) + ' a receber')}
+      ${kpi('Receita prevista/mês', brl(soma(ativos, p => p.valor)), `${ativos.length} assinatura(s) ativa(s)`)}
+      ${kpi('Recebido no mês', brl(soma(d.pagamentos.filter(x => String(x.data).startsWith(mes)), x => x.valor)), 'pagamentos registrados')}</div>`;
+    const T = [['professores', 'Professores'], ['pagamentos', 'Pagamentos'], ['relatorios', 'Relatórios'], ['convites', 'Convites'], ['planos', 'Plano e cobrança']];
+    $('#gTabs').innerHTML = `<div class="gtabs">${T.map(t => `<button class="${this.tab === t[0] ? 'on' : ''}" onclick="Gestao.aba('${t[0]}')">${t[1]}</button>`).join('')}</div>`;
+    const B = $('#gBody'); B.innerHTML = this[this.tab](); if (this.tab === 'convites') Admin.convite();
+  },
+  /* ---- professores ---- */
+  professores() {
+    return `<div class="card"><div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px"><input placeholder="Buscar professor ou e-mail…" value="${esc(this.q)}" oninput="Gestao.q=this.value;Gestao.lista()" style="flex:1;min-width:200px">
+      <select onchange="Gestao.f=this.value;Gestao.lista()" style="width:auto"><option value="">Todos os status</option>${Object.entries(CHIP).map(([k, v]) => `<option value="${k}" ${this.f === k ? 'selected' : ''}>${v[0]}</option>`).join('')}</select></div><div id="gLista"></div></div>`;
+  },
+  lista() {
+    let L = this.d.profs.slice(); const q = this.q.toLowerCase(); if (q) L = L.filter(p => (p.nome + ' ' + p.email).toLowerCase().includes(q)); if (this.f) L = L.filter(p => p.status === this.f);
+    const el = $('#gLista'); if (!el) return;
+    if (!L.length) { el.innerHTML = `<p class="muted small" style="margin:8px 0">${this.d.profs.length ? 'Nenhum professor encontrado.' : 'Nenhum professor cadastrado ainda. Use a aba <b>Convites</b> para enviar o link pelo WhatsApp.'}</p>`; return; }
+    el.innerHTML = `<div style="overflow-x:auto"><table class="gt"><thead><tr><th>Professor</th><th>Alunos</th><th class="hide-sm">Plano</th><th>Vencimento</th><th class="hide-sm">IA no mês</th><th></th></tr></thead><tbody>${L.map(p => `<tr>
+      <td><b>${esc(p.nome)}</b><div class="muted small">${esc(p.email)}</div></td>
+      <td><b>${p.alunos}</b><div class="muted small">${p.turmas} turma(s)</div></td>
+      <td class="hide-sm">${esc(p.plano)}<div class="muted small">${brl(p.valor)}/mês</div></td>
+      <td>${chip(p.status)}<div class="muted small">${p.venc ? dBR(p.venc) + (p.status === 'ativo' ? ` · ${p.diasRestantes === 0 ? 'hoje' : p.diasRestantes + ' dia(s)'}` : p.atraso ? ` · ${p.atraso} dia(s) de atraso` : '') : 'sem vencimento'}</div></td>
+      <td class="hide-sm">${p.uso}/${p.cota ?? this.d.cotaPadrao}</td>
+      <td style="white-space:nowrap;text-align:right"><button class="btn sm primary" onclick="Gestao.pagar('${p.id}')">Pagamento</button> <button class="btn sm" onclick="Gestao.avisar('${p.id}')">Avisar</button> <button class="btn sm" onclick="Gestao.editar('${p.id}')">Editar</button> <button class="btn sm" onclick="Gestao.bloq('${p.id}',${!p.bloqueado})">${p.bloqueado ? 'Desbloquear' : 'Bloquear'}</button></td></tr>`).join('')}</tbody></table></div>`;
+  },
+  pagar(id) {
+    const p = this.byId(id);
+    modal({ title: 'Registrar pagamento', body: `<p class="small" style="margin-top:0"><b>${esc(p.nome)}</b> · vencimento atual: <b>${dBR(p.venc)}</b></p>
+      <div class="field"><label>Valor recebido (R$)</label><input id="pgV" type="number" step="0.01" min="0" value="${p.valor}"></div>
+      <div class="field"><label>Meses pagos</label><input id="pgM" type="number" min="1" max="24" value="1"></div>
+      <div class="field"><label>Data do pagamento</label><input id="pgD" type="date" value="${hojeISO()}"></div>
+      <div class="field"><label>Observação</label><input id="pgO" placeholder="Ex.: PIX, comprovante nº…"></div>
+      ${p.bloqueado ? `<label class="check"><input type="checkbox" id="pgU" checked> <span>Desbloquear o acesso deste professor</span></label>` : ''}
+      <div class="hint">O novo vencimento conta a partir do vencimento atual (ou de hoje, se já venceu). Se o acesso estava suspenso por atraso, ele volta na hora.</div>`,
+      actions: [{ label: 'Cancelar' }, { label: `${ic('check')} Confirmar pagamento`, cls: 'primary', onClick: async m => {
+        const v = parseFloat(m.querySelector('#pgV').value); if (!(v >= 0)) throw new Error('Informe o valor recebido.');
+        const r = await Auth.call('/admin/pagamento', { id, valor: v, meses: +m.querySelector('#pgM').value || 1, data: m.querySelector('#pgD').value, obs: m.querySelector('#pgO').value, desbloquear: !!m.querySelector('#pgU')?.checked });
+        toast('Pagamento registrado. Novo vencimento: ' + dBR(r.venc), 'ok'); this.carregar();
+      } }] });
+  },
+  editar(id) {
+    const p = this.byId(id);
+    modal({ title: 'Editar professor', body: `<p class="small" style="margin-top:0"><b>${esc(p.nome)}</b> · ${esc(p.email)}</p>
+      <div class="field"><label>WhatsApp com DDD</label><input id="edT" type="tel" value="${esc(p.telefone)}" placeholder="(82) 99999-9999"></div>
+      <div class="field"><label>Plano</label><input id="edP" value="${esc(p.plano)}"></div>
+      <div class="field"><label>Valor mensal (R$)</label><input id="edV" type="number" step="0.01" min="0" value="${p.valor}"><div class="hint">Padrão do sistema: ${brl(this.d.fin.valor)}.</div></div>
+      <div class="field"><label>Próximo vencimento</label><input id="edD" type="date" value="${esc(p.venc || '')}"><div class="hint">Em branco = sem cobrança (acesso livre).</div></div>
+      <div class="field"><label>Limite de correções por IA/mês</label><input id="edC" type="number" min="0" value="${p.cota ?? ''}" placeholder="Padrão: ${this.d.cotaPadrao}"></div>`,
+      actions: [{ label: 'Cancelar' }, { label: `${ic('check')} Salvar`, cls: 'primary', onClick: async m => {
+        await Auth.call('/admin/prof', { id, telefone: m.querySelector('#edT').value, plano: m.querySelector('#edP').value, valor: m.querySelector('#edV').value, venc: m.querySelector('#edD').value, cota: m.querySelector('#edC').value });
+        toast('Dados salvos', 'ok'); this.carregar();
+      } }] });
+  },
+  async bloq(id, b) {
+    const p = this.byId(id);
+    if (b && !(await confirmDlg(`Bloquear o acesso de <b>${esc(p.nome)}</b>? Ele deixa de entrar e os links dos alunos dele param de funcionar.`, 'Bloquear'))) return;
+    try { await Auth.call('/admin/prof', { id, bloqueado: b }); toast(b ? 'Acesso bloqueado' : 'Acesso liberado', 'ok'); this.carregar(); } catch (e) { toast(e.message, 'bad'); }
+  },
+  msg(p) {
+    const f = this.d.fin, pix = f.pix ? `\n\n💳 *Como pagar*\n${f.pix}` : '', v = brl(p.valor), n = (p.nome || '').split(' ')[0];
+    if (p.status === 'suspenso' || p.status === 'bloqueado') return `Olá, ${n}! O seu acesso ao *Cátedra* está suspenso${p.venc ? ` (plano vencido em ${dBR(p.venc)})` : ''}. Para reativar, regularize o plano de *${v}*.${pix}\n\nAssim que o pagamento for registrado, o acesso volta na hora. Se já pagou, envie o comprovante por aqui.`;
+    if (p.status === 'vencido') return `Olá, ${n}! O seu plano do *Cátedra* venceu em ${dBR(p.venc)} (valor *${v}*). Regularize para evitar a suspensão do acesso.${pix}\n\nSe já pagou, envie o comprovante por aqui. Obrigado!`;
+    const q = p.diasRestantes; return `Olá, ${n}! Lembrete: o seu plano do *Cátedra* vence ${q === 0 ? 'hoje' : q === 1 ? 'amanhã' : 'em ' + q + ' dias'} (${dBR(p.venc)}), no valor de *${v}*.${pix}\n\nDepois do pagamento, envie o comprovante por aqui. Obrigado!`;
+  },
+  avisar(id) {
+    const p = this.byId(id);
+    modal({ title: 'Avisar pelo WhatsApp', body: `<p class="small" style="margin-top:0">Para <b>${esc(p.nome)}</b>${p.telefone ? ` · ${esc(p.telefone)}` : ' · <span class="muted">sem WhatsApp cadastrado: você escolhe o contato ao abrir</span>'}</p><textarea id="avM" rows="11" style="width:100%;font-family:inherit">${esc(this.msg(p))}</textarea>`,
+      actions: [{ label: 'Fechar' }, { label: 'Copiar', onClick: async m => { await copyText(m.querySelector('#avM').value); return false; } }, { label: 'Abrir no WhatsApp', cls: 'primary', onClick: m => { window.open(waLink(p.telefone, m.querySelector('#avM').value), '_blank', 'noopener'); } }] });
+  },
+  /* ---- pagamentos ---- */
+  pagamentos() {
+    const L = this.d.pagamentos, tot = L.reduce((s, x) => s + x.valor, 0);
+    return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px"><div><b>Pagamentos registrados</b> <span class="muted small">(últimos 12 meses · total ${brl(tot)})</span></div><button class="btn" onclick="Gestao.csvPag()">${ic('download')} Exportar CSV</button></div>
+    ${L.length ? `<div style="overflow-x:auto"><table class="gt"><thead><tr><th>Data</th><th>Professor</th><th>Valor</th><th class="hide-sm">Meses</th><th class="hide-sm">Novo vencimento</th><th class="hide-sm">Observação</th></tr></thead><tbody>${L.map(x => `<tr><td>${dBR(x.data)}</td><td>${esc(x.nome)}</td><td><b>${brl(x.valor)}</b></td><td class="hide-sm">${x.meses}</td><td class="hide-sm">${dBR(x.venc)}</td><td class="hide-sm muted">${esc(x.obs || '')}</td></tr>`).join('')}</tbody></table></div>` : '<p class="muted small">Nenhum pagamento registrado ainda. Use o botão <b>Pagamento</b> na aba Professores.</p>'}</div>`;
+  },
+  csvPag() { baixarCSV('pagamentos.csv', [['Data', 'Professor', 'Valor', 'Meses', 'Novo vencimento', 'Observação'], ...this.d.pagamentos.map(x => [dBR(x.data), x.nome, String(x.valor).replace('.', ','), x.meses, dBR(x.venc), x.obs])]); },
+  csvProf() { baixarCSV('professores.csv', [['Professor', 'E-mail', 'WhatsApp', 'Turmas', 'Alunos', 'Atividades', 'Plano', 'Valor mensal', 'Vencimento', 'Situação', 'Dias de atraso', 'IA no mês'], ...this.d.profs.map(p => [p.nome, p.email, p.telefone, p.turmas, p.alunos, p.atividades, p.plano, String(p.valor).replace('.', ','), dBR(p.venc), CHIP[p.status][0], p.atraso, p.uso])]); },
+  /* ---- relatórios ---- */
+  relatorios() {
+    const d = this.d, P = d.profs, bar = (pct, cor) => `<div style="background:#eceae3;border-radius:99px;height:9px;overflow:hidden"><div style="width:${Math.max(2, pct)}%;height:100%;background:${cor};border-radius:99px"></div></div>`;
+    const meses = []; for (let i = 5; i >= 0; i--) { const dt = new Date(Date.now() - 3 * 3600e3); dt.setUTCDate(1); dt.setUTCMonth(dt.getUTCMonth() - i); meses.push(dt.toISOString().slice(0, 7)); }
+    const rec = meses.map(m => d.pagamentos.filter(x => String(x.data).startsWith(m)).reduce((s, x) => s + x.valor, 0)), mx = Math.max(...rec, 1);
+    const top = P.slice().sort((a, b) => b.alunos - a.alunos).slice(0, 8), mxA = Math.max(...top.map(p => p.alunos), 1);
+    const prox = P.filter(p => p.status === 'vencido' || p.status === 'suspenso' || (p.status === 'ativo' && p.diasRestantes <= 7)).sort((a, b) => String(a.venc).localeCompare(String(b.venc)));
+    return `<div class="actions" style="margin-bottom:14px"><button class="btn" onclick="Gestao.csvProf()">${ic('download')} Professores (CSV)</button><button class="btn" onclick="Gestao.csvPag()">${ic('download')} Pagamentos (CSV)</button><button class="btn" onclick="window.print()">Imprimir relatório</button></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;align-items:start">
+    <div class="card"><h3>Recebimentos por mês</h3><div style="display:flex;align-items:flex-end;gap:10px;height:150px;margin-top:14px">${rec.map((v, i) => `<div style="flex:1;text-align:center"><div class="muted small" style="font-size:11px">${v ? brl(v) : ''}</div><div style="height:${Math.max(3, v / mx * 100)}px;background:var(--primary);border-radius:6px 6px 0 0"></div><div class="muted small">${meses[i].slice(5)}/${meses[i].slice(2, 4)}</div></div>`).join('')}</div></div>
+    <div class="card"><h3>Situação dos professores</h3><div style="display:grid;gap:10px;margin-top:12px">${Object.entries(CHIP).map(([k, c]) => { const q = P.filter(p => p.status === k).length; return `<div><div style="display:flex;justify-content:space-between;font-size:13px"><span>${c[0]}</span><b>${q}</b></div>${bar(P.length ? q / P.length * 100 : 0, c[1])}</div>`; }).join('')}</div></div>
+    <div class="card"><h3>Professores com mais alunos</h3><div style="display:grid;gap:10px;margin-top:12px">${top.length ? top.map(p => `<div><div style="display:flex;justify-content:space-between;font-size:13px"><span>${esc(p.nome)}</span><b>${p.alunos}</b></div>${bar(p.alunos / mxA * 100, 'var(--accent)')}</div>`).join('') : '<p class="muted small">Sem dados.</p>'}</div></div>
+    <div class="card"><h3>Vencimentos e atrasos</h3>${prox.length ? `<div style="display:grid;gap:8px;margin-top:10px">${prox.map(p => `<div style="display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap"><div><b>${esc(p.nome)}</b><div class="muted small">${dBR(p.venc)} · ${brl(p.valor)}</div></div><div style="display:flex;gap:8px;align-items:center">${chip(p.status)}<button class="btn sm" onclick="Gestao.avisar('${p.id}')">Avisar</button></div></div>`).join('')}</div>` : '<p class="muted small">Nenhum vencimento nos próximos 7 dias e nenhum atraso.</p>'}</div></div>`;
+  },
+  convites() { return `<div class="card" id="admConvite"><div class="muted small">Carregando…</div></div>`; },
+  /* ---- plano e cobrança ---- */
+  planos() {
+    const f = this.d.fin;
+    return `<div class="card" style="max-width:640px"><h3>Plano e regras de cobrança</h3><form id="fFin" onsubmit="return false">
+      <div class="field"><label>Nome do plano</label><input name="plano" value="${esc(f.plano)}"></div>
+      <div class="field"><label>Valor mensal padrão (R$)</label><input name="valor" type="number" step="0.01" min="0" value="${f.valor}"></div>
+      <div class="field"><label>Teste gratuito para novos cadastros (dias)</label><input name="teste" type="number" min="0" max="90" value="${f.teste}"></div>
+      <div class="field"><label>Tolerância após o vencimento (dias)</label><input name="tolerancia" type="number" min="0" max="60" value="${f.tolerancia}"></div>
+      <label class="check"><input type="checkbox" name="bloqueioAuto" ${f.bloqueioAuto ? 'checked' : ''}> <span><b>Suspender automaticamente</b> o professor que passar da tolerância sem pagar. Ao registrar o pagamento, o acesso volta na hora.</span></label>
+      <div class="field" style="margin-top:12px"><label>Chave PIX e instruções de pagamento</label><textarea name="pix" rows="4" placeholder="PIX (e-mail): seu@email.com&#10;Nome: …&#10;Envie o comprovante pelo WhatsApp.">${esc(f.pix)}</textarea><div class="hint">Aparece para o professor em “Como pagar” e nas mensagens de cobrança.</div></div>
+      <div class="field"><label>Seu WhatsApp para contato (com DDD)</label><input name="contato" type="tel" value="${esc(f.contato)}" placeholder="(82) 99999-9999"><div class="hint">O professor usa para enviar o comprovante.</div></div>
+      <div class="alert info" style="margin-bottom:12px">${ic('clock')}<div><b>Aviso automático:</b> o professor vê a mensagem de vencimento <b>1 dia antes</b>, no <b>dia</b> e enquanto estiver <b>em atraso</b> (faixa no topo do sistema e janela ao entrar). Professores sem vencimento definido não são cobrados.</div></div>
+      <button class="btn primary" onclick="Gestao.salvarFin()">${ic('check')} Salvar</button></form></div>`;
+  },
+  async salvarFin() { const d = formData($('#fFin')); d.bloqueioAuto = !!d.bloqueioAuto; try { const r = await Auth.call('/admin/fin', d); this.d.fin = r.fin; toast('Regras salvas', 'ok'); this.carregar(); } catch (e) { toast(e.message, 'bad'); } }
+};
+function viewGestao() {
+  if (!Auth.admin) { location.hash = '#/painel'; return; }
+  setMain(`<div class="page-head"><div><h2>Gestão</h2><p class="muted">Professores, planos, pagamentos e relatórios</p></div><div class="actions"><button class="btn" onclick="Gestao.carregar()">${ic('refresh')} Atualizar</button><button class="btn primary" onclick="Gestao.aba('convites')">${ic('send')} Convidar professor</button></div></div>
+  <div id="gKpi"></div><div id="gTabs"></div><div id="gBody"><div class="muted small">Carregando…</div></div>`, 'Gestão');
+  Gestao.carregar();
+}
+/* --- lado do professor: avisos de vencimento e acesso suspenso --- */
+function avisoAssinatura() {
+  const a = S?.assin; if (!a || !a.aviso) return '';
+  const t = a.aviso === 'amanha' ? `<b>Seu plano vence amanhã (${dBR(a.venc)}).</b> Renove para não perder o acesso.` : a.aviso === 'hoje' ? `<b>Seu plano vence hoje.</b> Renove para não perder o acesso.` : `<b>Seu plano venceu em ${dBR(a.venc)}.</b>${a.suspendeEm ? ` O acesso será suspenso em ${dBR(a.suspendeEm)}.` : ''} Regularize o pagamento.`;
+  return `<div class="alert warn" style="margin-bottom:16px">${ic('alert')}<div>${t} <a href="#" onclick="comoPagar();return false"><u>Como pagar</u></a></div></div>`;
+}
+function comoPagar(aviso) {
+  const a = S?.assin || {};
+  modal({ title: aviso ? 'Aviso de vencimento' : 'Renovar o plano', body: `${aviso ? `<div style="margin-bottom:12px">${avisoAssinatura().replace('class="alert warn" style="margin-bottom:16px"', 'class="alert warn" style="margin:0"').replace(/<a href.*?<\/a>/, '')}</div>` : ''}<p style="margin-top:0">Plano <b>${esc(a.plano || '')}</b> · <b>${brl(a.valor)}</b>/mês · vencimento <b>${dBR(a.venc)}</b></p>
+    ${a.pix ? `<div style="background:#faf8f3;border:1px solid var(--line);border-radius:12px;padding:12px 14px;white-space:pre-wrap;word-break:break-word">${esc(a.pix)}</div>` : '<p class="muted small">Fale com o administrador para combinar o pagamento.</p>'}
+    <p class="hint">Depois de pagar, envie o comprovante ao administrador. O acesso é atualizado assim que o pagamento for registrado.</p>`,
+    actions: [{ label: 'Fechar' }, ...(a.contato ? [{ label: 'Enviar comprovante no WhatsApp', cls: 'primary', onClick: () => { window.open(waLink(a.contato, `Olá! Sou ${Auth.user?.nome || 'professor(a)'} e estou enviando o comprovante do plano do Cátedra.`), '_blank', 'noopener'); } }] : [])] });
+}
+function telaSuspensa(a) {
+  document.body.classList.add('student'); const bl = a.status === 'bloqueado';
+  $('#main').innerHTML = `<div class="card" style="max-width:480px;margin:8vh auto;text-align:center"><div style="font-size:42px">🔒</div><h2 style="margin:6px 0 8px">${bl ? 'Acesso bloqueado' : 'Assinatura vencida'}</h2>
+  <p class="muted" style="margin-top:0">${bl ? 'O administrador bloqueou o seu acesso. Fale com ele para regularizar.' : `O seu plano venceu em <b>${dBR(a.venc)}</b>. Regularize o pagamento para voltar a usar o sistema.`}</p>
+  ${a.pix && !bl ? `<div style="background:#faf8f3;border:1px solid var(--line);border-radius:12px;padding:12px 14px;white-space:pre-wrap;word-break:break-word;text-align:left">${esc(a.pix)}</div>` : ''}
+  <div class="actions" style="justify-content:center;margin-top:16px">${a.contato ? `<a class="btn primary" target="_blank" rel="noopener" href="${esc(waLink(a.contato, 'Olá! Sou ' + (Auth.user?.nome || 'professor(a)') + ' e quero regularizar o meu acesso ao Cátedra.'))}">Falar com o administrador</a>` : ''}<button class="btn" onclick="location.reload()">Já paguei, atualizar</button><button class="btn" onclick="Auth.logout()">Sair</button></div>
+  <p class="hint" style="margin-top:14px">Seus dados continuam guardados e voltam assim que o acesso for regularizado.</p></div>`;
+}
 const STORES = ['turmas', 'alunos', 'atividades', 'entregas', 'meta'];
 const DB = {
   db: null,
@@ -729,13 +898,13 @@ function confirmDlg(msg, okLabel = 'Confirmar', danger = true) {
 const formData = el => Object.fromEntries(new FormData(el.querySelector('form') || el).entries());
 function empty(title, text, action = '', icon = 'layers') { return `<div class="card empty"><div class="ei">${ic(icon, 28)}</div><h3>${esc(title)}</h3><p>${esc(text)}</p>${action}</div>`; }
 function setMain(html, title) {
-  $('#main').innerHTML = html; $('#pageTitle').textContent = title || 'Cátedra'; document.title = (title ? title + ' · ' : '') + 'Cátedra';
+  $('#main').innerHTML = avisoAssinatura() + html; $('#pageTitle').textContent = title || 'Cátedra'; document.title = (title ? title + ' · ' : '') + 'Cátedra';
 }
 async function copyText(t) { try { await navigator.clipboard.writeText(t); toast('Copiado para a área de transferência', 'ok'); } catch { prompt('Copie o texto:', t); } }
 
 /* ---------- Navegação ---------- */
 const NAV = [['painel', 'home', 'Painel'], ['turmas', 'users', 'Turmas'], ['config', 'settings', Auth.admin ? 'Configurações' : 'Meu perfil']];
-if (Auth.admin) NAV.splice(2, 0, ['convidar', 'user', 'Convidar']);
+if (Auth.admin) NAV.splice(2, 0, ['gestao', 'grid', 'Gestão']);
 function renderNav(active) {
   const map = { turma: 'turmas', atividade: 'turmas', 'atividade-form': 'turmas', entrega: 'turmas', aluno: 'turmas' };
   const a = map[active] || active;
@@ -749,7 +918,7 @@ function router() {
   if (name === 'enviar') return viewEnviar(rest.join('/'));
   document.body.classList.remove('student');
   renderNav(name);
-  const views = { painel: viewPainel, turmas: viewTurmas, turma: viewTurma, atividade: viewAtividade, 'atividade-form': viewAtividadeForm, entrega: viewEntrega, aluno: viewAluno, config: viewConfig, convidar: viewConvidar };
+  const views = { painel: viewPainel, turmas: viewTurmas, turma: viewTurma, atividade: viewAtividade, 'atividade-form': viewAtividadeForm, entrega: viewEntrega, aluno: viewAluno, config: viewConfig, gestao: viewGestao, convidar: () => { Gestao.tab = 'convites'; viewGestao(); } };
   (views[name] || viewPainel)(...rest);
   window.scrollTo(0, 0);
 }
@@ -2142,8 +2311,8 @@ function viewConfig() {
     <div class="hint" style="margin-bottom:12px">Cada atividade pode usar outro modo (no formulário da atividade).</div>
     <button class="btn primary" onclick="saveModo()">${ic('check')} Salvar</button></form></div>
 
-  ${Auth.admin ? `<div class="card" style="grid-column:1/-1" id="admConvite"><div class="muted small">Carregando…</div></div><div class="card" style="grid-column:1/-1"><h3>${ic('users')} Professores</h3><div id="admProfs" class="small muted">Carregando…</div><div class="actions" style="margin-top:12px"><button class="btn" onclick="Admin.load()">${ic('refresh')} Atualizar</button><span data-install>${App.btn()}</span><button class="btn" onclick="Auth.logout()">Sair</button></div><p class="hint">Chave da IA, código de convite e senha de administrador ficam como segredos no Cloudflare e nunca chegam ao navegador.</p></div>`
-  : `<div class="card"><h3>${ic('user')} Minha conta</h3><p class="small" style="margin-top:0">${esc(Auth.user?.email || '')}</p><p class="small muted" id="iaUso">${S.ia ? (S.ia.disponivel ? `Correções por IA neste mês: <b>${S.ia.uso}</b>${S.ia.limite != null ? ' de <b>' + S.ia.limite + '</b>' : ''}` : 'Correção por IA indisponível no momento (use a gratuita).') : ''}</p><div class="actions"><span data-install>${App.btn()}</span><button class="btn" onclick="Auth.logout()">Sair</button></div></div>`}
+  ${Auth.admin ? `<div class="card" style="grid-column:1/-1"><h3>${ic('grid')} Gestão de professores</h3><p class="muted small" style="margin-top:0">Cadastros, planos, pagamentos, bloqueios e relatórios ficam em <b>Gestão</b>.</p><div class="actions"><a class="btn primary" href="#/gestao">Abrir Gestão</a><span data-install>${App.btn()}</span><button class="btn" onclick="Auth.logout()">Sair</button></div></div>`
+  : `<div class="card"><h3>${ic('user')} Minha conta</h3><p class="small" style="margin-top:0">${esc(Auth.user?.email || '')}</p>${S.assin && S.assin.status !== 'isento' ? `<p class="small" style="margin:0 0 10px">Plano <b>${esc(S.assin.plano)}</b> · ${brl(S.assin.valor)}/mês<br>Vencimento: <b>${dBR(S.assin.venc)}</b>${S.assin.status === 'ativo' ? ` (${S.assin.diasRestantes === 0 ? 'hoje' : S.assin.diasRestantes + ' dia(s)'})` : ''} <button class="btn sm" onclick="comoPagar()">Como pagar</button></p>` : ''}<p class="small muted" id="iaUso">${S.ia ? (S.ia.disponivel ? `Correções por IA neste mês: <b>${S.ia.uso}</b>${S.ia.limite != null ? ' de <b>' + S.ia.limite + '</b>' : ''}` : 'Correção por IA indisponível no momento (use a gratuita).') : ''}</p><div class="actions"><span data-install>${App.btn()}</span><button class="btn" onclick="Auth.logout()">Sair</button></div></div>`}
 
   <div class="card"><h3>${ic('download')} Backup global</h3><p class="muted small" style="margin-top:0">Leva <b>tudo</b> para outro aparelho: turmas, alunos, atividades e entregas, token do GitHub e ID do Gist, chave e configuração da IA, endereço do servidor e URL pública. O arquivo é <b>criptografado com uma senha</b> definida por você.</p>
     <p class="hint">Versão do sistema: <b>${APP_VERSION}</b></p>
@@ -2620,6 +2789,7 @@ async function boot() {
   if (!student) {
     try {
       const me = await Auth.call('/me'); Auth.user = me.user; localStorage.setItem('catedra_user', JSON.stringify(me.user)); S.ia = me.ia;
+      S.assin = me.assinatura || null; if (S.assin && (S.assin.status === 'suspenso' || S.assin.status === 'bloqueado')) { telaSuspensa(S.assin); return; }
       S.cfg.workerUrl = Auth.api; S.cfg.ai = { provider: me.ia.provider, model: me.ia.model, key: me.ia.disponivel ? 'servidor' : '' };
       if (!S.cfg.professor && me.user.role !== 'admin') S.cfg.professor = me.user.nome;
       await DB.put('meta', S.cfg); // remove do navegador qualquer chave de IA antiga
@@ -2629,6 +2799,7 @@ async function boot() {
   window.addEventListener('hashchange', router);
   router();
   if (!student) Sync.start();
+  if (!student && S.assin?.aviso) { const k = 'catedra_aviso', hj = hojeISO(); try { if (localStorage.getItem(k) !== hj) { localStorage.setItem(k, hj); setTimeout(() => comoPagar(true), 700); } } catch { } }
 }
 boot();
 </script>
