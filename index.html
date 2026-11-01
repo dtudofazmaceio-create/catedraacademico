@@ -482,7 +482,7 @@ async function loadLib(name) {
    chaves de IA e segredos ficam SOMENTE no servidor.
    ========================================================= */
 const Auth = {
-  api: String(window.CATEDRA_API || localStorage.getItem('catedra_api') || (/^https?:/.test(location.protocol) && /workers\.dev$/.test(location.hostname) ? location.origin : '')).replace(/\/+$/, ''),
+  api: String(window.CATEDRA_API || localStorage.getItem('catedra_api') || 'https://catedra-api.peixoto-adm85.workers.dev').replace(/\/+$/, ''),
   token: localStorage.getItem('catedra_tok') || '',
   user: (() => { try { return JSON.parse(localStorage.getItem('catedra_user') || 'null'); } catch { return null; } })(),
   get admin() { return this.user?.role === 'admin'; },
@@ -530,6 +530,57 @@ const Admin = {
   async bloq(id, b) { if (b && !confirm('Bloquear este professor? Ele e os links dos alunos dele deixam de funcionar.')) return; try { await Auth.call('/admin/prof', { id, bloqueado: b }); this.load(); } catch (e) { toast(e.message, 'bad'); } }
 };
 
+Object.assign(Admin, {
+  codigo: '', origem: '',
+  TPL: 'Olá{nome}! 👋\n\nVocê foi convidado(a) para usar o *Cátedra*, o sistema de gestão de turmas e avaliações.\n\n🔗 Acesse: {link}\n🔑 Código de convite: *{codigo}*\n\n*Como começar*\n1. Abra o link acima\n2. Toque em "Primeiro acesso? Criar conta"\n3. Preencha seus dados e digite o código de convite\n\nQualquer dúvida, é só me chamar.\n{remetente}',
+  link() { return String(S.cfg.publicUrl || (location.origin + location.pathname)).replace(/index\.html$/, ''); },
+  async convite() {
+    const box = $('#admConvite'); if (!box) return;
+    try { const r = await Auth.call('/admin/convite'); this.codigo = r.codigo || ''; this.origem = r.origem; this.draw(); }
+    catch (e) { box.innerHTML = `<div class="alert bad">${ic('alert')}<div>${esc(e.message)}</div></div>`; }
+  },
+  draw() {
+    const box = $('#admConvite'); if (!box) return; let tpl = this.TPL; try { tpl = localStorage.getItem('catedra_conv_tpl') || tpl; } catch { }
+    box.innerHTML = `<h3>${ic('users')} Convidar professores</h3>
+    ${this.codigo ? '' : `<div class="alert warn" style="margin-bottom:12px">${ic('alert')}<div><b>Nenhum código de convite definido.</b> Hoje qualquer pessoa com o link pode criar conta. Clique em <b>Gerar novo</b> para proteger o cadastro.</div></div>`}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:22px;align-items:start">
+      <div>
+        <div class="field"><label>Nome do professor (opcional)</label><input id="cvNome" placeholder="Ex.: Maria" oninput="Admin.prev()"></div>
+        <div class="field"><label>WhatsApp com DDD (opcional)</label><input id="cvTel" inputmode="tel" placeholder="(82) 99999-9999"><div class="hint">Em branco, o WhatsApp abre para você escolher o contato.</div></div>
+        <div class="field"><label>Código de convite</label><div style="display:flex;gap:6px;flex-wrap:wrap"><input id="cvCod" value="${esc(this.codigo)}" readonly style="flex:1;min-width:150px;font-weight:700;letter-spacing:.5px"><button class="btn" onclick="Admin.novoCodigo(false)">Gerar novo</button><button class="btn" onclick="Admin.novoCodigo(true)">Definir…</button></div><div class="hint">Trocar o código bloqueia novos cadastros com o código antigo. Contas já criadas continuam funcionando.</div></div>
+        <div class="field"><label>Mensagem (editável)</label><textarea id="cvTpl" rows="11" oninput="Admin.prev(true)" style="width:100%;font-family:inherit">${esc(tpl)}</textarea><div class="hint">Campos automáticos: {nome} {link} {codigo} {remetente} <a href="#" onclick="Admin.restaurar();return false"><u>restaurar padrão</u></a></div></div>
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600">Pré-visualização</label>
+        <div id="cvPrev" style="background:#dcf8c6;color:#111;border-radius:14px 14px 14px 3px;padding:14px 16px;margin:6px 0 14px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-break:break-word;box-shadow:0 1px 2px rgba(0,0,0,.15)"></div>
+        <div class="actions"><button class="btn primary" onclick="Admin.enviarWa()">Abrir no WhatsApp</button><button class="btn" onclick="Admin.copiar()">Copiar mensagem</button></div>
+        <p class="hint">O link enviado é: <code>${esc(this.link())}</code></p>
+      </div>
+    </div>`;
+    this.prev();
+  },
+  msg() {
+    const nome = ($('#cvNome')?.value || '').trim(), tpl = $('#cvTpl')?.value || this.TPL;
+    return tpl.split('{nome}').join(nome ? ', ' + nome : '').split('{link}').join(this.link()).split('{codigo}').join(this.codigo || '(defina o código)').split('{remetente}').join(S.cfg.professor || Auth.user?.nome || '');
+  },
+  prev(salvar) {
+    if (salvar) { try { localStorage.setItem('catedra_conv_tpl', $('#cvTpl').value); } catch { } }
+    const el = $('#cvPrev'); if (el) el.innerHTML = esc(this.msg()).replace(/\*([^*\n]+)\*/g, '<b>$1</b>');
+  },
+  restaurar() { try { localStorage.removeItem('catedra_conv_tpl'); } catch { } this.draw(); },
+  enviarWa() {
+    if (!this.codigo) return toast('Defina um código de convite antes de enviar.', 'bad');
+    const t = ($('#cvTel')?.value || '').replace(/\D/g, ''); const num = t ? (t.length <= 11 ? '55' + t : t) : '';
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(this.msg())}`, '_blank', 'noopener');
+  },
+  async copiar() { try { await navigator.clipboard.writeText(this.msg()); toast('Mensagem copiada', 'ok'); } catch { toast('Não foi possível copiar; selecione o texto manualmente.', 'bad'); } },
+  async novoCodigo(manual) {
+    let c;
+    if (manual) { c = prompt('Digite o novo código de convite (6 a 40 caracteres, sem espaços):', this.codigo); if (c === null) return; c = c.trim(); }
+    else { if (this.codigo && !confirm('Gerar um novo código? O código atual deixa de valer para novos cadastros.')) return; const al = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; c = 'Prof-' + Array.from(crypto.getRandomValues(new Uint8Array(6)), b => al[b % al.length]).join(''); }
+    try { const r = await Auth.call('/admin/convite', { codigo: c }); this.codigo = r.codigo; this.origem = r.origem; this.draw(); this.load(); toast('Código atualizado', 'ok'); } catch (e) { toast(e.message, 'bad'); }
+  }
+});
 const STORES = ['turmas', 'alunos', 'atividades', 'entregas', 'meta'];
 const DB = {
   db: null,
@@ -2032,14 +2083,14 @@ function viewConfig() {
     <div class="hint" style="margin-bottom:12px">Cada atividade pode usar outro modo (no formulário da atividade).</div>
     <button class="btn primary" onclick="saveModo()">${ic('check')} Salvar</button></form></div>
 
-  ${Auth.admin ? `<div class="card" style="grid-column:1/-1"><h3>${ic('users')} Professores</h3><div id="admProfs" class="small muted">Carregando…</div><div class="actions" style="margin-top:12px"><button class="btn" onclick="Admin.load()">${ic('refresh')} Atualizar</button><button class="btn" onclick="Auth.logout()">Sair</button></div><p class="hint">Chave da IA, código de convite e senha de administrador ficam como segredos no Cloudflare e nunca chegam ao navegador.</p></div>`
+  ${Auth.admin ? `<div class="card" style="grid-column:1/-1" id="admConvite"><div class="muted small">Carregando…</div></div><div class="card" style="grid-column:1/-1"><h3>${ic('users')} Professores</h3><div id="admProfs" class="small muted">Carregando…</div><div class="actions" style="margin-top:12px"><button class="btn" onclick="Admin.load()">${ic('refresh')} Atualizar</button><button class="btn" onclick="Auth.logout()">Sair</button></div><p class="hint">Chave da IA, código de convite e senha de administrador ficam como segredos no Cloudflare e nunca chegam ao navegador.</p></div>`
   : `<div class="card"><h3>${ic('user')} Minha conta</h3><p class="small" style="margin-top:0">${esc(Auth.user?.email || '')}</p><p class="small muted" id="iaUso">${S.ia ? (S.ia.disponivel ? `Correções por IA neste mês: <b>${S.ia.uso}</b>${S.ia.limite != null ? ' de <b>' + S.ia.limite + '</b>' : ''}` : 'Correção por IA indisponível no momento (use a gratuita).') : ''}</p><div class="actions"><button class="btn" onclick="Auth.logout()">Sair</button></div></div>`}
 
   <div class="card"><h3>${ic('download')} Backup global</h3><p class="muted small" style="margin-top:0">Leva <b>tudo</b> para outro aparelho: turmas, alunos, atividades e entregas, token do GitHub e ID do Gist, chave e configuração da IA, endereço do servidor e URL pública. O arquivo é <b>criptografado com uma senha</b> definida por você.</p>
     <p class="hint">Versão do sistema: <b>${APP_VERSION}</b></p>
     <div class="actions"><button class="btn primary" onclick="exportBackup()">${ic("download")} Exportar backup global</button><label class="btn">${ic("upload")} Importar backup<input type="file" accept=".json" hidden onchange="importBackup(this.files[0]);this.value=''"></label><button class="btn danger" onclick="wipeAll()">${ic('trash')} Apagar dados locais</button></div></div>
   </div>`, 'Configurações');
-  if (Auth.admin) Admin.load();
+  if (Auth.admin) { Admin.convite(); Admin.load(); }
 }
 async function saveSrv() { const v = String(formData($('#fSrv')).workerUrl || '').trim().replace(/\/+$/, ''); if (v && !/^https:\/\/[a-z0-9.-]+(:\d+)?(\/[\w./-]*)?$/i.test(v)) return toast('Informe um endereço https válido', 'bad'); S.cfg.workerUrl = v; await saveCfg(); toast('Servidor salvo', 'ok'); testSrv(); }
 async function testSrv() {
