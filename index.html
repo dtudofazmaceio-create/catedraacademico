@@ -1018,12 +1018,14 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') vencFechar()
 .vc-hint{font-size:12.5px;color:var(--muted);margin:4px 0 10px}
 .vc-foot{display:flex;gap:8px;justify-content:flex-end;padding:12px 22px 20px}
 @media(max-width:420px){.vc-grid{grid-template-columns:1fr 1fr}.vc-foot .btn{flex:1}}`; document.head.appendChild(st); })();
+/* WhatsApp do gestor usado na tela de acesso bloqueado quando o servidor não envia o contato. Formato: DDD + número (ex.: '82999999999'). Pode também ser definido em config.js com window.CATEDRA_WHATSAPP. */
+const GESTOR_WHATSAPP = String(window.CATEDRA_WHATSAPP || '');
 function telaSuspensa(a) {
   document.body.classList.add('student'); const bl = a.status === 'bloqueado';
   $('#main').innerHTML = `<div class="card" style="max-width:480px;margin:8vh auto;text-align:center"><div style="font-size:42px">🔒</div><h2 style="margin:6px 0 8px">${bl ? 'Acesso bloqueado' : 'Assinatura vencida'}</h2>
   <p class="muted" style="margin-top:0">${bl ? 'O administrador bloqueou o seu acesso. Fale com ele para regularizar.' : `O seu plano venceu em <b>${dBR(a.venc)}</b>. Regularize o pagamento para voltar a usar o sistema.`}</p>
   ${a.pix && !bl ? `<div style="background:#faf8f3;border:1px solid var(--line);border-radius:12px;padding:12px 14px;white-space:pre-wrap;word-break:break-word;text-align:left">${esc(a.pix)}</div>` : ''}
-  <div class="actions" style="justify-content:center;margin-top:16px">${a.contato ? `<a class="btn primary" target="_blank" rel="noopener" href="${esc(waLink(a.contato, 'Olá! Sou ' + (Auth.user?.nome || 'professor(a)') + ' e quero regularizar o meu acesso ao Cátedra.'))}">Falar com o administrador</a>` : ''}<button class="btn" onclick="location.reload()">Já paguei, atualizar</button><button class="btn" onclick="Auth.logout()">Sair</button></div>
+  <div class="actions" style="justify-content:center;margin-top:16px"><a class="btn primary big" target="_blank" rel="noopener noreferrer" href="${esc(waLink(a.contato || GESTOR_WHATSAPP, bl ? 'Olá! Sou ' + (Auth.user?.nome || 'professor(a)') + ' e o meu acesso ao Cátedra está bloqueado. Gostaria de regularizar a situação.' : 'Olá! Sou ' + (Auth.user?.nome || 'professor(a)') + ' e o meu plano do Cátedra venceu' + (a.venc ? ' em ' + dBR(a.venc) : '') + '. Gostaria de regularizar o pagamento.'))}">${ic('send', 16)} Falar com o gestor no WhatsApp</a><button class="btn" onclick="Auth.logout()">Sair</button></div>
   <p class="hint" style="margin-top:14px">Seus dados continuam guardados e voltam assim que o acesso for regularizado.</p></div>`;
 }
 const STORES = ['turmas', 'alunos', 'atividades', 'entregas', 'meta'];
