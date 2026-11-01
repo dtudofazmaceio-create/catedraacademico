@@ -322,6 +322,22 @@ body.admin-mode .side nav a.active svg{color:var(--accent)}
 .warn-row{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)}
 .warn-row:first-of-type{border-top:0}
 .tag-ok{display:inline-flex;align-items:center;gap:4px;color:#1b8f62;font-size:12px;font-weight:700}
+
+.nb{margin-left:auto;background:#e8a33d;color:#111a33;font:700 11.5px Inter,sans-serif;font-style:normal;min-width:20px;height:20px;border-radius:99px;display:grid;place-items:center;padding:0 6px}
+.bottom a{position:relative}.bottom a .nb{position:absolute;top:2px;right:calc(50% - 22px);margin:0;min-width:17px;height:17px;font-size:10.5px}
+.mp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:4px 0 14px}
+.mp-grid div{background:#f6f4ee;border-radius:12px;padding:10px 12px}.mp-grid span{display:block;font-size:12px;color:var(--muted)}.mp-grid b{font-size:15px}.mp-grid small{display:block;color:var(--muted);font-size:12px}
+.pl-list{display:grid;gap:8px;margin-bottom:12px}
+.pl-opt{display:flex;align-items:center;gap:12px;border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;cursor:pointer;transition:.15s}
+.pl-opt:hover{border-color:#b9c3f0}.pl-opt:has(input:checked){border-color:var(--primary);background:var(--primary-soft)}
+.pl-opt.cur{opacity:.6;cursor:default}.pl-opt>div{flex:1;min-width:0}.pl-opt b{display:block}.pl-opt em{font-style:normal;font-size:11.5px;color:var(--muted);margin-left:6px}.pl-opt span{display:block;font-size:12.5px;color:var(--muted)}
+.pl-opt strong{font-size:15px;white-space:nowrap}.pl-opt small{font-size:11.5px;color:var(--muted);font-weight:500}
+body.admin-mode .bottom a{font-size:10px!important;padding:6px 1px!important;min-width:0}body.admin-mode .bottom a span{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.pl-row{display:grid;grid-template-columns:1.2fr .7fr 1.6fr auto;gap:8px;margin-bottom:8px}
+@media(max-width:560px){.pl-row{grid-template-columns:1fr 1fr}.pl-row .plD{grid-column:1/-1}}
+.sol-card{display:flex;gap:14px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;padding:14px 0;border-top:1px solid var(--line)}
+.sol-card:first-of-type{border-top:0}.sol-arrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:4px 0}
+.sol-arrow span{background:#f6f4ee;border-radius:9px;padding:4px 10px;font-size:13px}.sol-arrow b{color:var(--primary)}
 </style>
 <script src="config.js"></script>
 </head>
@@ -362,7 +378,7 @@ const LIBS = {
   tessCore: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1',
   tessLang: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/por@1.0.0/4.0.0_best_int'
 };
-const APP_VERSION = '2026.10.31-4';
+const APP_VERSION = '2026.11.1-1';
 const sha16 = async t => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(t || ''))))].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
 const verNum = v => { const m = String(v || '').match(/^(\d+)\.(\d+)\.(\d+)-(\d+)$/); return m ? ((+m[1] * 100 + +m[2]) * 100 + +m[3]) * 1000 + +m[4] : 0; };
 const BC = (() => { try { return new BroadcastChannel('catedra'); } catch { return null; } })();
@@ -671,12 +687,12 @@ const Gestao = {
       return { nome: '', email: '', telefone: '', turmas: 0, alunos: 0, atividades: 0, plano: 'Mensal', valor: 0, uso: 0, bloqueado: false, atraso: dias != null && dias < 0 ? -dias : 0, ...p, venc, diasRestantes: dias ?? 0, status };
     });
     r.pagamentos = Array.isArray(r.pagamentos) ? r.pagamentos : [];
-    r.fin = { plano: 'Mensal', valor: 0, teste: 0, tolerancia: 0, bloqueioAuto: false, pix: '', contato: '', ...(r.fin || {}) };
+    r.fin = { plano: 'Mensal', valor: 0, teste: 0, tolerancia: 0, bloqueioAuto: false, pix: '', contato: '', planos: [], ...(r.fin || {}) }; if (!Array.isArray(r.fin.planos)) r.fin.planos = [];
     r.cotaPadrao = r.cotaPadrao ?? 0; return r;
   },
-  async carregar() { try { this.d = this.norm(await Auth.call('/admin/profs')); this.draw(); } catch (e) { const b = $('#gBody'); if (b) b.innerHTML = `<div class="alert bad">${ic('alert')}<div>${esc(e.message)}</div></div>`; } },
+  async carregar() { try { this.d = this.norm(await Auth.call('/admin/profs')); await this.carregarSol(true); this.draw(); } catch (e) { const b = $('#gBody'); if (b) b.innerHTML = `<div class="alert bad">${ic('alert')}<div>${esc(e.message)}</div></div>`; } },
   aba(t) { location.hash = '#/gestao/' + t; },
-  TITULOS: { professores: ['Professores', 'Cadastros, alunos, plano, vencimento e bloqueio de acesso'], pagamentos: ['Pagamentos', 'Controle de mensalidades recebidas'], relatorios: ['Relatórios de gestão', 'Receita, situação dos professores e vencimentos'], convites: ['Convidar professores', 'Envie o link e o código de convite pelo WhatsApp'], planos: ['Plano e cobrança', 'Valor mensal, tolerância, bloqueio automático e PIX'] },
+  TITULOS: { professores: ['Professores', 'Cadastros, alunos, plano, vencimento e bloqueio de acesso'], solicitacoes: ['Solicitações de plano', 'Pedidos de mudança feitos pelos professores: aprove ou recuse'], pagamentos: ['Pagamentos', 'Controle de mensalidades recebidas'], relatorios: ['Relatórios de gestão', 'Receita, situação dos professores e vencimentos'], convites: ['Convidar professores', 'Envie o link e o código de convite pelo WhatsApp'], planos: ['Plano e cobrança', 'Valor mensal, tolerância, bloqueio automático e PIX'] },
   /* controle de quem já foi avisado (só neste navegador) */
   avisados() { try { return JSON.parse(localStorage.getItem('catedra_avisados') || '{}'); } catch { return {}; } },
   marcarAviso(p) { const a = this.avisados(); a[p.id + '|' + p.venc] = hojeISO(); try { localStorage.setItem('catedra_avisados', JSON.stringify(a)); } catch { } },
@@ -688,6 +704,7 @@ const Gestao = {
     $('#gKpi').innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px">
       ${kpi('Professores', P.length, `${n(p => p.status === 'ativo' || p.status === 'isento')} com acesso ativo`)}
       ${kpi('Alunos gerenciados', soma(P, p => p.alunos), `${soma(P, p => p.turmas)} turma(s)`)}
+      ${kpi('Solicitações de plano', this.pend(), this.pend() ? 'aguardando sua decisão' : 'nenhuma pendente')}
       ${kpi('Vencem amanhã', n(p => p.status === 'ativo' && p.diasRestantes === 1), 'aviso 1 dia antes')}
       ${kpi('Vencem em 7 dias', n(p => p.status === 'ativo' && p.diasRestantes <= 7), 'avisar para renovar')}
       ${kpi('Em atraso', atraso.length, brl(soma(atraso, p => p.valor)) + ' a receber')}
@@ -702,7 +719,7 @@ const Gestao = {
   avisosVenc() {
     const L = this.d.profs.filter(p => p.status === 'ativo' && p.diasRestantes === 1);
     const atr = this.d.profs.filter(p => p.status === 'vencido' && !p.bloqueado);
-    let h = '';
+    let h = this.pend() ? `<div class="alert warn" style="margin-bottom:16px">${ic('clipboard')}<div style="flex:1"><b>${this.pend()} solicitação(ões) de mudança de plano</b> aguardando a sua decisão.</div><button class="btn sm primary" onclick="Gestao.aba('solicitacoes')">Analisar</button></div>` : '';
     if (L.length) h += `<div class="card" style="margin-bottom:16px;border-color:#f0d9a8;background:#fffaf0"><div class="card-head"><h3 style="font-size:17px">${ic('clock')} Vencem amanhã (${L.length})</h3></div>
       <p class="muted small" style="margin:-6px 0 6px">O professor já vê o aviso no topo do sistema e numa janela ao entrar. Envie também pelo WhatsApp:</p>
       ${L.map(p => `<div class="warn-row"><div><b>${esc(p.nome)}</b><div class="muted small">${dBR(p.venc)} · ${brl(p.valor)} · ${esc(p.plano)}</div></div><div style="display:flex;gap:8px;align-items:center">${this.foiAvisado(p) ? `<span class="tag-ok">${ic('check', 14)} avisado</span>` : ''}<button class="btn sm primary" onclick="Gestao.avisar('${p.id}')">${ic('send', 14)} Enviar aviso</button></div></div>`).join('')}</div>`;
@@ -756,8 +773,20 @@ const Gestao = {
       <div class="field"><label>Próximo vencimento</label><input id="edD" type="date" value="${esc(p.venc || '')}"><div class="hint">Em branco = sem cobrança (acesso livre).</div></div>
       <div class="field"><label>Limite de correções por IA/mês</label><input id="edC" type="number" min="0" value="${p.cota ?? ''}" placeholder="Padrão: ${this.d.cotaPadrao}"></div>`,
       actions: [{ label: 'Cancelar' }, { label: `${ic('check')} Salvar`, cls: 'primary', onClick: async m => {
-        await Auth.call('/admin/prof', { id, telefone: m.querySelector('#edT').value, plano: m.querySelector('#edP').value, valor: m.querySelector('#edV').value, venc: m.querySelector('#edD').value, cota: m.querySelector('#edC').value });
-        toast('Dados salvos', 'ok'); this.carregar();
+        const q = sel => m.querySelector(sel).value;
+        const cotaTxt = String(q('#edC')).trim(), valor = parseFloat(q('#edV'));
+        if (!(valor >= 0)) throw new Error('Informe um valor mensal válido.');
+        const body = { id, telefone: q('#edT').trim(), plano: q('#edP').trim(), valor, venc: q('#edD'), cota: cotaTxt === '' ? '' : +cotaTxt };
+        if (!body.plano) throw new Error('Informe o nome do plano.');
+        const resp = await Auth.call('/admin/prof', body);
+        await this.carregar();
+        const n = this.byId(id) || {}, falhou = [];
+        if (String(n.plano || '') !== body.plano) falhou.push('plano');
+        if (Math.abs((+n.valor || 0) - body.valor) > 0.001) falhou.push('valor mensal');
+        if (String(n.venc || '') !== body.venc) falhou.push('vencimento');
+        if (String(n.telefone || '') !== body.telefone) falhou.push('WhatsApp');
+        if (falhou.length) { console.warn('Resposta do servidor a /admin/prof:', resp, 'dados recarregados:', n); toast(`O servidor respondeu, mas não gravou: ${falhou.join(', ')}. O Worker precisa aceitar esses campos em /admin/prof.`, 'bad', 12000); }
+        else toast('Dados salvos', 'ok');
       } }] });
   },
   async bloq(id, b) {
@@ -810,11 +839,55 @@ const Gestao = {
       <label class="check"><input type="checkbox" name="bloqueioAuto" ${f.bloqueioAuto ? 'checked' : ''}> <span><b>Suspender automaticamente</b> o professor que passar da tolerância sem pagar. Ao registrar o pagamento, o acesso volta na hora.</span></label>
       <div class="field" style="margin-top:12px"><label>Chave PIX e instruções de pagamento</label><textarea name="pix" rows="4" placeholder="PIX (e-mail): seu@email.com&#10;Nome: …&#10;Envie o comprovante pelo WhatsApp.">${esc(f.pix)}</textarea><div class="hint">Aparece para o professor em “Como pagar” e nas mensagens de cobrança.</div></div>
       <div class="field"><label>Seu WhatsApp para contato (com DDD)</label><input name="contato" type="tel" value="${esc(f.contato)}" placeholder="(82) 99999-9999"><div class="hint">O professor usa para enviar o comprovante.</div></div>
+      <div class="field"><label>Planos disponíveis para troca (o professor escolhe um ao solicitar alteração)</label><div id="plRows">${(f.planos || []).map(x => `<div class="pl-row"><input class="plN" placeholder="Nome (ex.: Anual)" value="${esc(x.nome)}"><input class="plV" type="number" step="0.01" min="0" placeholder="R$/mês" value="${esc(String(x.valor ?? ''))}"><input class="plD" placeholder="Descrição curta" value="${esc(x.descricao || '')}"><button type="button" class="btn sm danger" onclick="this.parentNode.remove()" aria-label="Remover">${ic('x', 14)}</button></div>`).join('')}</div><button type="button" class="btn sm" onclick="Gestao.addPlano()">${ic('plus', 14)} Adicionar plano</button><div class="hint">Sem planos cadastrados, o professor descreve o plano desejado em texto livre.</div></div>
       <div class="alert info" style="margin-bottom:12px">${ic('clock')}<div><b>Aviso automático:</b> o professor vê a mensagem de vencimento <b>1 dia antes</b>, no <b>dia</b> e enquanto estiver <b>em atraso</b> (faixa no topo do sistema e janela ao entrar). Professores sem vencimento definido não são cobrados.</div></div>
       <button class="btn primary" onclick="Gestao.salvarFin()">${ic('check')} Salvar</button></form></div>`;
   },
-  async salvarFin() { const d = formData($('#fFin')); d.bloqueioAuto = !!d.bloqueioAuto; try { const r = await Auth.call('/admin/fin', d); this.d.fin = r.fin; toast('Regras salvas', 'ok'); this.carregar(); } catch (e) { toast(e.message, 'bad'); } }
+  async salvarFin() { const d = formData($('#fFin')); d.bloqueioAuto = !!d.bloqueioAuto; d.planos = [...document.querySelectorAll('#plRows .pl-row')].map(r => ({ nome: r.querySelector('.plN').value.trim(), valor: parseFloat(r.querySelector('.plV').value) || 0, descricao: r.querySelector('.plD').value.trim() })).filter(x => x.nome); try { const r = await Auth.call('/admin/fin', d); this.d.fin = this.norm({ fin: r.fin }).fin; if (d.planos.length && !(r.fin.planos || []).length) toast('Regras salvas, mas o servidor não guardou a lista de planos. Atualize o Worker (worker.js).', 'bad', 12000); else toast('Regras salvas', 'ok'); this.carregar(); } catch (e) { toast(e.message, 'bad'); } }
 };
+/* ---------- Solicitações de mudança de plano ---------- */
+const dtc = v => v ? new Date(v).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+const SOLCHIP = { pendente: ['Aguardando', '#8a5a0a', '#fff2d6'], aprovada: ['Aprovada', '#1b8f62', '#e2f4ec'], recusada: ['Recusada', '#b3261e', '#fde8e6'], cancelada: ['Cancelada', '#5b6478', '#eceae3'] };
+const solChip = st => { const c = SOLCHIP[st] || SOLCHIP.pendente; return `<span style="background:${c[2]};color:${c[1]};padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700;white-space:nowrap">${c[0]}</span>`; };
+const solN = x => ({ ...x, status: x.status || 'pendente', novoPlano: x.planoNovo ?? x.plano ?? '', novoValor: x.valorNovo ?? x.valor ?? null, antPlano: x.planoAtual ?? '', antValor: x.valorAtual ?? null, profId: x.profId ?? x.userId ?? x.prof ?? '' });
+Object.assign(Gestao, {
+  sol: { ok: true, itens: [] }, ultPend: null,
+  pend() { return (this.sol.itens || []).filter(x => (x.status || 'pendente') === 'pendente').length; },
+  async carregarSol(silencioso) {
+    const antes = this.pend();
+    try { const r = await Auth.call('/admin/solicitacoes'); this.sol = { ok: true, itens: Array.isArray(r.itens) ? r.itens : Array.isArray(r.solicitacoes) ? r.solicitacoes : [] }; }
+    catch (e) { this.sol = { ok: false, itens: [], erro: e.status }; }
+    const n = this.pend();
+    if (n > 0 && (this.ultPend == null || n > this.ultPend)) toast(this.ultPend == null ? `Você tem ${n} solicitação(ões) de mudança de plano pendente(s)` : `${n - this.ultPend} nova(s) solicitação(ões) de mudança de plano`, 'info', 9000);
+    this.ultPend = n; renderNav('gestao/' + this.tab);
+    if (!silencioso && n !== antes && this.d && $('#gBody')) this.draw();
+  },
+  solicitacoes() {
+    if (!this.sol.ok) return `<div class="alert warn">${ic('alert')}<div><b>O servidor ainda não tem o recurso de solicitações de plano.</b> Atualize o Worker com os endpoints <code>/admin/solicitacoes</code> e <code>/admin/solicitacao</code> (e <code>/plano/solicitar</code> para o professor).</div></div>`;
+    const L = this.sol.itens.map(solN).sort((a, b) => (b.criadoEm || 0) - (a.criadoEm || 0)), pend = L.filter(x => x.status === 'pendente'), hist = L.filter(x => x.status !== 'pendente').slice(0, 30);
+    const fl = x => `<div class="sol-arrow"><span>${esc(x.antPlano || 'plano atual')}${x.antValor != null ? ' · ' + brl(x.antValor) : ''}</span>${ic('send', 14)}<span><b>${esc(x.novoPlano)}</b>${x.novoValor != null ? ' · ' + brl(x.novoValor) : ''}</span></div>`;
+    return `<div class="card" style="margin-bottom:16px"><div class="card-head"><h3>Aguardando decisão (${pend.length})</h3></div>
+      ${pend.length ? pend.map(x => `<div class="sol-card"><div style="flex:1;min-width:240px"><b>${esc(x.nome || 'Professor')}</b> <span class="muted small">${esc(x.email || '')} · ${dtc(x.criadoEm)}</span>${fl(x)}${x.obs ? `<div class="small muted" style="margin-top:4px">“${esc(x.obs)}”</div>` : ''}</div>
+        <div style="display:flex;gap:8px"><button class="btn sm primary" onclick="Gestao.decidir('${esc(String(x.id))}',true)">${ic('check', 14)} Aprovar</button><button class="btn sm danger" onclick="Gestao.decidir('${esc(String(x.id))}',false)">${ic('x', 14)} Recusar</button></div></div>`).join('') : '<p class="muted small" style="margin:0">Nenhuma solicitação pendente.</p>'}</div>
+      ${hist.length ? `<div class="card"><div class="card-head"><h3>Histórico</h3></div><div style="overflow-x:auto"><table class="gt"><thead><tr><th>Data</th><th>Professor</th><th>Mudança</th><th>Situação</th><th class="hide-sm">Resposta</th></tr></thead><tbody>${hist.map(x => `<tr><td>${dtc(x.decididoEm || x.criadoEm)}</td><td>${esc(x.nome || '')}</td><td>${esc(x.antPlano || '—')} → <b>${esc(x.novoPlano)}</b></td><td>${solChip(x.status)}</td><td class="hide-sm muted">${esc(x.resposta || '')}</td></tr>`).join('')}</tbody></table></div></div>` : ''}`;
+  },
+  decidir(id, ap) {
+    const it = this.sol.itens.find(i => String(i.id) === String(id)); if (!it) return; const x = solN(it);
+    modal({ title: ap ? 'Aprovar alteração de plano' : 'Recusar alteração de plano', body: `<p class="small" style="margin-top:0"><b>${esc(x.nome || 'Professor')}</b>: ${esc(x.antPlano || 'plano atual')} → <b>${esc(x.novoPlano)}</b></p>
+      ${x.obs ? `<div class="alert info" style="margin-bottom:12px"><div>“${esc(x.obs)}”</div></div>` : ''}
+      ${ap ? `<div class="field"><label>Valor mensal do novo plano (R$)</label><input id="dcV" type="number" step="0.01" min="0" value="${x.novoValor ?? x.antValor ?? ''}"></div>` : ''}
+      <div class="field"><label>${ap ? 'Mensagem ao professor (opcional)' : 'Motivo da recusa'}</label><textarea id="dcM" rows="3" placeholder="${ap ? 'Ex.: Plano alterado, vale a partir do próximo vencimento.' : 'Ex.: Pagamento em aberto. Regularize para trocar de plano.'}"></textarea></div>
+      <div class="hint">O professor vê a resposta no painel dele ao acessar o sistema.</div>`,
+      actions: [{ label: 'Cancelar' }, { label: ap ? `${ic('check')} Aprovar` : `${ic('x')} Recusar`, cls: ap ? 'primary' : 'danger', onClick: async m => {
+        const motivo = m.querySelector('#dcM').value.trim(), valor = ap ? parseFloat(m.querySelector('#dcV').value) : null;
+        if (ap && !(valor >= 0)) throw new Error('Informe o valor mensal do novo plano.');
+        await Auth.call('/admin/solicitacao', { id: it.id, aprovar: ap, motivo, valor });
+        if (ap && x.profId) { try { await Auth.call('/admin/prof', { id: x.profId, plano: x.novoPlano, valor }); } catch { } }
+        toast(ap ? 'Alteração aprovada e aplicada ao professor' : 'Solicitação recusada', 'ok'); this.carregar();
+      } }] });
+  },
+  addPlano(n = '', v = '', d = '') { const el = $('#plRows'); if (!el) return; const r = document.createElement('div'); r.className = 'pl-row'; r.innerHTML = `<input class="plN" placeholder="Nome (ex.: Anual)" value="${esc(n)}"><input class="plV" type="number" step="0.01" min="0" placeholder="R$/mês" value="${esc(String(v))}"><input class="plD" placeholder="Descrição curta" value="${esc(d)}"><button type="button" class="btn sm danger" onclick="this.parentNode.remove()" aria-label="Remover">${ic('x', 14)}</button>`; el.appendChild(r); }
+});
 function viewGestao() {
   if (!Auth.admin) { location.hash = '#/painel'; return; }
   const tt = Gestao.TITULOS[Gestao.tab] || Gestao.TITULOS.professores;
@@ -836,6 +909,50 @@ function avisoAssinatura() {
   return `<div class="alert warn" style="margin-bottom:16px">${ic('alert')}<div>${t} <a href="#" onclick="comoPagar();return false"><u>Como pagar</u></a></div></div>`;
 }
 function fmtTel(t) { const d = String(t || '').replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, ''); return d.length === 11 ? `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}` : d.length === 10 ? `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}` : String(t || ''); }
+const PlanoProf = {
+  vistoKey: 'catedra_sol_visto',
+  visto() { try { return localStorage.getItem(this.vistoKey) || ''; } catch { return ''; } },
+  marcarVisto() { const x = S.sol; if (x) { try { localStorage.setItem(this.vistoKey, x.id + '|' + x.status); } catch { } } this.redraw(); },
+  redraw() { const el = document.getElementById('meuPlano'); if (el) el.outerHTML = this.card(); },
+  card() {
+    const a = S.assin; if (!a) return '';
+    const x = S.sol ? solN(S.sol) : null, d = a.diasRestantes;
+    const quando = a.status === 'ativo' && d != null ? (d === 0 ? 'vence hoje' : d === 1 ? 'vence amanhã' : `em ${d} dias`) : a.status === 'vencido' ? 'em atraso' : '';
+    const pend = x && x.status === 'pendente', novo = x && (x.status === 'aprovada' || x.status === 'recusada') && this.visto() !== x.id + '|' + x.status;
+    return `<div class="card" id="meuPlano" style="margin-bottom:18px"><div class="card-head"><h3>${ic('award')} Meu plano</h3>${chip(a.status)}</div>
+      <div class="mp-grid"><div><span>Plano</span><b>${esc(a.plano || '—')}</b></div><div><span>Valor mensal</span><b>${a.status === 'isento' ? 'Sem cobrança' : brl(a.valor)}</b></div><div><span>Vencimento</span><b>${a.venc ? dBR(a.venc) : '—'}</b>${quando ? `<small>${quando}</small>` : ''}</div></div>
+      ${pend ? `<div class="alert info" style="margin-bottom:12px">${ic('clock')}<div style="flex:1"><b>Solicitação enviada${x.criadoEm ? ' em ' + dtc(x.criadoEm) : ''}:</b> ${esc(x.antPlano || a.plano || 'plano atual')} → <b>${esc(x.novoPlano)}</b>${x.novoValor != null ? ' (' + brl(x.novoValor) + '/mês)' : ''}. Aguardando aprovação do gestor.</div><button class="btn sm" onclick="PlanoProf.cancelar()">Cancelar pedido</button></div>` : ''}
+      ${novo ? `<div class="alert ${x.status === 'aprovada' ? 'ok' : 'bad'}" style="margin-bottom:12px">${ic(x.status === 'aprovada' ? 'check' : 'alert')}<div style="flex:1"><b>Sua solicitação para <u>${esc(x.novoPlano)}</u> foi ${x.status === 'aprovada' ? 'aprovada' : 'recusada'}.</b>${x.resposta ? ` ${esc(x.resposta)}` : ''}</div><button class="btn sm" onclick="PlanoProf.marcarVisto()">Ok</button></div>` : ''}
+      <div class="actions"><button class="btn primary" ${pend ? 'disabled' : ''} onclick="PlanoProf.abrir()">${ic('edit')} Solicitar alteração de plano</button><button class="btn" onclick="comoPagar()">${ic('key')} Como pagar</button></div></div>`;
+  },
+  abrir() {
+    const a = S.assin || {}, cat = (a.planos || []).filter(p => p && p.nome);
+    const lista = cat.length ? `<div class="pl-list">${cat.map((p, i) => `<label class="pl-opt ${p.nome === a.plano ? 'cur' : ''}"><input type="radio" name="plNovo" value="${i}" ${p.nome === a.plano ? 'disabled' : ''}><div><b>${esc(p.nome)}${p.nome === a.plano ? '<em>plano atual</em>' : ''}</b>${p.descricao ? `<span>${esc(p.descricao)}</span>` : ''}</div><strong>${brl(p.valor)}<small>/mês</small></strong></label>`).join('')}</div>` : `<div class="field"><label>Plano desejado</label><input id="plTxt" placeholder="Ex.: Plano anual"></div>`;
+    modal({ title: 'Solicitar alteração de plano', body: `<p class="small" style="margin-top:0">Plano atual: <b>${esc(a.plano || '—')}</b>${a.status !== 'isento' ? ` · ${brl(a.valor)}/mês` : ''}</p>${lista}
+      <div class="field"><label>Observação para o gestor (opcional)</label><textarea id="plObs" rows="3" placeholder="Ex.: Preciso de mais turmas neste semestre."></textarea></div>
+      <div class="hint">O gestor é notificado e decide se aprova. A resposta aparece aqui no seu painel.</div>`,
+      actions: [{ label: 'Cancelar' }, { label: `${ic('send')} Enviar solicitação`, cls: 'primary', onClick: async m => {
+        let plano, valor = null;
+        if (cat.length) { const r = m.querySelector('input[name=plNovo]:checked'); if (!r) throw new Error('Escolha o novo plano.'); plano = cat[+r.value].nome; valor = cat[+r.value].valor; }
+        else { plano = (m.querySelector('#plTxt').value || '').trim(); if (!plano) throw new Error('Informe o plano desejado.'); }
+        const obs = m.querySelector('#plObs').value.trim();
+        try {
+          const r = await Auth.call('/plano/solicitar', { plano, valor, obs });
+          S.sol = r.solicitacao || { id: 'novo', status: 'pendente', planoNovo: plano, valorNovo: valor, planoAtual: a.plano, valorAtual: a.valor, obs, criadoEm: Date.now() };
+          toast('Solicitação enviada ao gestor', 'ok'); this.redraw();
+        } catch (e) {
+          if (e.status === 404 || e.status === 405) { window.open(waLink(a.contato, `Olá! Sou ${Auth.user?.nome || 'professor(a)'} e gostaria de alterar meu plano do Cátedra de "${a.plano || ''}" para "${plano}".${obs ? '\n' + obs : ''}`), '_blank', 'noopener'); toast('O servidor ainda não recebe solicitações: abri o WhatsApp do gestor.', 'info', 7000); }
+          else throw e;
+        }
+      } }] });
+  },
+  async cancelar() { try { await Auth.call('/plano/cancelar', {}); if (S.sol) S.sol.status = 'cancelada'; toast('Solicitação cancelada', 'ok'); this.redraw(); } catch (e) { toast(e.message, 'bad'); } },
+  async sync() {
+    try { const me = await Auth.call('/me'); const ant = S.sol ? S.sol.status : null; S.assin = me.assinatura || S.assin; S.sol = me.solicitacao || null;
+      if (ant === 'pendente' && S.sol && S.sol.status !== 'pendente') toast(S.sol.status === 'aprovada' ? 'O gestor aprovou a alteração do seu plano' : 'O gestor respondeu à sua solicitação de plano', 'info', 9000);
+      this.redraw(); } catch { }
+  }
+};
 function comoPagar(aviso) {
   const a = S?.assin || {}, av = avisoDe(a), nome = (Auth.user?.nome || '').split(' ')[0] || 'professor(a)';
   const atraso = av === 'atraso', hoje = av === 'hoje', amanha = av === 'amanha';
@@ -993,16 +1110,17 @@ function setMain(html, title) {
 async function copyText(t) { try { await navigator.clipboard.writeText(t); toast('Copiado para a área de transferência', 'ok'); } catch { prompt('Copie o texto:', t); } }
 
 /* ---------- Navegação ---------- */
-const GTABS = ['professores', 'pagamentos', 'relatorios', 'convites', 'planos'];
+const GTABS = ['professores', 'solicitacoes', 'pagamentos', 'relatorios', 'convites', 'planos'];
 const NAV = Auth.admin
-  ? [['gestao/professores', 'users', 'Professores'], ['gestao/pagamentos', 'check', 'Pagamentos'], ['gestao/relatorios', 'list', 'Relatórios'], ['gestao/convites', 'send', 'Convites'], ['gestao/planos', 'settings', 'Plano']]
+  ? [['gestao/professores', 'users', 'Professores'], ['gestao/solicitacoes', 'clipboard', 'Solicitações'], ['gestao/pagamentos', 'check', 'Pagamentos'], ['gestao/relatorios', 'list', 'Relatórios'], ['gestao/convites', 'send', 'Convites'], ['gestao/planos', 'settings', 'Plano']]
   : [['painel', 'home', 'Painel'], ['turmas', 'users', 'Turmas'], ['config', 'settings', 'Meu perfil']];
 function renderNav(active) {
   const map = { turma: 'turmas', atividade: 'turmas', 'atividade-form': 'turmas', entrega: 'turmas', aluno: 'turmas' };
   const a = map[active] || active;
   if (Auth.admin) { const bs = document.querySelector('.brand small'); if (bs) bs.textContent = 'Painel gerencial'; }
-  $('#sideNav').innerHTML = NAV.map(([k, i, l]) => `<a href="#/${k}" class="${a === k ? 'active' : ''}">${ic(i)} ${l}</a>`).join(''); pintaUsuario();
-  $('#bottomNav').innerHTML = NAV.map(([k, i, l]) => `<a href="#/${k}" class="${a === k ? 'active' : ''}">${ic(i, 21)}<span>${l.replace('Configurações', 'Ajustes')}</span></a>`).join('');
+  const nb = k => (Auth.admin && k === 'gestao/solicitacoes' && Gestao.pend()) ? `<em class="nb">${Gestao.pend()}</em>` : '';
+  $('#sideNav').innerHTML = NAV.map(([k, i, l]) => `<a href="#/${k}" class="${a === k ? 'active' : ''}">${ic(i)} ${l}${nb(k)}</a>`).join(''); pintaUsuario();
+  $('#bottomNav').innerHTML = NAV.map(([k, i, l]) => `<a href="#/${k}" class="${a === k ? 'active' : ''}">${ic(i, 21)}<span>${l.replace('Configurações', 'Ajustes').replace('Solicitações', 'Pedidos')}</span>${nb(k)}</a>`).join('');
 }
 function router() {
   const h = location.hash.replace(/^#\/?/, '') || 'painel';
@@ -2035,6 +2153,7 @@ function viewPainel() {
   setMain(`
   <div class="page-head"><div><h2>${hello}</h2><p class="muted">${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</p></div>
    <div class="actions"><a class="btn" href="#/turmas">${ic('users')} Turmas</a><button class="btn primary" onclick="formTurma()">${ic('plus')} Nova turma</button></div></div>
+  ${PlanoProf.card()}
   ${!Sync.configured() ? `<div class="alert warn">${ic('cloud')}<div><b>Sincronização desativada.</b> Para gerar links para os alunos e sincronizar em tempo real entre dispositivos, configure o GitHub Gist e a IA em <a href="#/config" style="text-decoration:underline">Configurações</a>.</div></div>` : ''}
   ${!S.cfg.ai?.key || S.cfg.modoPadrao === 'local' ? `<div class="alert ok">${ic('check')}<div><b>Correção gratuita ativa.</b> Trabalhos são avaliados por métricas do texto e provas pela leitura óptica da folha de respostas, sem custo. Para correções mais profundas, configure uma IA em <a href="#/config" style="text-decoration:underline">Configurações</a> (o Gemini tem plano gratuito).</div></div>` : ''}
   <div class="grid stats">
@@ -2409,6 +2528,7 @@ function viewConfig() {
     <div class="hint" style="margin-bottom:12px">Cada atividade pode usar outro modo (no formulário da atividade).</div>
     <button class="btn primary" onclick="saveModo()">${ic('check')} Salvar</button></form></div>
 
+  ${!Auth.admin && S.assin ? `<div style="grid-column:1/-1">${PlanoProf.card()}</div>` : ''}
   ${Auth.admin ? `<div class="card" style="grid-column:1/-1"><h3>${ic('grid')} Gestão de professores</h3><p class="muted small" style="margin-top:0">Cadastros, planos, pagamentos, bloqueios e relatórios ficam em <b>Gestão</b>.</p><div class="actions"><a class="btn primary" href="#/gestao">Abrir Gestão</a><span data-install>${App.btn()}</span><button class="btn" onclick="Auth.logout()">Sair</button></div></div>`
   : `<div class="card"><h3>${ic('user')} Minha conta</h3><p class="small" style="margin-top:0">${esc(Auth.user?.email || '')}</p>${S.assin && S.assin.status !== 'isento' ? `<p class="small" style="margin:0 0 10px">Plano <b>${esc(S.assin.plano)}</b> · ${brl(S.assin.valor)}/mês<br>Vencimento: <b>${dBR(S.assin.venc)}</b>${S.assin.status === 'ativo' ? ` (${S.assin.diasRestantes === 0 ? 'hoje' : S.assin.diasRestantes + ' dia(s)'})` : ''} <button class="btn sm" onclick="comoPagar()">Como pagar</button></p>` : ''}<p class="small muted" id="iaUso">${S.ia ? (S.ia.disponivel ? `Correções por IA neste mês: <b>${S.ia.uso}</b>${S.ia.limite != null ? ' de <b>' + S.ia.limite + '</b>' : ''}` : 'Correção por IA indisponível no momento (use a gratuita).') : ''}</p><div class="actions"><span data-install>${App.btn()}</span><button class="btn" onclick="Auth.logout()">Sair</button></div></div>`}
 
@@ -2887,7 +3007,7 @@ async function boot() {
   if (!student) {
     try {
       const me = await Auth.call('/me'); Auth.user = me.user; localStorage.setItem('catedra_user', JSON.stringify(me.user)); S.ia = me.ia;
-      S.assin = me.assinatura || null; if (S.assin && (S.assin.status === 'suspenso' || S.assin.status === 'bloqueado')) { telaSuspensa(S.assin); return; }
+      S.assin = me.assinatura || null; S.sol = me.solicitacao || null; if (S.assin && (S.assin.status === 'suspenso' || S.assin.status === 'bloqueado')) { telaSuspensa(S.assin); return; }
       S.cfg.workerUrl = Auth.api; S.cfg.ai = { provider: me.ia.provider, model: me.ia.model, key: me.ia.disponivel ? 'servidor' : '' };
       if (!S.cfg.professor && me.user.role !== 'admin') S.cfg.professor = me.user.nome;
       await DB.put('meta', S.cfg); // remove do navegador qualquer chave de IA antiga
@@ -2896,7 +3016,8 @@ async function boot() {
   }
   window.addEventListener('hashchange', router);
   router();
-  if (!student && !Auth.admin) Sync.start();
+  if (!student && !Auth.admin) { Sync.start(); setInterval(() => { if (!document.hidden) PlanoProf.sync(); }, 120000); window.addEventListener('focus', () => PlanoProf.sync()); }
+  if (!student && Auth.admin) { setInterval(() => { if (!document.hidden) Gestao.carregarSol(); }, 60000); window.addEventListener('focus', () => Gestao.carregarSol()); }
   if (!student && !Auth.admin && avisoDe(S.assin)) { const k = 'catedra_aviso_sessao'; let ja = false; try { ja = sessionStorage.getItem(k) === hojeISO(); sessionStorage.setItem(k, hojeISO()); } catch { } if (!ja) setTimeout(() => comoPagar(true), 600); }
 }
 boot();
