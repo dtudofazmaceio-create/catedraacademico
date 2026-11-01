@@ -4,8 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111a33">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Cátedra">
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" type="image/png" href="icon-192.png"><link rel="apple-touch-icon" href="apple-touch-icon.png">
+
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net blob:; worker-src 'self' blob: https://cdn.jsdelivr.net; connect-src 'self' https://api.github.com https://gist.githubusercontent.com https://*.workers.dev https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://cdn.jsdelivr.net data: blob:; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net blob:; worker-src 'self' blob: https://cdn.jsdelivr.net; connect-src 'self' https://*.workers.dev https://cdn.jsdelivr.net data: blob:; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Cátedra · Turmas, avaliações e correção inteligente</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -274,17 +277,49 @@ body.student main{max-width:820px;margin:0 auto;padding:24px 16px 60px}
  .ring{width:108px;height:108px}.ring>div{width:88px;height:88px}.ring b{font-size:27px}
 }
 @media (max-width:520px){.upl-btns{grid-template-columns:1fr}.hide-sm{display:none}}
+
+/* ===== Experiência de aplicativo ===== */
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none;text-rendering:optimizeLegibility}
+button,.btn,a{touch-action:manipulation}
+.side nav a,.bottom a,.btn,.icon-btn{-webkit-user-select:none;user-select:none}
+::selection{background:#cdd7fb}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:8px}
+*{scrollbar-width:thin;scrollbar-color:#cfcabd transparent}
+#main>*{animation:enter .28s ease both}
+@keyframes enter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){#main>*{animation:none}html{scroll-behavior:auto}}
+.card{transition:box-shadow .2s,border-color .2s}
+@media (hover:hover){.card:hover{box-shadow:0 8px 28px rgba(22,33,58,.08)}.btn:hover{border-color:#cfcabd}.btn.primary:hover{filter:brightness(1.07)}}
+.btn:active{transform:scale(.97)}
+.side-user{display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;background:rgba(255,255,255,.06);margin-bottom:10px}
+.side-user .av{width:36px;height:36px;border-radius:50%;background:var(--accent);color:#1b1405;display:grid;place-items:center;font-weight:700;flex:none}
+.side-user .ui{min-width:0;flex:1;line-height:1.25}.side-user .ui b{display:block;color:#fff;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.side-user .ui small{color:#8f9bbd;font-size:11.5px}
+.side-user .sair{width:auto;margin:0;padding:6px 9px;font-size:12px}
+.side-install:empty{display:none}.side-install .btn{width:100%;margin-bottom:10px;background:rgba(255,255,255,.08);color:#fff;border-color:rgba(255,255,255,.15)}
+@media (min-width:901px){.side{box-shadow:1px 0 0 rgba(255,255,255,.04)}main{margin:0 auto}.page-head{padding-bottom:6px}}
+@media (max-width:900px){
+ .top{padding-top:calc(12px + env(safe-area-inset-top));padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
+ main{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+ .bottom{background:rgba(255,255,255,.94);backdrop-filter:saturate(1.4) blur(16px);-webkit-backdrop-filter:saturate(1.4) blur(16px);box-shadow:0 -4px 20px rgba(22,33,58,.06)}
+ .bottom a{min-height:54px;justify-content:center;transition:transform .1s,background .15s}.bottom a:active{transform:scale(.94)}
+ input,select,textarea{font-size:16px!important}
+ .btn,.icon-btn{min-height:44px}
+ .modal-bg{padding-top:env(safe-area-inset-top)}.modal{padding-bottom:env(safe-area-inset-bottom)}
+}
+@media (display-mode:standalone){body{-webkit-touch-callout:none}a{-webkit-touch-callout:none}}
 </style>
+<script src="config.js"></script>
 </head>
 <body>
 <div class="app">
   <aside class="side">
     <div class="brand"><div class="logo">C</div><div><b>Cátedra</b><small>Gestão acadêmica com IA</small></div></div>
     <nav id="sideNav"></nav>
-    <div class="side-foot">
+    <div class="side-foot" style="background:none;padding:0"><div id="sideUser" class="side-user"></div><div data-install class="side-install"></div><div style="background:rgba(255,255,255,.05);border-radius:12px;padding:12px;font-size:13px">
       <div class="sync"><span class="dot" id="syncDot"></span><span id="syncText">Somente local</span></div>
       <button onclick="Sync.run()" id="syncBtn"></button>
-    </div>
+    </div></div>
   </aside>
   <div class="content">
     <header class="top"><div class="logo">C</div><h1 id="pageTitle">Cátedra</h1><span class="dot" id="syncDot2"></span></header>
@@ -313,7 +348,7 @@ const LIBS = {
   tessCore: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1',
   tessLang: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/por@1.0.0/4.0.0_best_int'
 };
-const APP_VERSION = '2026.10.31-2';
+const APP_VERSION = '2026.10.31-3';
 const sha16 = async t => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(t || ''))))].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
 const verNum = v => { const m = String(v || '').match(/^(\d+)\.(\d+)\.(\d+)-(\d+)$/); return m ? ((+m[1] * 100 + +m[2]) * 100 + +m[3]) * 1000 + +m[4] : 0; };
 const BC = (() => { try { return new BroadcastChannel('catedra'); } catch { return null; } })();
@@ -481,6 +516,23 @@ async function loadLib(name) {
    CONTAS (login de professores) — a sessão fica só neste navegador;
    chaves de IA e segredos ficam SOMENTE no servidor.
    ========================================================= */
+const App = {
+  evt: null, ios: /iphone|ipad|ipod/i.test(navigator.userAgent), standalone: matchMedia('(display-mode: standalone)').matches || !!navigator.standalone,
+  podeInstalar() { return !this.standalone && (!!this.evt || this.ios); },
+  btn() { return this.podeInstalar() ? `<button class="btn" onclick="App.instalar()">${ic('download')} Instalar aplicativo</button>` : ''; },
+  refresh() { document.querySelectorAll('[data-install]').forEach(el => el.innerHTML = this.btn()); },
+  async instalar() {
+    if (this.evt) { this.evt.prompt(); try { await this.evt.userChoice; } catch { } this.evt = null; this.refresh(); }
+    else modal({ title: 'Instalar no iPhone / iPad', body: '<ol class="blist small" style="padding-left:20px"><li>Abra este endereço no <b>Safari</b>.</li><li>Toque no botão <b>Compartilhar</b> (quadrado com seta para cima).</li><li>Escolha <b>Adicionar à Tela de Início</b> e confirme.</li></ol><p class="hint">O Cátedra passa a abrir em tela cheia, como um aplicativo.</p>', actions: [{ label: 'Entendi' }] });
+  }
+};
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); App.evt = e; App.refresh(); });
+window.addEventListener('appinstalled', () => { App.evt = null; App.standalone = true; App.refresh(); });
+if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => { }));
+function pintaUsuario() {
+  const su = document.getElementById('sideUser'); if (!su || !Auth.user) return; const n = Auth.user.nome || 'Usuário';
+  su.innerHTML = `<div class="av">${esc(n.trim().charAt(0).toUpperCase() || '?')}</div><div class="ui"><b>${esc(n)}</b><small>${Auth.admin ? 'Administrador' : 'Professor'}</small></div><button class="sair" onclick="Auth.logout()">Sair</button>`; App.refresh();
+}
 const Auth = {
   api: String(window.CATEDRA_API || localStorage.getItem('catedra_api') || 'https://catedra-api.peixoto-adm85.workers.dev').replace(/\/+$/, ''),
   token: localStorage.getItem('catedra_tok') || '',
@@ -687,7 +739,7 @@ if (Auth.admin) NAV.splice(2, 0, ['convidar', 'user', 'Convidar']);
 function renderNav(active) {
   const map = { turma: 'turmas', atividade: 'turmas', 'atividade-form': 'turmas', entrega: 'turmas', aluno: 'turmas' };
   const a = map[active] || active;
-  $('#sideNav').innerHTML = NAV.map(([k, i, l]) => `<a href="#/${k}" class="${a === k ? 'active' : ''}">${ic(i)} ${l}</a>`).join('');
+  $('#sideNav').innerHTML = NAV.map(([k, i, l]) => `<a href="#/${k}" class="${a === k ? 'active' : ''}">${ic(i)} ${l}</a>`).join(''); pintaUsuario();
   $('#bottomNav').innerHTML = NAV.map(([k, i, l]) => `<a href="#/${k}" class="${a === k ? 'active' : ''}">${ic(i, 21)}<span>${l.replace('Configurações', 'Ajustes')}</span></a>`).join('');
 }
 function router() {
@@ -2090,8 +2142,8 @@ function viewConfig() {
     <div class="hint" style="margin-bottom:12px">Cada atividade pode usar outro modo (no formulário da atividade).</div>
     <button class="btn primary" onclick="saveModo()">${ic('check')} Salvar</button></form></div>
 
-  ${Auth.admin ? `<div class="card" style="grid-column:1/-1" id="admConvite"><div class="muted small">Carregando…</div></div><div class="card" style="grid-column:1/-1"><h3>${ic('users')} Professores</h3><div id="admProfs" class="small muted">Carregando…</div><div class="actions" style="margin-top:12px"><button class="btn" onclick="Admin.load()">${ic('refresh')} Atualizar</button><button class="btn" onclick="Auth.logout()">Sair</button></div><p class="hint">Chave da IA, código de convite e senha de administrador ficam como segredos no Cloudflare e nunca chegam ao navegador.</p></div>`
-  : `<div class="card"><h3>${ic('user')} Minha conta</h3><p class="small" style="margin-top:0">${esc(Auth.user?.email || '')}</p><p class="small muted" id="iaUso">${S.ia ? (S.ia.disponivel ? `Correções por IA neste mês: <b>${S.ia.uso}</b>${S.ia.limite != null ? ' de <b>' + S.ia.limite + '</b>' : ''}` : 'Correção por IA indisponível no momento (use a gratuita).') : ''}</p><div class="actions"><button class="btn" onclick="Auth.logout()">Sair</button></div></div>`}
+  ${Auth.admin ? `<div class="card" style="grid-column:1/-1" id="admConvite"><div class="muted small">Carregando…</div></div><div class="card" style="grid-column:1/-1"><h3>${ic('users')} Professores</h3><div id="admProfs" class="small muted">Carregando…</div><div class="actions" style="margin-top:12px"><button class="btn" onclick="Admin.load()">${ic('refresh')} Atualizar</button><span data-install>${App.btn()}</span><button class="btn" onclick="Auth.logout()">Sair</button></div><p class="hint">Chave da IA, código de convite e senha de administrador ficam como segredos no Cloudflare e nunca chegam ao navegador.</p></div>`
+  : `<div class="card"><h3>${ic('user')} Minha conta</h3><p class="small" style="margin-top:0">${esc(Auth.user?.email || '')}</p><p class="small muted" id="iaUso">${S.ia ? (S.ia.disponivel ? `Correções por IA neste mês: <b>${S.ia.uso}</b>${S.ia.limite != null ? ' de <b>' + S.ia.limite + '</b>' : ''}` : 'Correção por IA indisponível no momento (use a gratuita).') : ''}</p><div class="actions"><span data-install>${App.btn()}</span><button class="btn" onclick="Auth.logout()">Sair</button></div></div>`}
 
   <div class="card"><h3>${ic('download')} Backup global</h3><p class="muted small" style="margin-top:0">Leva <b>tudo</b> para outro aparelho: turmas, alunos, atividades e entregas, token do GitHub e ID do Gist, chave e configuração da IA, endereço do servidor e URL pública. O arquivo é <b>criptografado com uma senha</b> definida por você.</p>
     <p class="hint">Versão do sistema: <b>${APP_VERSION}</b></p>
