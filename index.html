@@ -317,6 +317,11 @@ button,.btn,a{touch-action:manipulation}
 .btn.sm{padding:6px 11px;font-size:12.5px;min-height:0!important;border-radius:9px}
 input[type=date],input[type=tel]{width:100%;border:1px solid #dcd8ce;border-radius:11px;padding:10px 12px;font:inherit;background:#fff}
 @media print{.side,.top,.bottom,.gtabs,.page-head .actions,.actions,.btn,#toasts{display:none!important}.app{display:block}main{padding:0!important;max-width:none}.card{break-inside:avoid;box-shadow:none}}
+body.admin-mode #syncBox,body.admin-mode #syncDot2{display:none!important}
+body.admin-mode .side nav a.active svg{color:var(--accent)}
+.warn-row{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)}
+.warn-row:first-of-type{border-top:0}
+.tag-ok{display:inline-flex;align-items:center;gap:4px;color:#1b8f62;font-size:12px;font-weight:700}
 </style>
 <script src="config.js"></script>
 </head>
@@ -325,7 +330,7 @@ input[type=date],input[type=tel]{width:100%;border:1px solid #dcd8ce;border-radi
   <aside class="side">
     <div class="brand"><div class="logo">C</div><div><b>Cátedra</b><small>Gestão acadêmica com IA</small></div></div>
     <nav id="sideNav"></nav>
-    <div class="side-foot" style="background:none;padding:0"><div id="sideUser" class="side-user"></div><div data-install class="side-install"></div><div style="background:rgba(255,255,255,.05);border-radius:12px;padding:12px;font-size:13px">
+    <div class="side-foot" style="background:none;padding:0"><div id="sideUser" class="side-user"></div><div data-install class="side-install"></div><div id="syncBox" style="background:rgba(255,255,255,.05);border-radius:12px;padding:12px;font-size:13px">
       <div class="sync"><span class="dot" id="syncDot"></span><span id="syncText">Somente local</span></div>
       <button onclick="Sync.run()" id="syncBtn"></button>
     </div></div>
@@ -659,7 +664,12 @@ const Gestao = {
   d: null, tab: 'professores', q: '', f: '',
   byId(id) { return this.d.profs.find(p => p.id === id); },
   async carregar() { try { this.d = await Auth.call('/admin/profs'); this.draw(); } catch (e) { const b = $('#gBody'); if (b) b.innerHTML = `<div class="alert bad">${ic('alert')}<div>${esc(e.message)}</div></div>`; } },
-  aba(t) { this.tab = t; this.draw(); },
+  aba(t) { location.hash = '#/gestao/' + t; },
+  TITULOS: { professores: ['Professores', 'Cadastros, alunos, plano, vencimento e bloqueio de acesso'], pagamentos: ['Pagamentos', 'Controle de mensalidades recebidas'], relatorios: ['Relatórios de gestão', 'Receita, situação dos professores e vencimentos'], convites: ['Convidar professores', 'Envie o link e o código de convite pelo WhatsApp'], planos: ['Plano e cobrança', 'Valor mensal, tolerância, bloqueio automático e PIX'] },
+  /* controle de quem já foi avisado (só neste navegador) */
+  avisados() { try { return JSON.parse(localStorage.getItem('catedra_avisados') || '{}'); } catch { return {}; } },
+  marcarAviso(p) { const a = this.avisados(); a[p.id + '|' + p.venc] = hojeISO(); try { localStorage.setItem('catedra_avisados', JSON.stringify(a)); } catch { } },
+  foiAvisado(p) { return !!this.avisados()[p.id + '|' + p.venc]; },
   draw() {
     if (!$('#gBody') || !this.d) return; const d = this.d, P = d.profs, mes = hojeISO().slice(0, 7);
     const n = f => P.filter(f).length, soma = (L, f) => L.reduce((s, x) => s + f(x), 0);
@@ -667,17 +677,36 @@ const Gestao = {
     $('#gKpi').innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px">
       ${kpi('Professores', P.length, `${n(p => p.status === 'ativo' || p.status === 'isento')} com acesso ativo`)}
       ${kpi('Alunos gerenciados', soma(P, p => p.alunos), `${soma(P, p => p.turmas)} turma(s)`)}
+      ${kpi('Vencem amanhã', n(p => p.status === 'ativo' && p.diasRestantes === 1), 'aviso 1 dia antes')}
       ${kpi('Vencem em 7 dias', n(p => p.status === 'ativo' && p.diasRestantes <= 7), 'avisar para renovar')}
       ${kpi('Em atraso', atraso.length, brl(soma(atraso, p => p.valor)) + ' a receber')}
       ${kpi('Receita prevista/mês', brl(soma(ativos, p => p.valor)), `${ativos.length} assinatura(s) ativa(s)`)}
       ${kpi('Recebido no mês', brl(soma(d.pagamentos.filter(x => String(x.data).startsWith(mes)), x => x.valor)), 'pagamentos registrados')}</div>`;
-    const T = [['professores', 'Professores'], ['pagamentos', 'Pagamentos'], ['relatorios', 'Relatórios'], ['convites', 'Convites'], ['planos', 'Plano e cobrança']];
-    $('#gTabs').innerHTML = `<div class="gtabs">${T.map(t => `<button class="${this.tab === t[0] ? 'on' : ''}" onclick="Gestao.aba('${t[0]}')">${t[1]}</button>`).join('')}</div>`;
-    const B = $('#gBody'); B.innerHTML = this[this.tab](); if (this.tab === 'convites') Admin.convite();
+    if (this.tab !== 'professores') $('#gKpi').innerHTML = '';
+    $('#gTabs').innerHTML = '';
+    const tt = this.TITULOS[this.tab] || this.TITULOS.professores, ph = $('#gHead'); if (ph) { ph.querySelector('h2').textContent = tt[0]; ph.querySelector('p').textContent = tt[1]; document.title = tt[0] + ' · Cátedra'; $('#pageTitle').textContent = tt[0]; }
+    const B = $('#gBody'); B.innerHTML = this[this.tab](); if (this.tab === 'convites') Admin.convite(); if (this.tab === 'professores') this.lista();
   },
   /* ---- professores ---- */
+  avisosVenc() {
+    const L = this.d.profs.filter(p => p.status === 'ativo' && p.diasRestantes === 1);
+    const atr = this.d.profs.filter(p => p.status === 'vencido' && !p.bloqueado);
+    let h = '';
+    if (L.length) h += `<div class="card" style="margin-bottom:16px;border-color:#f0d9a8;background:#fffaf0"><div class="card-head"><h3 style="font-size:17px">${ic('clock')} Vencem amanhã (${L.length})</h3></div>
+      <p class="muted small" style="margin:-6px 0 6px">O professor já vê o aviso no topo do sistema e numa janela ao entrar. Envie também pelo WhatsApp:</p>
+      ${L.map(p => `<div class="warn-row"><div><b>${esc(p.nome)}</b><div class="muted small">${dBR(p.venc)} · ${brl(p.valor)} · ${esc(p.plano)}</div></div><div style="display:flex;gap:8px;align-items:center">${this.foiAvisado(p) ? `<span class="tag-ok">${ic('check', 14)} avisado</span>` : ''}<button class="btn sm primary" onclick="Gestao.avisar('${p.id}')">${ic('send', 14)} Enviar aviso</button></div></div>`).join('')}</div>`;
+    if (atr.length) h += `<div class="card" style="margin-bottom:16px;border-color:#f0c4c4;background:#fff7f7"><div class="card-head"><h3 style="font-size:17px">${ic('alert')} Em atraso, ainda com acesso (${atr.length})</h3><button class="btn sm danger" onclick="Gestao.bloquearAtrasados()">Bloquear todos os inadimplentes</button></div>
+      ${atr.map(p => `<div class="warn-row"><div><b>${esc(p.nome)}</b><div class="muted small">venceu em ${dBR(p.venc)} · ${p.atraso} dia(s) de atraso · ${brl(p.valor)}</div></div><div style="display:flex;gap:8px"><button class="btn sm" onclick="Gestao.avisar('${p.id}')">Cobrar</button><button class="btn sm danger" onclick="Gestao.bloq('${p.id}',true)">Bloquear</button></div></div>`).join('')}</div>`;
+    return h;
+  },
+  async bloquearAtrasados() {
+    const L = this.d.profs.filter(p => p.status === 'vencido' && !p.bloqueado); if (!L.length) return;
+    if (!(await confirmDlg(`Bloquear o acesso de <b>${L.length}</b> professor(es) com plano vencido? Eles deixam de entrar e os links dos alunos param de funcionar. Ao registrar o pagamento, o acesso volta na hora.`, 'Bloquear todos'))) return;
+    try { for (const p of L) await Auth.call('/admin/prof', { id: p.id, bloqueado: true }); toast(L.length + ' professor(es) bloqueado(s)', 'ok'); } catch (e) { toast(e.message, 'bad'); }
+    this.carregar();
+  },
   professores() {
-    return `<div class="card"><div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px"><input placeholder="Buscar professor ou e-mail…" value="${esc(this.q)}" oninput="Gestao.q=this.value;Gestao.lista()" style="flex:1;min-width:200px">
+    return this.avisosVenc() + `<div class="card"><div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px"><input placeholder="Buscar professor ou e-mail…" value="${esc(this.q)}" oninput="Gestao.q=this.value;Gestao.lista()" style="flex:1;min-width:200px">
       <select onchange="Gestao.f=this.value;Gestao.lista()" style="width:auto"><option value="">Todos os status</option>${Object.entries(CHIP).map(([k, v]) => `<option value="${k}" ${this.f === k ? 'selected' : ''}>${v[0]}</option>`).join('')}</select></div><div id="gLista"></div></div>`;
   },
   lista() {
@@ -690,7 +719,7 @@ const Gestao = {
       <td class="hide-sm">${esc(p.plano)}<div class="muted small">${brl(p.valor)}/mês</div></td>
       <td>${chip(p.status)}<div class="muted small">${p.venc ? dBR(p.venc) + (p.status === 'ativo' ? ` · ${p.diasRestantes === 0 ? 'hoje' : p.diasRestantes + ' dia(s)'}` : p.atraso ? ` · ${p.atraso} dia(s) de atraso` : '') : 'sem vencimento'}</div></td>
       <td class="hide-sm">${p.uso}/${p.cota ?? this.d.cotaPadrao}</td>
-      <td style="white-space:nowrap;text-align:right"><button class="btn sm primary" onclick="Gestao.pagar('${p.id}')">Pagamento</button> <button class="btn sm" onclick="Gestao.avisar('${p.id}')">Avisar</button> <button class="btn sm" onclick="Gestao.editar('${p.id}')">Editar</button> <button class="btn sm" onclick="Gestao.bloq('${p.id}',${!p.bloqueado})">${p.bloqueado ? 'Desbloquear' : 'Bloquear'}</button></td></tr>`).join('')}</tbody></table></div>`;
+      <td style="white-space:nowrap;text-align:right"><button class="btn sm primary" onclick="Gestao.pagar('${p.id}')">Pagamento</button> <button class="btn sm" onclick="Gestao.avisar('${p.id}')">Avisar</button> <button class="btn sm" onclick="Gestao.editar('${p.id}')">Editar</button> <button class="btn sm ${p.bloqueado ? '' : 'danger'}" onclick="Gestao.bloq('${p.id}',${!p.bloqueado})">${p.bloqueado ? 'Desbloquear' : 'Bloquear'}</button></td></tr>`).join('')}</tbody></table></div>`;
   },
   pagar(id) {
     const p = this.byId(id);
@@ -734,7 +763,7 @@ const Gestao = {
   avisar(id) {
     const p = this.byId(id);
     modal({ title: 'Avisar pelo WhatsApp', body: `<p class="small" style="margin-top:0">Para <b>${esc(p.nome)}</b>${p.telefone ? ` · ${esc(p.telefone)}` : ' · <span class="muted">sem WhatsApp cadastrado: você escolhe o contato ao abrir</span>'}</p><textarea id="avM" rows="11" style="width:100%;font-family:inherit">${esc(this.msg(p))}</textarea>`,
-      actions: [{ label: 'Fechar' }, { label: 'Copiar', onClick: async m => { await copyText(m.querySelector('#avM').value); return false; } }, { label: 'Abrir no WhatsApp', cls: 'primary', onClick: m => { window.open(waLink(p.telefone, m.querySelector('#avM').value), '_blank', 'noopener'); } }] });
+      actions: [{ label: 'Fechar' }, { label: 'Copiar', onClick: async m => { await copyText(m.querySelector('#avM').value); Gestao.marcarAviso(p); return false; } }, { label: 'Abrir no WhatsApp', cls: 'primary', onClick: m => { window.open(waLink(p.telefone, m.querySelector('#avM').value), '_blank', 'noopener'); Gestao.marcarAviso(p); setTimeout(() => Gestao.draw(), 200); } }] });
   },
   /* ---- pagamentos ---- */
   pagamentos() {
@@ -777,14 +806,22 @@ const Gestao = {
 };
 function viewGestao() {
   if (!Auth.admin) { location.hash = '#/painel'; return; }
-  setMain(`<div class="page-head"><div><h2>Gestão</h2><p class="muted">Professores, planos, pagamentos e relatórios</p></div><div class="actions"><button class="btn" onclick="Gestao.carregar()">${ic('refresh')} Atualizar</button><button class="btn primary" onclick="Gestao.aba('convites')">${ic('send')} Convidar professor</button></div></div>
-  <div id="gKpi"></div><div id="gTabs"></div><div id="gBody"><div class="muted small">Carregando…</div></div>`, 'Gestão');
+  const tt = Gestao.TITULOS[Gestao.tab] || Gestao.TITULOS.professores;
+  setMain(`<div class="page-head" id="gHead"><div><h2>${tt[0]}</h2><p class="muted">${tt[1]}</p></div><div class="actions"><button class="btn" onclick="Gestao.carregar()">${ic('refresh')} Atualizar</button>${Gestao.tab !== 'convites' ? `<button class="btn primary" onclick="Gestao.aba('convites')">${ic('send')} Convidar professor</button>` : ''}</div></div>
+  <div id="gKpi"></div><div id="gTabs"></div><div id="gBody"><div class="muted small">Carregando…</div></div>`, tt[0]);
+  if (Gestao.d) Gestao.draw();
   Gestao.carregar();
 }
 /* --- lado do professor: avisos de vencimento e acesso suspenso --- */
+function avisoDe(a) { // reforço no navegador: se o servidor não marcou, calcula pelo vencimento
+  if (!a || a.status === 'isento' || !a.venc) return a?.aviso || '';
+  if (a.aviso) return a.aviso;
+  const d = Math.round((Date.parse(a.venc + 'T00:00:00Z') - Date.parse(hojeISO() + 'T00:00:00Z')) / 86400000);
+  return d === 1 ? 'amanha' : d === 0 ? 'hoje' : d < 0 ? 'atraso' : '';
+}
 function avisoAssinatura() {
-  const a = S?.assin; if (!a || !a.aviso) return '';
-  const t = a.aviso === 'amanha' ? `<b>Seu plano vence amanhã (${dBR(a.venc)}).</b> Renove para não perder o acesso.` : a.aviso === 'hoje' ? `<b>Seu plano vence hoje.</b> Renove para não perder o acesso.` : `<b>Seu plano venceu em ${dBR(a.venc)}.</b>${a.suspendeEm ? ` O acesso será suspenso em ${dBR(a.suspendeEm)}.` : ''} Regularize o pagamento.`;
+  const a = S?.assin; const av = avisoDe(a); if (!a || !av) return '';
+  const t = av === 'amanha' ? `<b>Seu plano vence amanhã (${dBR(a.venc)}).</b> Renove para não perder o acesso.` : av === 'hoje' ? `<b>Seu plano vence hoje.</b> Renove para não perder o acesso.` : `<b>Seu plano venceu em ${dBR(a.venc)}.</b>${a.suspendeEm ? ` O acesso será suspenso em ${dBR(a.suspendeEm)}.` : ''} Regularize o pagamento.`;
   return `<div class="alert warn" style="margin-bottom:16px">${ic('alert')}<div>${t} <a href="#" onclick="comoPagar();return false"><u>Como pagar</u></a></div></div>`;
 }
 function comoPagar(aviso) {
@@ -903,11 +940,14 @@ function setMain(html, title) {
 async function copyText(t) { try { await navigator.clipboard.writeText(t); toast('Copiado para a área de transferência', 'ok'); } catch { prompt('Copie o texto:', t); } }
 
 /* ---------- Navegação ---------- */
-const NAV = [['painel', 'home', 'Painel'], ['turmas', 'users', 'Turmas'], ['config', 'settings', Auth.admin ? 'Configurações' : 'Meu perfil']];
-if (Auth.admin) NAV.splice(2, 0, ['gestao', 'grid', 'Gestão']);
+const GTABS = ['professores', 'pagamentos', 'relatorios', 'convites', 'planos'];
+const NAV = Auth.admin
+  ? [['gestao/professores', 'users', 'Professores'], ['gestao/pagamentos', 'check', 'Pagamentos'], ['gestao/relatorios', 'list', 'Relatórios'], ['gestao/convites', 'send', 'Convites'], ['gestao/planos', 'settings', 'Plano']]
+  : [['painel', 'home', 'Painel'], ['turmas', 'users', 'Turmas'], ['config', 'settings', 'Meu perfil']];
 function renderNav(active) {
   const map = { turma: 'turmas', atividade: 'turmas', 'atividade-form': 'turmas', entrega: 'turmas', aluno: 'turmas' };
   const a = map[active] || active;
+  if (Auth.admin) { const bs = document.querySelector('.brand small'); if (bs) bs.textContent = 'Painel gerencial'; }
   $('#sideNav').innerHTML = NAV.map(([k, i, l]) => `<a href="#/${k}" class="${a === k ? 'active' : ''}">${ic(i)} ${l}</a>`).join(''); pintaUsuario();
   $('#bottomNav').innerHTML = NAV.map(([k, i, l]) => `<a href="#/${k}" class="${a === k ? 'active' : ''}">${ic(i, 21)}<span>${l.replace('Configurações', 'Ajustes')}</span></a>`).join('');
 }
@@ -917,6 +957,11 @@ function router() {
   $('#modalRoot').innerHTML = '';
   if (name === 'enviar') return viewEnviar(rest.join('/'));
   document.body.classList.remove('student');
+  if (Auth.admin) { // o administrador só gerencia professores: qualquer outra rota cai na Gestão
+    document.body.classList.add('admin-mode');
+    const t = name === 'convidar' ? 'convites' : (name === 'gestao' && GTABS.includes(rest[0]) ? rest[0] : 'professores');
+    Gestao.tab = GTABS.includes(t) ? t : 'professores'; renderNav('gestao/' + Gestao.tab); viewGestao(); window.scrollTo(0, 0); return;
+  }
   renderNav(name);
   const views = { painel: viewPainel, turmas: viewTurmas, turma: viewTurma, atividade: viewAtividade, 'atividade-form': viewAtividadeForm, entrega: viewEntrega, aluno: viewAluno, config: viewConfig, gestao: viewGestao, convidar: () => { Gestao.tab = 'convites'; viewGestao(); } };
   (views[name] || viewPainel)(...rest);
@@ -2798,8 +2843,8 @@ async function boot() {
   }
   window.addEventListener('hashchange', router);
   router();
-  if (!student) Sync.start();
-  if (!student && S.assin?.aviso) { const k = 'catedra_aviso', hj = hojeISO(); try { if (localStorage.getItem(k) !== hj) { localStorage.setItem(k, hj); setTimeout(() => comoPagar(true), 700); } } catch { } }
+  if (!student && !Auth.admin) Sync.start();
+  if (!student && !Auth.admin && avisoDe(S.assin)) { const k = 'catedra_aviso', hj = hojeISO(); try { if (localStorage.getItem(k) !== hj) { localStorage.setItem(k, hj); setTimeout(() => comoPagar(true), 700); } } catch { } }
 }
 boot();
 </script>
