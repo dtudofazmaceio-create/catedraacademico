@@ -663,7 +663,18 @@ const kpi = (t, v, s) => `<div class="card" style="padding:14px 16px"><div class
 const Gestao = {
   d: null, tab: 'professores', q: '', f: '',
   byId(id) { return this.d.profs.find(p => p.id === id); },
-  async carregar() { try { this.d = await Auth.call('/admin/profs'); this.draw(); } catch (e) { const b = $('#gBody'); if (b) b.innerHTML = `<div class="alert bad">${ic('alert')}<div>${esc(e.message)}</div></div>`; } },
+  norm(r) {
+    r = r || {}; const hj = hojeISO();
+    r.profs = (Array.isArray(r.profs) ? r.profs : []).map(p => {
+      const venc = p.venc || p.vencimento || '', dias = p.diasRestantes ?? (venc ? Math.round((Date.parse(venc + 'T00:00:00Z') - Date.parse(hj + 'T00:00:00Z')) / 86400000) : null);
+      const status = p.status || (p.bloqueado ? 'bloqueado' : !venc ? 'isento' : dias < 0 ? 'vencido' : 'ativo');
+      return { nome: '', email: '', telefone: '', turmas: 0, alunos: 0, atividades: 0, plano: 'Mensal', valor: 0, uso: 0, bloqueado: false, atraso: dias != null && dias < 0 ? -dias : 0, ...p, venc, diasRestantes: dias ?? 0, status };
+    });
+    r.pagamentos = Array.isArray(r.pagamentos) ? r.pagamentos : [];
+    r.fin = { plano: 'Mensal', valor: 0, teste: 0, tolerancia: 0, bloqueioAuto: false, pix: '', contato: '', ...(r.fin || {}) };
+    r.cotaPadrao = r.cotaPadrao ?? 0; return r;
+  },
+  async carregar() { try { this.d = this.norm(await Auth.call('/admin/profs')); this.draw(); } catch (e) { const b = $('#gBody'); if (b) b.innerHTML = `<div class="alert bad">${ic('alert')}<div>${esc(e.message)}</div></div>`; } },
   aba(t) { location.hash = '#/gestao/' + t; },
   TITULOS: { professores: ['Professores', 'Cadastros, alunos, plano, vencimento e bloqueio de acesso'], pagamentos: ['Pagamentos', 'Controle de mensalidades recebidas'], relatorios: ['Relatórios de gestão', 'Receita, situação dos professores e vencimentos'], convites: ['Convidar professores', 'Envie o link e o código de convite pelo WhatsApp'], planos: ['Plano e cobrança', 'Valor mensal, tolerância, bloqueio automático e PIX'] },
   /* controle de quem já foi avisado (só neste navegador) */
