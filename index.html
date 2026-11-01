@@ -835,13 +835,55 @@ function avisoAssinatura() {
   const t = av === 'amanha' ? `<b>Seu plano vence amanhã (${dBR(a.venc)}).</b> Renove para não perder o acesso.` : av === 'hoje' ? `<b>Seu plano vence hoje.</b> Renove para não perder o acesso.` : `<b>Seu plano venceu em ${dBR(a.venc)}.</b>${a.suspendeEm ? ` O acesso será suspenso em ${dBR(a.suspendeEm)}.` : ''} Regularize o pagamento.`;
   return `<div class="alert warn" style="margin-bottom:16px">${ic('alert')}<div>${t} <a href="#" onclick="comoPagar();return false"><u>Como pagar</u></a></div></div>`;
 }
+function fmtTel(t) { const d = String(t || '').replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, ''); return d.length === 11 ? `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}` : d.length === 10 ? `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}` : String(t || ''); }
 function comoPagar(aviso) {
-  const a = S?.assin || {};
-  modal({ title: aviso ? 'Aviso de vencimento' : 'Renovar o plano', body: `${aviso ? `<div style="margin-bottom:12px">${avisoAssinatura().replace('class="alert warn" style="margin-bottom:16px"', 'class="alert warn" style="margin:0"').replace(/<a href.*?<\/a>/, '')}</div>` : ''}<p style="margin-top:0">Plano <b>${esc(a.plano || '')}</b> · <b>${brl(a.valor)}</b>/mês · vencimento <b>${dBR(a.venc)}</b></p>
-    ${a.pix ? `<div style="background:#faf8f3;border:1px solid var(--line);border-radius:12px;padding:12px 14px;white-space:pre-wrap;word-break:break-word">${esc(a.pix)}</div>` : '<p class="muted small">Fale com o administrador para combinar o pagamento.</p>'}
-    <p class="hint">Depois de pagar, envie o comprovante ao administrador. O acesso é atualizado assim que o pagamento for registrado.</p>`,
-    actions: [{ label: 'Fechar' }, ...(a.contato ? [{ label: 'Enviar comprovante no WhatsApp', cls: 'primary', onClick: () => { window.open(waLink(a.contato, `Olá! Sou ${Auth.user?.nome || 'professor(a)'} e estou enviando o comprovante do plano do Cátedra.`), '_blank', 'noopener'); } }] : [])] });
+  const a = S?.assin || {}, av = avisoDe(a), nome = (Auth.user?.nome || '').split(' ')[0] || 'professor(a)';
+  const atraso = av === 'atraso', hoje = av === 'hoje', amanha = av === 'amanha';
+  const tom = atraso ? 'bad' : (amanha || hoje) ? 'warn' : 'info';
+  const titulo = atraso ? 'Seu plano está vencido' : hoje ? 'Seu plano vence hoje' : amanha ? 'Seu plano vence amanhã' : 'Renovar o plano';
+  const dias = a.diasRestantes;
+  const sit = atraso ? `Vencido${a.venc ? ' há ' + Math.max(1, Math.abs(dias ?? 1)) + ' dia(s)' : ''}` : hoje ? 'Vence hoje' : amanha ? 'Vence em 1 dia' : (dias != null ? `Vence em ${dias} dia(s)` : 'Em dia');
+  const msg = atraso ? `Olá, <b>${esc(nome)}</b>! O pagamento do seu plano <b>${esc(a.plano || '')}</b> venceu em <b>${dBR(a.venc)}</b>. Regularize agora para não perder o acesso ao sistema. Seus dados continuam guardados.`
+    : `Olá, <b>${esc(nome)}</b>! Seu plano <b>${esc(a.plano || '')}</b> ${hoje ? 'vence <b>hoje</b>' : amanha ? 'vence <b>amanhã</b>' : 'vence em <b>' + dBR(a.venc) + '</b>'} (${dBR(a.venc)}). Faça o pagamento de <b>${brl(a.valor)}</b> para continuar usando o sistema sem interrupção.`;
+  const root = document.getElementById('vencRoot') || Object.assign(document.createElement('div'), { id: 'vencRoot' }); document.body.appendChild(root);
+  root.innerHTML = `<div class="vc-ov" onclick="if(event.target===this)vencFechar()"><div class="vc vc-${tom}" role="dialog" aria-modal="true" aria-label="${esc(titulo)}">
+    <div class="vc-top"><button class="vc-x" onclick="vencFechar()" aria-label="Fechar">${ic('x', 18)}</button>
+      <div class="vc-ico">${ic(atraso ? 'alert' : 'clock', 26)}</div>
+      <div class="vc-t">${esc(titulo)}</div><div class="vc-s">${a.venc ? 'Vencimento: ' + dBR(a.venc) : 'Aviso de cobrança'}</div></div>
+    <div class="vc-body">
+      <p class="vc-msg">${msg}</p>
+      <div class="vc-grid"><div><span>Plano</span><b>${esc(a.plano || '—')}</b></div><div><span>Valor</span><b>${brl(a.valor)}</b></div><div><span>Situação</span><b class="vc-sit">${sit}</b></div></div>
+      <div class="vc-sec"><div class="vc-lbl">${ic('key', 15)} Dados para pagamento</div>
+        ${a.pix ? `<div class="vc-pix" id="vcPix">${esc(a.pix)}</div><button class="btn sm" onclick="copyText(document.getElementById('vcPix').innerText)">${ic('copy', 14)} Copiar dados</button>` : '<p class="muted small" style="margin:0">Fale com o gestor para combinar a forma de pagamento.</p>'}</div>
+      <div class="vc-sec"><div class="vc-lbl">${ic('user', 15)} Contato do gestor</div>
+        ${a.contato ? `<div class="vc-ct"><div><b>${esc(fmtTel(a.contato))}</b><span>WhatsApp · envie o comprovante</span></div><a class="btn primary sm" target="_blank" rel="noopener" href="${esc(waLink(a.contato, `Olá! Sou ${Auth.user?.nome || 'professor(a)'} e estou enviando o comprovante do plano do Cátedra (vencimento ${dBR(a.venc)}).`))}">${ic('send', 14)} Chamar no WhatsApp</a></div>` : '<p class="muted small" style="margin:0">Contato do gestor ainda não informado.</p>'}</div>
+      <p class="vc-hint">Depois de pagar, envie o comprovante. O acesso é atualizado assim que o pagamento for registrado.</p>
+    </div>
+    <div class="vc-foot"><button class="btn" onclick="vencFechar()">Lembrar depois</button><button class="btn primary" onclick="vencFechar()">Entendi</button></div>
+  </div></div>`;
 }
+function vencFechar() { const r = document.getElementById('vencRoot'); if (r) r.innerHTML = ''; }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') vencFechar(); });
+(function () { const st = document.createElement('style'); st.textContent = `
+.vc-ov{position:fixed;inset:0;z-index:300;background:rgba(17,26,51,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:grid;place-items:center;padding:16px;animation:vcF .2s}
+.vc{width:100%;max-width:460px;max-height:calc(100vh - 32px);overflow:auto;background:#fff;border-radius:22px;box-shadow:0 30px 80px rgba(10,16,40,.45);animation:vcU .28s cubic-bezier(.2,.9,.3,1.2)}
+@keyframes vcF{from{opacity:0}}@keyframes vcU{from{opacity:0;transform:translateY(18px) scale(.97)}}
+.vc-top{position:relative;padding:26px 24px 22px;color:#fff;text-align:center;background:linear-gradient(135deg,#e8a33d,#c9791a)}
+.vc-bad .vc-top{background:linear-gradient(135deg,#d94c4c,#a82929)}.vc-info .vc-top{background:linear-gradient(135deg,#2948d1,#1d36a8)}
+.vc-ico{width:56px;height:56px;border-radius:18px;background:rgba(255,255,255,.2);display:grid;place-items:center;margin:0 auto 12px}
+.vc-t{font:700 22px Fraunces,Georgia,serif}.vc-s{opacity:.9;font-size:13.5px;margin-top:2px}
+.vc-x{position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:10px;border:0;background:rgba(255,255,255,.18);color:#fff;cursor:pointer;display:grid;place-items:center}
+.vc-body{padding:20px 22px 6px}.vc-msg{margin:0 0 16px;font-size:14.5px;line-height:1.55;color:var(--ink)}
+.vc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.vc-grid div{background:#f6f4ee;border-radius:12px;padding:10px 12px}.vc-grid span{display:block;font-size:11.5px;color:var(--muted)}.vc-grid b{font-size:14px}
+.vc-bad .vc-sit{color:var(--bad)}.vc-warn .vc-sit{color:var(--warn)}
+.vc-sec{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:12px}
+.vc-lbl{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
+.vc-pix{background:#faf8f3;border-radius:10px;padding:10px 12px;margin-bottom:8px;white-space:pre-wrap;word-break:break-word;font-size:14px}
+.vc-ct{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.vc-ct b{display:block;font-size:16px}.vc-ct span{font-size:12.5px;color:var(--muted)}
+.vc-hint{font-size:12.5px;color:var(--muted);margin:4px 0 10px}
+.vc-foot{display:flex;gap:8px;justify-content:flex-end;padding:12px 22px 20px}
+@media(max-width:420px){.vc-grid{grid-template-columns:1fr 1fr}.vc-foot .btn{flex:1}}`; document.head.appendChild(st); })();
 function telaSuspensa(a) {
   document.body.classList.add('student'); const bl = a.status === 'bloqueado';
   $('#main').innerHTML = `<div class="card" style="max-width:480px;margin:8vh auto;text-align:center"><div style="font-size:42px">🔒</div><h2 style="margin:6px 0 8px">${bl ? 'Acesso bloqueado' : 'Assinatura vencida'}</h2>
@@ -2855,7 +2897,7 @@ async function boot() {
   window.addEventListener('hashchange', router);
   router();
   if (!student && !Auth.admin) Sync.start();
-  if (!student && !Auth.admin && avisoDe(S.assin)) { const k = 'catedra_aviso', hj = hojeISO(); try { if (localStorage.getItem(k) !== hj) { localStorage.setItem(k, hj); setTimeout(() => comoPagar(true), 700); } } catch { } }
+  if (!student && !Auth.admin && avisoDe(S.assin)) { const k = 'catedra_aviso_sessao'; let ja = false; try { ja = sessionStorage.getItem(k) === hojeISO(); sessionStorage.setItem(k, hojeISO()); } catch { } if (!ja) setTimeout(() => comoPagar(true), 600); }
 }
 boot();
 </script>
