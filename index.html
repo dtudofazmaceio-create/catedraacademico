@@ -313,7 +313,7 @@ const LIBS = {
   tessCore: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1',
   tessLang: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/por@1.0.0/4.0.0_best_int'
 };
-const APP_VERSION = '2026.10.31-1';
+const APP_VERSION = '2026.10.31-2';
 const sha16 = async t => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(t || ''))))].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
 const verNum = v => { const m = String(v || '').match(/^(\d+)\.(\d+)\.(\d+)-(\d+)$/); return m ? ((+m[1] * 100 + +m[2]) * 100 + +m[3]) * 1000 + +m[4] : 0; };
 const BC = (() => { try { return new BroadcastChannel('catedra'); } catch { return null; } })();
@@ -683,6 +683,7 @@ async function copyText(t) { try { await navigator.clipboard.writeText(t); toast
 
 /* ---------- Navegação ---------- */
 const NAV = [['painel', 'home', 'Painel'], ['turmas', 'users', 'Turmas'], ['config', 'settings', Auth.admin ? 'Configurações' : 'Meu perfil']];
+if (Auth.admin) NAV.splice(2, 0, ['convidar', 'user', 'Convidar']);
 function renderNav(active) {
   const map = { turma: 'turmas', atividade: 'turmas', 'atividade-form': 'turmas', entrega: 'turmas', aluno: 'turmas' };
   const a = map[active] || active;
@@ -696,7 +697,7 @@ function router() {
   if (name === 'enviar') return viewEnviar(rest.join('/'));
   document.body.classList.remove('student');
   renderNav(name);
-  const views = { painel: viewPainel, turmas: viewTurmas, turma: viewTurma, atividade: viewAtividade, 'atividade-form': viewAtividadeForm, entrega: viewEntrega, aluno: viewAluno, config: viewConfig };
+  const views = { painel: viewPainel, turmas: viewTurmas, turma: viewTurma, atividade: viewAtividade, 'atividade-form': viewAtividadeForm, entrega: viewEntrega, aluno: viewAluno, config: viewConfig, convidar: viewConvidar };
   (views[name] || viewPainel)(...rest);
   window.scrollTo(0, 0);
 }
@@ -2066,6 +2067,12 @@ function ajustarNota(id) {
 async function delEntrega(id) { const e = byId('entregas', id); if (await confirmDlg('Excluir esta entrega? O aluno poderá enviar novamente (libera uma tentativa).', 'Excluir')) { await removeRec('entregas', id); toast('Entrega excluída'); go('atividade/' + e.atividadeId); } }
 
 /* ---------- Configurações ---------- */
+function viewConvidar() {
+  if (!Auth.admin) { location.hash = '#/painel'; return; }
+  setMain(`<div class="page-head"><div><h2>Convidar professores</h2><p class="muted">Envie o link do sistema e o código de convite pelo WhatsApp</p></div></div>
+  <div class="card" id="admConvite"><div class="muted small">Carregando…</div></div>`, 'Convidar');
+  Admin.convite();
+}
 function viewConfig() {
   const c = S.cfg, l = S.local, ai = c.ai || {};
   setMain(`<div class="page-head"><div><h2>${Auth.admin ? 'Configurações' : 'Meu perfil'}</h2><p class="muted">${Auth.admin ? 'Professores, limites e dados do sistema' : 'Seus dados e modo de correção'}</p></div></div>
