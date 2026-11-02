@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cátedra — Apresentação</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Identidade do próprio Cátedra (tema único, por escolha): azul-noite do menu, âmbar de destaque, papel claro.
+   Layout: cada seção é um slide de tela cheia; slides escuros abrem capítulos, slides claros explicam. */
+:root{
+  --noite:#111a33; --noite2:#1a2547; --tinta:#16213a; --papel:#f4f3ef; --cartao:#ffffff;
+  --ambar:#e8a33d; --azul:#2948d1; --verde:#1b8f62; --mudo:#687083; --linha:#e7e4dc;
+  --display:'Fraunces', Georgia, 'Times New Roman', serif;
+  --corpo:'Inter', 'Helvetica Neue', Arial, sans-serif;
+  color-scheme: light;
+}
+*{box-sizing:border-box}
+html{scroll-snap-type:y mandatory;scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--papel);color:var(--tinta);font-family:var(--corpo);font-size:18px;line-height:1.55;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--display);font-weight:700;line-height:1.12;text-wrap:balance;margin:0}
+h2{font-size:clamp(30px,4.2vw,52px);letter-spacing:-.01em}
+h3{font-size:22px;font-weight:600}
+p{margin:0}
+.slide{min-height:100vh;scroll-snap-align:start;display:flex;flex-direction:column;justify-content:center;padding:72px clamp(20px,6vw,96px) 88px;position:relative;overflow:hidden}
+.slide>.in{max-width:1180px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+.dark{background:var(--noite);color:#e9ecf5}
+.dark .lead{color:#b9c2da}
+.olho{font:700 13px/1 var(--corpo);letter-spacing:.14em;text-transform:uppercase;color:var(--ambar);display:flex;gap:10px;align-items:center}
+.olho b{display:inline-grid;place-items:center;min-width:28px;height:28px;border-radius:99px;background:var(--ambar);color:var(--noite);font-size:12px;letter-spacing:0}
+.lead{font-size:clamp(18px,1.6vw,22px);color:var(--mudo);max-width:62ch}
+.grid{display:grid;gap:18px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.g4{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.card{background:var(--cartao);border:1px solid var(--linha);border-radius:16px;padding:22px 22px 20px;display:flex;flex-direction:column;gap:8px}
+.card p,.card li{font-size:16px;color:#3c465c}
+.dark .card{background:var(--noite2);border-color:#2a3660}
+.dark .card p,.dark .card li{color:#c3cbe0}
+.card .tag{align-self:flex-start;font:700 11px/1 var(--corpo);letter-spacing:.08em;text-transform:uppercase;padding:6px 9px;border-radius:99px;background:#eef1fb;color:var(--azul)}
+.dark .card .tag{background:#25336a;color:#c7d2ff}
+ul.lista{margin:4px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:5px}
+.num{font-family:var(--display);font-size:40px;font-weight:700;color:var(--ambar);line-height:1}
+.risco{border-left:4px solid var(--ambar);padding:4px 0 4px 18px}
+.dark .risco{color:#e9ecf5}
+kbd{font:600 12px var(--corpo);background:#fff;border:1px solid var(--linha);border-bottom-width:2px;border-radius:6px;padding:2px 7px;color:var(--tinta)}
+code{font-family:'Courier New',monospace;font-size:.92em;background:#ece9e1;padding:1px 6px;border-radius:5px}
+
+/* capa */
+.capa{background:radial-gradient(1100px 600px at 85% -10%,#24336b 0%,transparent 60%),var(--noite)}
+.capa h1{font-size:clamp(56px,9vw,124px);color:#fff;letter-spacing:-.02em}
+.capa h1 span{color:var(--ambar)}
+.marca{display:flex;align-items:center;gap:14px}
+.logo{width:56px;height:56px;border-radius:14px;background:linear-gradient(140deg,#f6c46b,var(--ambar));display:grid;place-items:center;font:700 30px var(--display);color:var(--noite)}
+.capa .lead{font-size:clamp(20px,2vw,26px)}
+.pilulas{display:flex;flex-wrap:wrap;gap:10px}
+.pilula{border:1px solid #33427a;color:#c7d0ea;border-radius:99px;padding:8px 14px;font-size:14px;font-weight:500}
+
+/* fluxo / arquitetura */
+.fluxo{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:14px;align-items:stretch}
+.fluxo .seta{align-self:center;color:var(--ambar);font-size:28px;font-weight:700}
+.no{border-radius:16px;padding:20px;background:var(--cartao);border:1px solid var(--linha);display:flex;flex-direction:column;gap:6px}
+.no.escuro{background:var(--noite);color:#e9ecf5;border-color:var(--noite)}
+.no.escuro p{color:#b9c2da}
+.no small{font:700 11px var(--corpo);letter-spacing:.1em;text-transform:uppercase;color:var(--ambar)}
+.no p{font-size:15px;color:#3c465c}
+@media (max-width:860px){.fluxo{grid-template-columns:1fr}.fluxo .seta{transform:rotate(90deg);justify-self:center}}
+
+/* passos */
+.passos{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;counter-reset:p}
+.passo{background:var(--cartao);border:1px solid var(--linha);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:8px;position:relative}
+.passo::before{counter-increment:p;content:counter(p);width:34px;height:34px;border-radius:99px;background:var(--noite);color:var(--ambar);display:grid;place-items:center;font:700 16px var(--corpo)}
+.passo b{font-size:16px}
+.passo p{font-size:14.5px;color:#4a5469}
+
+/* mockups de tela */
+.tela{background:#fff;border:1px solid var(--linha);border-radius:14px;box-shadow:0 24px 60px -20px rgba(17,26,51,.35);overflow:hidden;font-size:13px}
+.tela .barra{display:flex;gap:6px;padding:10px 12px;background:#f0eee8;border-bottom:1px solid var(--linha)}
+.tela .barra i{width:10px;height:10px;border-radius:99px;background:#d8d4ca}
+.tela .corpo{padding:16px;display:flex;flex-direction:column;gap:12px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stat{border:1px solid var(--linha);border-radius:10px;padding:10px}
+.stat b{display:block;font:700 20px var(--display);color:var(--tinta);font-variant-numeric:tabular-nums}
+.stat span{color:var(--mudo);font-size:11.5px}
+.linha-t{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid var(--linha);gap:10px}
+.chip{font:700 11px var(--corpo);padding:4px 9px;border-radius:99px;white-space:nowrap}
+.chip.ok{background:#e2f4ec;color:var(--verde)}.chip.pend{background:#fff2d6;color:#8a5a0a}.chip.ia{background:#eef1fb;color:var(--azul)}
+.nota{font:700 15px var(--corpo);font-variant-numeric:tabular-nums}
+.barra-p{height:8px;border-radius:99px;background:#eceae3;overflow:hidden}.barra-p i{display:block;height:100%;background:var(--azul);border-radius:99px}
+.crit{display:grid;grid-template-columns:1fr 60px 34px;gap:10px;align-items:center;font-size:12.5px}
+.qr-mini{display:grid;grid-template-columns:repeat(21,1fr);gap:0;width:150px;aspect-ratio:1;padding:8px;background:#fff;border-radius:10px;border:2px solid var(--ambar)}
+.qr-mini i{background:transparent}.qr-mini i.d{background:var(--noite)}
+
+/* comparação */
+.tab{width:100%;border-collapse:separate;border-spacing:0;background:var(--cartao);border:1px solid var(--linha);border-radius:16px;overflow:hidden;font-size:15.5px}
+.tab th,.tab td{padding:13px 16px;text-align:left;vertical-align:top;border-top:1px solid var(--linha)}
+.tab thead th{border-top:0;background:var(--noite);color:#fff;font-family:var(--display);font-size:18px;font-weight:600}
+.tab td:first-child{font-weight:600;color:var(--tinta);width:24%}
+.tab td{color:#3c465c}
+.wrap-x{overflow-x:auto}
+
+/* maturidade */
+.degraus{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;align-items:end}
+.degrau{border-radius:16px 16px 6px 6px;padding:18px;display:flex;flex-direction:column;gap:8px;color:#e9ecf5;background:var(--noite2);border:1px solid #2a3660}
+.degrau:nth-child(1){min-height:250px}.degrau:nth-child(2){min-height:300px}.degrau:nth-child(3){min-height:350px}.degrau:nth-child(4){min-height:400px;background:linear-gradient(180deg,#2a3a7c,var(--noite2));border-color:var(--ambar)}
+.degrau small{font:700 11px var(--corpo);letter-spacing:.1em;text-transform:uppercase;color:var(--ambar)}
+.degrau h3{color:#fff}
+.degrau p{font-size:14.5px;color:#c3cbe0}
+.degrau .ind{margin-top:auto;font-size:13px;color:#e9ecf5;border-top:1px dashed #3a4778;padding-top:10px}
+@media (max-width:900px){.degraus{grid-template-columns:1fr 1fr}.degrau{min-height:0!important}}
+@media (max-width:520px){.degraus{grid-template-columns:1fr}}
+
+/* cronograma */
+.crono{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:3px solid var(--ambar)}
+.semana{padding:18px 18px 0 0;display:flex;flex-direction:column;gap:6px;position:relative}
+.semana::before{content:"";position:absolute;top:-10px;left:0;width:16px;height:16px;border-radius:99px;background:var(--ambar);border:3px solid var(--papel)}
+.semana small{font:700 12px var(--corpo);letter-spacing:.1em;text-transform:uppercase;color:var(--azul);margin-top:8px}
+.semana p{font-size:15px;color:#3c465c}
+@media (max-width:820px){.crono{grid-template-columns:1fr 1fr;row-gap:26px}}
+
+.check{display:flex;gap:12px;align-items:flex-start;font-size:16.5px}
+.check::before{content:"";flex:none;width:20px;height:20px;margin-top:3px;border-radius:6px;border:2px solid var(--ambar)}
+.dark .check{color:#dfe4f1}
+
+/* navegação de apresentação */
+.progresso{position:fixed;top:0;left:0;height:4px;background:var(--ambar);width:0;z-index:20;transition:width .25s}
+.nav{position:fixed;right:16px;bottom:16px;display:flex;gap:6px;align-items:center;z-index:20;background:rgba(17,26,51,.92);padding:6px;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.nav button{all:unset;cursor:pointer;color:#fff;font:600 14px var(--corpo);padding:8px 11px;border-radius:9px}
+.nav button:hover{background:#26335f}
+.nav button:focus-visible{outline:2px solid var(--ambar)}
+.nav .cont{color:#b9c2da;font:600 13px var(--corpo);padding:0 8px;font-variant-numeric:tabular-nums;min-width:58px;text-align:center}
+.notas{position:fixed;left:16px;bottom:16px;right:330px;max-width:760px;background:#fffdf6;border:1px solid #ecd9ae;border-left:4px solid var(--ambar);border-radius:12px;padding:14px 18px;font-size:15px;color:var(--tinta);z-index:19;box-shadow:0 10px 30px rgba(0,0,0,.18);display:none}
+.notas b{font:700 11px var(--corpo);letter-spacing:.1em;text-transform:uppercase;color:#8a5a0a;display:block;margin-bottom:4px}
+body.com-notas .notas{display:block}
+.slide aside{display:none}
+.dica{font-size:13px;color:#8d95aa}
+.acoes{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.btn-sis{display:inline-flex;align-items:center;gap:10px;background:var(--ambar);color:var(--noite);font:700 17px var(--corpo);text-decoration:none;padding:14px 22px;border-radius:12px;box-shadow:0 10px 30px -10px rgba(232,163,61,.6);transition:transform .15s}
+.btn-sis:hover{transform:translateY(-1px)}
+.btn-sis:focus-visible{outline:3px solid #fff;outline-offset:3px}
+.btn-sis.sec{background:transparent;color:#e9ecf5;border:1px solid #3a4778;box-shadow:none}
+.nav a.voltar{color:var(--noite);background:var(--ambar);font:700 14px var(--corpo);padding:8px 12px;border-radius:9px;text-decoration:none;margin-right:4px}
+.nav a.voltar:focus-visible{outline:2px solid #fff}
+@media (max-width:520px){.nav button#bNotas,.nav button#bTela{display:none}}
+@media (max-width:700px){.notas{right:16px;bottom:76px}.stats{grid-template-columns:1fr 1fr}.slide{min-height:auto;padding-top:56px;padding-bottom:64px}html{scroll-snap-type:none}}
+</style>
+</head>
+<body>
+<div class="progresso" id="prog"></div>
+
+<!-- 1 · CAPA -->
+<section class="slide dark capa" id="inicio">
+  <div class="in">
+    <div class="marca"><div class="logo">C</div><div class="olho">Gestão acadêmica com IA</div></div>
+    <h1>Cátedra<span>.</span></h1>
+    <p class="lead">Da sala de aula à gestão: turmas, atividades, envio pelo aluno, correção automática, relatórios e administração do sistema em um só lugar.</p>
+    <div class="pilulas"><span class="pilula">Turmas e alunos</span><span class="pilula">Trabalhos e provas</span><span class="pilula">QR code na sala</span><span class="pilula">Correção gratuita ou por IA</span><span class="pilula">Relatórios em PDF</span><span class="pilula">Gestão de professores</span><span class="pilula">Backup criptografado</span></div>
+    <div class="acoes"><a class="btn-sis" href="index.html" data-sistema>Acessar o sistema <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a><a class="btn-sis sec" href="#problema">Começar a apresentação</a></div>
+    <p class="dica">Use <kbd>→</kbd> <kbd>←</kbd> ou <kbd>espaço</kbd> para avançar · <kbd>F</kbd> tela cheia · <kbd>N</kbd> notas do palestrante</p>
+  </div>
+  <aside>Abertura: apresente-se e diga o objetivo da palestra. Hoje vamos ver o sistema por inteiro, do primeiro acesso do professor até a gestão de vários professores, e como evoluir o processo de gestão acadêmica em etapas.</aside>
+</section>
+
+<!-- 2 · O PROBLEMA -->
+<section class="slide" id="problema">
+  <div class="in">
+    <div class="olho">O ponto de partida</div>
+    <h2>A rotina de avaliação consome o tempo que deveria ir para o ensino</h2>
+    <div class="grid g4">
+      <div class="card"><div class="num">120</div><p>correções por bimestre em um cenário comum: 40 alunos × 3 atividades. Multiplique pelo número de turmas.</p></div>
+      <div class="card"><div class="num">5+</div><p>lugares diferentes para acompanhar: e-mail, WhatsApp, pen drive, planilha de notas e papel.</p></div>
+      <div class="card"><div class="num">0</div><p>visão consolidada de quem entregou, quem está atrasado e como a turma está indo, até o fim do período.</p></div>
+      <div class="card"><div class="num">?</div><p>critérios que mudam de uma correção para outra quando o cansaço chega no 30º trabalho.</p></div>
+    </div>
+    <p class="risco lead">O Cátedra organiza esse ciclo inteiro: <b>publicar → receber → corrigir → acompanhar → decidir</b>.</p>
+  </div>
+  <aside>Os números são um exemplo de cálculo, não uma pesquisa: peça à plateia para fazer a conta com as próprias turmas. A pergunta "quanto tempo você gasta corrigindo?" costuma engajar.</aside>
+</section>
+
+<!-- 3 · O QUE É -->
+<section class="slide" id="sistema">
+  <div class="in">
+    <div class="olho">O sistema</div>
+    <h2>Um sistema web que funciona no navegador e se instala como aplicativo</h2>
+    <div class="grid g3">
+      <div class="card"><span class="tag">Professor</span><h3>Organiza e corrige</h3><p>Cria turmas e atividades, compartilha o link ou o QR code, recebe as entregas já corrigidas, revisa as notas e emite relatórios.</p></div>
+      <div class="card"><span class="tag">Aluno</span><h3>Envia sem criar conta</h3><p>Abre o link ou lê o QR code, escolhe o próprio nome e envia arquivo ou foto. Recebe protocolo, nota e relatório quando o professor libera.</p></div>
+      <div class="card"><span class="tag">Administrador</span><h3>Gere a operação</h3><p>Convida professores, define planos e cobrança, registra pagamentos, aprova mudanças de plano, controla limites de IA e faz o backup global.</p></div>
+    </div>
+    <div class="grid g4">
+      <div class="check">Instalável no celular e no computador (iPhone, Android, Windows, Mac)</div>
+      <div class="check">Sincroniza entre aparelhos automaticamente</div>
+      <div class="check">Cada professor tem conta própria e dados separados</div>
+      <div class="check">Chaves de IA ficam só no servidor, nunca no navegador</div>
+    </div>
+  </div>
+  <aside>Destaque os três papéis. A maior parte da palestra é do ponto de vista do professor; a gestão aparece no fim.</aside>
+</section>
+
+<!-- 4 · ARQUITETURA -->
+<section class="slide" id="arquitetura">
+  <div class="in">
+    <div class="olho">Como funciona por dentro</div>
+    <h2>Três peças simples e de baixo custo</h2>
+    <div class="fluxo">
+      <div class="no"><small>Navegador / aplicativo</small><h3>Cátedra</h3><p>Professor e administrador. Guarda uma cópia local dos dados para abrir rápido e trabalhar com conexão instável.</p></div>
+      <div class="seta">⇄</div>
+      <div class="no escuro"><small>Servidor</small><h3>Cloudflare Worker</h3><p>Contas e sessões, recebimento das entregas, chamada à IA com limite mensal por professor, planos e cobrança.</p></div>
+      <div class="seta">⇄</div>
+      <div class="no"><small>Banco de dados</small><h3>GitHub Gist privado</h3><p>Turmas, alunos, atividades, entregas e cadastros. Cópia completa no backup global criptografado.</p></div>
+    </div>
+    <div class="grid g3">
+      <div class="card"><span class="tag">IA</span><p>Anthropic (Claude), OpenAI (GPT) ou Google (Gemini), escolhidos no servidor.</p></div>
+      <div class="card"><span class="tag">Aluno</span><p>Chega pelo link ou QR code direto ao servidor de envio. Não acessa os dados de outros alunos.</p></div>
+      <div class="card"><span class="tag">Custo</span><p>O plano gratuito da Cloudflare atende uma turma com folga; a IA é opcional e tem limite por professor.</p></div>
+    </div>
+  </div>
+  <aside>Para público técnico, vale detalhar: segredos como variáveis da Cloudflare (GITHUB_TOKEN, GIST_ID, AI_KEY, SESSION_SECRET). Para público pedagógico, pule rapidamente: o recado é "simples, seguro e barato".</aside>
+</section>
+
+<!-- 5 · CAPÍTULO: COMO USAR -->
+<section class="slide dark" id="como-usar">
+  <div class="in">
+    <div class="olho"><b>1</b> Parte 1</div>
+    <h2 style="font-size:clamp(40px,6vw,80px);color:#fff">Como usar,<br>passo a passo</h2>
+    <p class="lead">Do primeiro acesso ao relatório final da turma.</p>
+  </div>
+  <aside>Transição. Se for fazer demonstração ao vivo, este é um bom momento para abrir o sistema em outra aba.</aside>
+</section>
+
+<!-- 6 · JORNADA -->
+<section class="slide" id="jornada">
+  <div class="in">
+    <div class="olho">A jornada do professor</div>
+    <h2>Seis passos do convite à nota final</h2>
+    <div class="passos">
+      <div class="passo"><b>Criar a conta</b><p>Com o link e o código de convite enviados pelo administrador.</p></div>
+      <div class="passo"><b>Montar a turma</b><p>Colar a lista de alunos de uma vez, copiada da planilha ou do diário.</p></div>
+      <div class="passo"><b>Criar a atividade</b><p>Trabalho ou prova, a partir de um modelo pronto ou do zero.</p></div>
+      <div class="passo"><b>Divulgar</b><p>Link, WhatsApp, e-mail ou cartaz com QR code na sala.</p></div>
+      <div class="passo"><b>Receber e corrigir</b><p>O aluno envia e a correção sai na hora, gratuita ou por IA.</p></div>
+      <div class="passo"><b>Revisar e reportar</b><p>Ajustar notas, acompanhar a turma e gerar os PDFs.</p></div>
+    </div>
+  </div>
+  <aside>Este é o mapa da parte 1. Os próximos slides detalham cada passo.</aside>
+</section>
+
+<!-- 7 · TURMAS -->
+<section class="slide" id="turmas">
+  <div class="in">
+    <div class="grid g2" style="align-items:center;gap:40px">
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <div class="olho">Passo 2 · Turmas e alunos</div>
+        <h2>O painel mostra a situação de todas as turmas</h2>
+        <ul class="lista lead" style="color:var(--tinta)">
+          <li>Importe a lista de alunos colando os nomes, um por linha</li>
+          <li>Cada turma tem cor, disciplina, atividades e quadro de notas</li>
+          <li>Ficha do aluno com atividades entregues e aproveitamento</li>
+          <li>Painel com atividades abertas, entregas recentes e desempenho por turma</li>
+        </ul>
+      </div>
+      <div class="tela" aria-label="Exemplo ilustrativo do painel">
+        <div class="barra"><i></i><i></i><i></i></div>
+        <div class="corpo">
+          <div class="stats">
+            <div class="stat"><b>4</b><span>Turmas</span></div><div class="stat"><b>137</b><span>Alunos</span></div>
+            <div class="stat"><b>12</b><span>Atividades</span></div><div class="stat"><b>78%</b><span>Aproveitamento</span></div>
+          </div>
+          <b style="font-size:13px">Desempenho por turma</b>
+          <div><div class="linha-t"><span>3º Período · Direito Constitucional</span><span class="nota">82%</span></div><div class="barra-p"><i style="width:82%"></i></div></div>
+          <div><div class="linha-t"><span>1º Período · Introdução ao Direito</span><span class="nota">74%</span></div><div class="barra-p"><i style="width:74%"></i></div></div>
+          <div><div class="linha-t"><span>5º Período · Processo Civil</span><span class="nota">69%</span></div><div class="barra-p"><i style="width:69%;background:var(--ambar)"></i></div></div>
+          <p class="dica" style="margin-top:4px">Tela ilustrativa com dados de exemplo</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <aside>Mostre ao vivo a importação da lista: copiar uma coluna de nomes de uma planilha e colar. É rápido e impressiona.</aside>
+</section>
+
+<!-- 8 · ATIVIDADES -->
+<section class="slide" id="atividades">
+  <div class="in">
+    <div class="olho">Passo 3 · Atividades</div>
+    <h2>Trabalhos com critérios claros, prontos para usar</h2>
+    <div class="grid g2">
+      <div class="card"><span class="tag">Tipos</span><h3>Sete formatos de trabalho e prova</h3><p>Redação, artigo científico, resenha, relatório, ensaio, estudo de caso, outro trabalho e prova com gabarito.</p>
+        <span class="tag" style="margin-top:10px">Modelos prontos</span>
+        <ul class="lista"><li>Redação dissertativo-argumentativa, modelo ENEM, 5 competências</li><li>Artigo científico (ABNT)</li><li>Resenha crítica</li><li>Estudo de caso</li><li>Relatório técnico ou de atividade</li></ul></div>
+      <div class="card"><span class="tag">Parâmetros</span><h3>O professor define o que vale</h3>
+        <ul class="lista"><li><b>Tema e conceitos esperados</b>, com sinônimos: <code>dívida externa/dependência econômica</code></li><li>Extensão mínima e máxima em palavras, com penalidade</li><li>Seções obrigatórias, normas (ABNT, APA) e número mínimo de referências</li><li>Critérios com pesos e descrição de cada nível de nota</li><li>Rigor: flexível, moderado ou rigoroso</li><li>Prazo, data e horário, tentativas, aceitar atraso</li><li>O que o aluno vê: nota, relatório e gabarito</li></ul></div>
+    </div>
+  </div>
+  <aside>Ponto-chave: a qualidade da correção depende da qualidade dos parâmetros. Os conceitos com sinônimos são o que mais melhora a correção gratuita.</aside>
+</section>
+
+<!-- 9 · PROVAS -->
+<section class="slide" id="provas">
+  <div class="in">
+    <div class="olho">Passo 3 · Provas com gabarito</div>
+    <h2>Prova em papel, correção no celular do aluno</h2>
+    <div class="grid g3">
+      <div class="card"><span class="tag">Gabarito</span><h3>Objetivas e abertas</h3><p>Objetivas aceitam mais de uma resposta (<code>A/C</code>) e anulação (<code>*</code>). Abertas têm resposta esperada, conceitos-chave e critérios de crédito parcial.</p></div>
+      <div class="card"><span class="tag">Gabarito rápido</span><h3>Digite tudo de uma vez</h3><p>Digite <code>1A 2C 3B</code> ou só a sequência <code>ACBDE</code>: as questões objetivas são criadas com o valor de cada uma.</p></div>
+      <div class="card"><span class="tag">Folha de respostas</span><h3>Uma por aluno, já com o nome</h3><p>Imprima o PDF. No fim da prova, o aluno fotografa a folha pelo link e a leitura óptica confere as marcações.</p></div>
+    </div>
+    <p class="risco lead">Com IA, o sistema também lê <b>provas manuscritas</b> e avalia as questões abertas pelos conceitos, não pela mera presença de palavras.</p>
+  </div>
+  <aside>Se possível, leve uma folha de respostas impressa e preenchida para demonstrar a leitura pela câmera.</aside>
+</section>
+
+<!-- 10 · DIVULGAR -->
+<section class="slide" id="divulgar">
+  <div class="in">
+    <div class="grid g2" style="align-items:center;gap:40px">
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <div class="olho">Passo 4 · Divulgar</div>
+        <h2>Um link seguro e um QR code para a sala</h2>
+        <ul class="lista lead" style="color:var(--tinta)">
+          <li>Copiar o link ou enviar direto por WhatsApp e e-mail</li>
+          <li>Cartaz A4 com QR code: título, turma, professor, instituição, data, horário e prazo</li>
+          <li>Imprimir, baixar em PDF ou em imagem para projetar</li>
+          <li>O sistema confirma que o servidor encontrou a atividade antes de você divulgar</li>
+        </ul>
+      </div>
+      <div class="tela" style="max-width:380px;justify-self:center;width:100%">
+        <div style="background:var(--noite);color:#fff;padding:18px 18px 16px;border-bottom:3px solid var(--ambar)">
+          <div style="font:700 10px var(--corpo);letter-spacing:.12em;color:var(--ambar)">CENTRO UNIVERSITÁRIO</div>
+          <div style="font:700 19px/1.2 var(--display);margin-top:8px">Avaliação Bimestral de Direito Constitucional</div>
+          <div style="font-size:11px;color:#b9c2da;margin-top:4px">3º Período · Noturno</div>
+        </div>
+        <div class="corpo" style="align-items:center">
+          <b style="font-family:var(--display);font-size:15px">Escaneie para enviar sua prova</b>
+          <div class="qr-mini" id="qrMini" aria-label="QR code ilustrativo"></div>
+          <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:6px;width:100%;font-size:10.5px">
+            <div class="stat"><span>DATA</span><b style="font-size:13px">12/11</b></div><div class="stat"><span>HORÁRIO</span><b style="font-size:13px">19:00</b></div><div class="stat"><span>PRAZO</span><b style="font-size:13px">21:30</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <aside>Demonstração: abra uma atividade, clique em "QR code para a sala" e peça para alguém da plateia ler o código com o celular.</aside>
+</section>
+
+<!-- 11 · ALUNO -->
+<section class="slide" id="aluno">
+  <div class="in">
+    <div class="olho">Passo 5 · A experiência do aluno</div>
+    <h2>Três toques, sem cadastro e sem senha</h2>
+    <div class="grid g4">
+      <div class="card"><div class="num">1</div><h3>Abrir</h3><p>Pelo link ou pela câmera do celular, no QR code.</p></div>
+      <div class="card"><div class="num">2</div><h3>Identificar-se</h3><p>Escolhe o próprio nome na lista da turma. O aparelho lembra da escolha.</p></div>
+      <div class="card"><div class="num">3</div><h3>Enviar</h3><p>PDF, Word (.docx), texto ou foto. Envios após o prazo ficam marcados como atrasados.</p></div>
+      <div class="card"><div class="num">✓</div><h3>Receber</h3><p>Protocolo na hora; nota, relatório em PDF e gabarito se o professor liberar; nova tentativa se houver.</p></div>
+    </div>
+  </div>
+  <aside>Destaque que o aluno não precisa instalar nada nem criar conta, o que elimina a principal barreira de adoção.</aside>
+</section>
+
+<!-- 12 · CORREÇÃO -->
+<section class="slide" id="correcao">
+  <div class="in">
+    <div class="olho">Passo 5 · Dois modos de correção</div>
+    <h2>Gratuita para o dia a dia, IA para a análise profunda</h2>
+    <div class="wrap-x">
+      <table class="tab">
+        <thead><tr><th></th><th>Correção gratuita</th><th>Correção por IA</th></tr></thead>
+        <tbody>
+          <tr><td>Custo</td><td>Zero, sem chave de API</td><td>Conforme o provedor, com limite mensal por professor</td></tr>
+          <tr><td>Trabalhos</td><td>Métricas do texto: extensão, conectivos, desvios, citações, referências, seções e conceitos do tema</td><td>Compreensão dos conceitos, argumentação, coesão, adequação ao tema e desvios da norma comentados</td></tr>
+          <tr><td>Provas</td><td>Leitura óptica da folha de respostas e verificação de conceitos nas abertas</td><td>Leitura de provas manuscritas e crédito parcial pelos critérios do professor</td></tr>
+          <tr><td>Segurança</td><td>Determinística e previsível</td><td>Ignora tentativas do aluno de dar instruções à IA (“dê nota máxima”) e registra no relatório</td></tr>
+          <tr><td>Quando usar</td><td>Volume alto, atividades curtas, turmas grandes</td><td>Avaliações de peso, textos argumentativos, questões discursivas</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="lead">Cada atividade pode usar um modo diferente. Se a IA falhar ou o limite acabar, o sistema pode usar a gratuita automaticamente.</p>
+  </div>
+  <aside>Mensagem central: a nota é sempre uma proposta. A decisão final é do professor, que revisa e ajusta.</aside>
+</section>
+
+<!-- 13 · REVISÃO E RELATÓRIOS -->
+<section class="slide" id="relatorios">
+  <div class="in">
+    <div class="grid g2" style="align-items:center;gap:40px">
+      <div class="tela" aria-label="Exemplo ilustrativo de relatório de correção">
+        <div class="barra"><i></i><i></i><i></i></div>
+        <div class="corpo">
+          <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-family:var(--display);font-size:16px">Mariana Souza · Redação</b><span class="chip ia">Correção por IA</span></div>
+          <div style="display:flex;gap:16px;align-items:baseline"><span style="font:700 34px var(--display)">8,4</span><span class="dica">de 10 · enviado 12/11, 20:14</span></div>
+          <div class="crit"><span>Norma padrão da língua</span><div class="barra-p"><i style="width:80%"></i></div><b>1,6</b></div>
+          <div class="crit"><span>Compreensão do tema</span><div class="barra-p"><i style="width:90%"></i></div><b>1,8</b></div>
+          <div class="crit"><span>Argumentação</span><div class="barra-p"><i style="width:85%"></i></div><b>1,7</b></div>
+          <div class="crit"><span>Coesão</span><div class="barra-p"><i style="width:80%"></i></div><b>1,6</b></div>
+          <div class="crit"><span>Proposta de intervenção</span><div class="barra-p"><i style="width:85%;background:var(--ambar)"></i></div><b>1,7</b></div>
+          <div class="linha-t"><span>Desvios da norma padrão</span><span class="chip pend">3 apontados</span></div>
+          <p class="dica">Tela ilustrativa com dados de exemplo</p>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <div class="olho">Passo 6 · Revisar e reportar</div>
+        <h2>O professor tem a palavra final</h2>
+        <ul class="lista lead" style="color:var(--tinta)">
+          <li>Relatório por critério, com trechos e sugestões</li>
+          <li>Ajuste da nota final com comentário para o aluno e lançamento manual de correções</li>
+          <li>Melhor tentativa conta automaticamente</li>
+          <li>PDFs: entrega, ficha do aluno, atividade e relatório da turma com quadro de notas</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <aside>Mostre o PDF da turma: é o documento que a coordenação costuma pedir.</aside>
+</section>
+
+<!-- 14 · CAPÍTULO: GESTÃO -->
+<section class="slide dark" id="gestao">
+  <div class="in">
+    <div class="olho"><b>2</b> Parte 2</div>
+    <h2 style="font-size:clamp(40px,6vw,80px);color:#fff">Gestão do sistema<br>e da instituição</h2>
+    <p class="lead">O painel do administrador para operar o Cátedra com vários professores.</p>
+  </div>
+  <aside>Transição para a visão do gestor ou coordenador.</aside>
+</section>
+
+<!-- 15 · PAINEL ADMIN -->
+<section class="slide" id="administracao">
+  <div class="in">
+    <div class="olho">Painel gerencial</div>
+    <h2>Professores, planos e cobrança sob controle</h2>
+    <div class="grid g3">
+      <div class="card"><span class="tag">Professores</span><h3>Cadastro e acesso</h3><p>Turmas e alunos de cada um, plano, vencimento, limite de correções por IA e bloqueio de acesso.</p></div>
+      <div class="card"><span class="tag">Convites</span><h3>Entrada controlada</h3><p>Código de convite renovável e mensagem pronta para o WhatsApp, editável.</p></div>
+      <div class="card"><span class="tag">Plano e cobrança</span><h3>Regras claras</h3><p>Valor, teste gratuito, tolerância, suspensão automática, PIX e planos disponíveis para troca.</p></div>
+      <div class="card"><span class="tag">Pagamentos</span><h3>Registro e histórico</h3><p>Ao registrar o pagamento, o acesso volta na hora. Exporta em CSV.</p></div>
+      <div class="card"><span class="tag">Solicitações</span><h3>Mudança de plano</h3><p>O professor pede; o administrador aprova ou recusa com motivo.</p></div>
+      <div class="card"><span class="tag">Relatórios</span><h3>Receita e vencimentos</h3><p>Recebimentos por mês, situação dos professores, quem vence amanhã e quem está em atraso, com aviso por WhatsApp.</p></div>
+    </div>
+  </div>
+  <aside>Se a instituição não cobra dos professores, basta deixar o vencimento em branco: o professor fica sem cobrança.</aside>
+</section>
+
+<!-- 16 · SEGURANÇA -->
+<section class="slide" id="seguranca">
+  <div class="in">
+    <div class="olho">Segurança e continuidade</div>
+    <h2>Dados protegidos e recuperáveis</h2>
+    <div class="grid g2">
+      <div class="card"><span class="tag">Acesso</span><ul class="lista"><li>Login individual com senha forte e bloqueio após tentativas</li><li>Chaves de IA e segredos apenas no servidor</li><li>Dados de cada professor separados no aparelho</li><li>Aluno envia, mas não acessa dados de outros alunos</li></ul></div>
+      <div class="card"><span class="tag">Backup global</span><ul class="lista"><li>Um arquivo com o banco de dados completo, chaves, gestão e preferências</li><li>Criptografia AES-256 com senha definida por você</li><li>Verificação automática ao exportar e relatório do que entrou</li><li>Restauração seletiva, inclusive para um banco novo</li></ul></div>
+    </div>
+    <p class="risco lead">Boa prática: exporte o backup global ao fim de cada bimestre e guarde a senha separada do arquivo.</p>
+  </div>
+  <aside>Tema que preocupa gestores: o que acontece se o servidor cair ou o token vencer? Resposta: o backup global reconstrói tudo, inclusive as chaves.</aside>
+</section>
+
+<!-- 17 · CAPÍTULO: EVOLUIR -->
+<section class="slide dark" id="evoluir">
+  <div class="in">
+    <div class="olho"><b>3</b> Parte 3</div>
+    <h2 style="font-size:clamp(40px,6vw,80px);color:#fff">Evoluir o processo<br>de gestão acadêmica</h2>
+    <p class="lead">A ferramenta é o meio. O ganho real vem de mudar o processo, um degrau por vez.</p>
+  </div>
+  <aside>Esta é a parte mais estratégica da palestra. Fale para coordenadores e gestores.</aside>
+</section>
+
+<!-- 18 · MATURIDADE -->
+<section class="slide dark" id="maturidade">
+  <div class="in">
+    <div class="olho">Modelo de maturidade</div>
+    <h2 style="color:#fff">Quatro degraus da avaliação digital</h2>
+    <div class="degraus">
+      <div class="degrau"><small>Degrau 1</small><h3>Centralizar</h3><p>Turmas no sistema, entregas por link e QR code. Acabam os arquivos espalhados.</p><div class="ind">Indicador: % de entregas recebidas pelo sistema</div></div>
+      <div class="degrau"><small>Degrau 2</small><h3>Padronizar</h3><p>Modelos de critérios, gabaritos e conceitos esperados. Todos corrigem com a mesma régua.</p><div class="ind">Indicador: atividades com critérios e conceitos definidos</div></div>
+      <div class="degrau"><small>Degrau 3</small><h3>Automatizar e medir</h3><p>Correção gratuita ou por IA, revisão humana, aproveitamento por turma e por aluno acompanhado semanalmente.</p><div class="ind">Indicador: tempo entre envio e devolutiva; pendências por turma</div></div>
+      <div class="degrau"><small>Degrau 4</small><h3>Decidir e escalar</h3><p>Relatórios na reunião pedagógica, intervenção precoce com quem está pendente, vários professores com planos e backup.</p><div class="ind">Indicador: alunos em risco identificados antes da prova final</div></div>
+    </div>
+  </div>
+  <aside>Peça para cada pessoa identificar em que degrau está hoje. A maioria das instituições está entre o 1 e o 2.</aside>
+</section>
+
+<!-- 19 · IMPLANTAÇÃO -->
+<section class="slide" id="implantacao">
+  <div class="in">
+    <div class="olho">Plano de implantação</div>
+    <h2>Trinta dias para sair do papel</h2>
+    <div class="crono">
+      <div class="semana"><small>Semana 1</small><h3>Piloto</h3><p>Um professor, uma turma. Importar alunos, criar um trabalho a partir de um modelo e divulgar por QR code.</p></div>
+      <div class="semana"><small>Semana 2</small><h3>Critérios</h3><p>Revisar as primeiras correções, ajustar conceitos e sinônimos, definir o rigor e o que o aluno vê.</p></div>
+      <div class="semana"><small>Semana 3</small><h3>Provas</h3><p>Aplicar uma prova com folha de respostas impressa e leitura pelo celular. Convidar mais professores.</p></div>
+      <div class="semana"><small>Semana 4</small><h3>Gestão</h3><p>Levar os relatórios em PDF à reunião pedagógica, configurar planos e exportar o primeiro backup global.</p></div>
+    </div>
+  </div>
+  <aside>Comece pequeno. Um piloto bem-sucedido convence mais do que qualquer apresentação.</aside>
+</section>
+
+<!-- 20 · BOAS PRÁTICAS -->
+<section class="slide" id="boas-praticas">
+  <div class="in">
+    <div class="olho">Boas práticas</div>
+    <h2>Para uma avaliação justa e transparente</h2>
+    <div class="grid g2">
+      <div class="check">Divulgue os critérios aos alunos antes da atividade</div>
+      <div class="check">Escreva os conceitos com sinônimos e expressões completas</div>
+      <div class="check">Trate a nota automática como proposta e revise as de fronteira</div>
+      <div class="check">Use o rigor coerente com o período e o peso da atividade</div>
+      <div class="check">Libere o relatório ao aluno: a devolutiva é parte da aprendizagem</div>
+      <div class="check">Cadastre só os dados necessários dos alunos (nome e turma)</div>
+      <div class="check">Acompanhe as pendências toda semana, não só no fim do período</div>
+      <div class="check">Faça o backup global a cada bimestre</div>
+    </div>
+  </div>
+  <aside>Reforce o papel do professor: a tecnologia libera tempo para a devolutiva e o acompanhamento, que são o que realmente melhora a aprendizagem.</aside>
+</section>
+
+<!-- 21 · ROTEIRO DA DEMO -->
+<section class="slide dark" id="demonstracao">
+  <div class="in">
+    <div class="olho">Demonstração ao vivo</div>
+    <h2 style="color:#fff">Roteiro de 10 minutos</h2>
+    <div class="grid g2">
+      <div class="check">Entrar como professor e mostrar o painel</div>
+      <div class="check">Criar uma turma e colar a lista de alunos</div>
+      <div class="check">Criar uma redação a partir do modelo ENEM</div>
+      <div class="check">Gerar o cartaz com QR code e pedir que alguém leia</div>
+      <div class="check">Enviar uma redação pelo celular como aluno</div>
+      <div class="check">Abrir a correção, ajustar a nota e gerar o PDF</div>
+      <div class="check">Entrar como administrador: professores, convite e plano</div>
+      <div class="check">Exportar o backup global</div>
+    </div>
+  </div>
+  <aside>Prepare antes: uma conta de professor com uma turma já criada, um texto de redação pronto no celular e a conexão testada no local.</aside>
+</section>
+
+<!-- 22 · ENCERRAMENTO -->
+<section class="slide dark capa" id="perguntas">
+  <div class="in">
+    <div class="marca"><div class="logo">C</div><div class="olho">Cátedra</div></div>
+    <h2 style="font-size:clamp(48px,8vw,104px);color:#fff">Obrigado<span style="color:var(--ambar)">.</span></h2>
+    <p class="lead">Perguntas, ideias e pedidos de acesso ao piloto são bem-vindos.</p>
+    <div class="acoes"><a class="btn-sis" href="index.html" data-sistema>Acessar o sistema <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div>
+    <div class="pilulas"><span class="pilula">Publicar</span><span class="pilula">Receber</span><span class="pilula">Corrigir</span><span class="pilula">Acompanhar</span><span class="pilula">Decidir</span></div>
+  </div>
+  <aside>Deixe aberto para perguntas. Se houver interesse, ofereça o código de convite para quem quiser testar.</aside>
+</section>
+
+<div class="notas" id="notas" aria-live="polite"><b>Notas do palestrante</b><span id="notasTxt"></span></div>
+<nav class="nav" aria-label="Navegação da apresentação">
+  <a class="voltar" href="index.html" data-sistema data-voltar>← Voltar ao sistema</a>
+  <button id="bAnt" aria-label="Slide anterior">←</button>
+  <span class="cont" id="cont">1 / 22</span>
+  <button id="bProx" aria-label="Próximo slide">→</button>
+  <button id="bNotas" aria-pressed="false">Notas</button>
+  <button id="bTela">Tela cheia</button>
+</nav>
+
+<script>
+(function () {
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var atual = 0;
+  var cont = document.getElementById('cont'), prog = document.getElementById('prog'), notasTxt = document.getElementById('notasTxt');
+
+  function marcar(i) {
+    atual = i;
+    cont.textContent = (i + 1) + ' / ' + slides.length;
+    prog.style.width = ((i + 1) / slides.length * 100) + '%';
+    var a = slides[i].querySelector('aside'); notasTxt.textContent = a ? a.textContent : '';
+    var id = slides[i].id;
+    if (id && location.hash !== '#' + id) { try { history.replaceState(null, '', '#' + id); } catch (e) { } }
+  }
+  function ir(i) {
+    i = Math.max(0, Math.min(slides.length - 1, i));
+    slides[i].scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    marcar(i);
+  }
+  var obs = new IntersectionObserver(function (es) {
+    es.forEach(function (e) { if (e.isIntersecting && e.intersectionRatio > 0.55) marcar(slides.indexOf(e.target)); });
+  }, { threshold: [0.55] });
+  slides.forEach(function (s) { obs.observe(s); });
+
+  document.getElementById('bAnt').onclick = function () { ir(atual - 1); };
+  document.getElementById('bProx').onclick = function () { ir(atual + 1); };
+  var bN = document.getElementById('bNotas');
+  function notas() { var on = document.body.classList.toggle('com-notas'); bN.setAttribute('aria-pressed', on); }
+  bN.onclick = notas;
+  function tela() {
+    try {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen().catch(function () { });
+    } catch (e) { }
+  }
+  document.getElementById('bTela').onclick = tela;
+  document.addEventListener('keydown', function (e) {
+    if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+    var k = e.key;
+    if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown' || k === ' ') { e.preventDefault(); ir(atual + 1); }
+    else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp') { e.preventDefault(); ir(atual - 1); }
+    else if (k === 'Home') { e.preventDefault(); ir(0); }
+    else if (k === 'End') { e.preventDefault(); ir(slides.length - 1); }
+    else if (k === 'n' || k === 'N') notas();
+    else if (k === 'f' || k === 'F') tela();
+  });
+  function doHash() { var id = location.hash.slice(1); var i = slides.findIndex(function (s) { return s.id === id; }); if (i >= 0) ir(i); }
+  window.addEventListener('hashchange', doHash);
+
+  // QR ilustrativo (padrão decorativo com os três marcadores de posição)
+  var q = document.getElementById('qrMini'), N = 21, seed = 7;
+  function rnd() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+  function finder(r, c) {
+    var bs = [[0, 0], [0, N - 7], [N - 7, 0]];
+    for (var i = 0; i < 3; i++) { var y = r - bs[i][0], x = c - bs[i][1];
+      if (y >= 0 && y < 7 && x >= 0 && x < 7) return (y === 0 || y === 6 || x === 0 || x === 6 || (y >= 2 && y <= 4 && x >= 2 && x <= 4)) ? 1 : 0;
+      if (y >= -1 && y <= 7 && x >= -1 && x <= 7) return 0; }
+    return -1;
+  }
+  var h = '';
+  for (var r = 0; r < N; r++) for (var c = 0; c < N; c++) { var f = finder(r, c); h += '<i class="' + ((f === 1 || (f === -1 && rnd() > 0.52)) ? 'd' : '') + '"></i>'; }
+  q.innerHTML = h;
+
+  // veio do sistema? o sistema grava a tela de origem antes de abrir a apresentação
+  try {
+    var vh = sessionStorage.getItem('catedra_volta');
+    var doSistema = vh !== null;
+    document.querySelectorAll('[data-sistema]').forEach(function (a) {
+      if (doSistema) a.href = 'index.html' + (/^#\/[\w\/-]*$/.test(vh) ? vh : '');
+      if (a.hasAttribute('data-voltar') && !doSistema) a.textContent = 'Acessar o sistema →';
+    });
+  } catch (e) { }
+  marcar(0); if (location.hash) doHash();
+})();
+</script>
+</body>
+</html>

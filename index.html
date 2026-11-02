@@ -381,7 +381,7 @@ const LIBS = {
   tessLang: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/por@1.0.0/4.0.0_best_int',
   qrcode: 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js'
 };
-const APP_VERSION = '2026.11.2-2';
+const APP_VERSION = '2026.11.2-3';
 const sha16 = async t => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(t || ''))))].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
 const verNum = v => { const m = String(v || '').match(/^(\d+)\.(\d+)\.(\d+)-(\d+)$/); return m ? ((+m[1] * 100 + +m[2]) * 100 + +m[3]) * 1000 + +m[4] : 0; };
 const BC = (() => { try { return new BroadcastChannel('catedra'); } catch { return null; } })();
@@ -608,7 +608,8 @@ function telaLogin(modo = 'entrar') {
   ${reg ? '<div class="field"><label>Código de convite</label><input name="convite" autocomplete="off"><div class="hint">Fornecido pelo administrador do sistema.</div></div>' : ''}
   <div id="authErr" class="small" style="color:#b3261e;min-height:18px;margin-bottom:6px"></div>
   <button class="btn primary" style="width:100%" onclick="doAuth(${reg})">${reg ? 'Criar conta' : 'Entrar'}</button></form>
-  <p class="small" style="text-align:center;margin:14px 0 0"><a href="#" onclick="telaLogin('${reg ? 'entrar' : 'registro'}');return false"><u>${reg ? 'Já tenho conta' : 'Primeiro acesso? Criar conta'}</u></a></p></div>`;
+  <p class="small" style="text-align:center;margin:14px 0 0"><a href="#" onclick="telaLogin('${reg ? 'entrar' : 'registro'}');return false"><u>${reg ? 'Já tenho conta' : 'Primeiro acesso? Criar conta'}</u></a></p>
+  <p class="small" style="text-align:center;margin:10px 0 0"><a href="apresentacao.html">${ic('sparkle', 14)} <u>Conheça o sistema: ver a apresentação</u></a></p></div>`;
 }
 async function doAuth(reg) {
   const d = formData($('#fAuth')); const err = $('#authErr'); err.textContent = '';
@@ -913,7 +914,7 @@ Object.assign(Gestao, {
 function viewGestao() {
   if (!Auth.admin) { location.hash = '#/painel'; return; }
   const tt = Gestao.TITULOS[Gestao.tab] || Gestao.TITULOS.professores;
-  setMain(`<div class="page-head" id="gHead"><div><h2>${tt[0]}</h2><p class="muted">${tt[1]}</p></div><div class="actions"><button class="btn" onclick="Gestao.carregar()">${ic('refresh')} Atualizar</button>${Gestao.tab !== 'convites' ? `<button class="btn primary" onclick="Gestao.aba('convites')">${ic('send')} Convidar professor</button>` : ''}</div></div>
+  setMain(`<div class="page-head" id="gHead"><div><h2>${tt[0]}</h2><p class="muted">${tt[1]}</p></div><div class="actions"><a class="btn" href="apresentacao.html">${ic('sparkle')} Apresentação</a><button class="btn" onclick="Gestao.carregar()">${ic('refresh')} Atualizar</button>${Gestao.tab !== 'convites' ? `<button class="btn primary" onclick="Gestao.aba('convites')">${ic('send')} Convidar professor</button>` : ''}</div></div>
   <div id="gKpi"></div><div id="gTabs"></div><div id="gBody"><div class="muted small">Carregando…</div></div>`, tt[0]);
   if (Gestao.d) Gestao.draw();
   Gestao.carregar();
@@ -1145,9 +1146,12 @@ function renderNav(active) {
   const a = map[active] || active;
   if (Auth.admin) { const bs = document.querySelector('.brand small'); if (bs) bs.textContent = 'Painel gerencial'; }
   const nb = k => (Auth.admin && k === 'gestao/solicitacoes' && Gestao.pend()) ? `<em class="nb">${Gestao.pend()}</em>` : '';
-  $('#sideNav').innerHTML = NAV.map(([k, i, l]) => `<a href="#/${k}" class="${a === k ? 'active' : ''}">${ic(i)} ${l}${nb(k)}</a>`).join(''); pintaUsuario();
-  $('#bottomNav').innerHTML = NAV.map(([k, i, l]) => `<a href="#/${k}" class="${a === k ? 'active' : ''}">${ic(i, 21)}<span>${l.replace('Configurações', 'Ajustes').replace('Solicitações', 'Pedidos')}</span>${nb(k)}</a>`).join('');
+  const apres = s => `<a href="${APRESENTACAO}" title="Apresentação do sistema (palestra)">${ic('sparkle', s)}${s ? `<span>Apresentação</span>` : ' Apresentação'}</a>`;
+  $('#sideNav').innerHTML = NAV.map(([k, i, l]) => `<a href="#/${k}" class="${a === k ? 'active' : ''}">${ic(i)} ${l}${nb(k)}</a>`).join('') + apres(); pintaUsuario();
+  $('#bottomNav').innerHTML = NAV.map(([k, i, l]) => `<a href="#/${k}" class="${a === k ? 'active' : ''}">${ic(i, 21)}<span>${l.replace('Configurações', 'Ajustes').replace('Solicitações', 'Pedidos')}</span>${nb(k)}</a>`).join('') + (Auth.admin ? '' : apres(21));
 }
+const APRESENTACAO = 'apresentacao.html';
+document.addEventListener('click', e => { const l = e.target.closest && e.target.closest('a[href="apresentacao.html"]'); if (l) { try { sessionStorage.setItem('catedra_volta', location.hash || ''); } catch { } } }); // lembra a tela para o "Voltar ao sistema"
 function router() {
   const h = location.hash.replace(/^#\/?/, '') || 'painel';
   const [name, ...rest] = h.split('/');
