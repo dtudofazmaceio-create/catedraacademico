@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.webmanifest"><link rel="icon" type="image/png" href="icon-192.png"><link rel="apple-touch-icon" href="apple-touch-icon.png">
 
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net blob:; worker-src 'self' blob: https://cdn.jsdelivr.net; connect-src 'self' https://catedra-api.peixoto-adm85.workers.dev https://cdn.jsdelivr.net data: blob:; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; manifest-src 'self'; upgrade-insecure-requests">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net blob:; worker-src 'self' blob: https://cdn.jsdelivr.net; connect-src 'self' https://catedra-api.peixoto-adm85.workers.dev https://api.github.com https://gist.githubusercontent.com https://cdn.jsdelivr.net data: blob:; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; manifest-src 'self'; upgrade-insecure-requests">
 <script>if(window.top!==window.self){try{window.top.location=window.self.location}catch(e){document.documentElement.style.display='none'}}</script>
 <title>Cátedra · Turmas, avaliações e correção inteligente</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -317,6 +317,7 @@ button,.btn,a{touch-action:manipulation}
 .gt tbody tr:hover{background:rgba(41,72,209,.03)}
 .btn.sm{padding:6px 11px;font-size:12.5px;min-height:0!important;border-radius:9px}
 input[type=date],input[type=tel]{width:100%;border:1px solid #dcd8ce;border-radius:11px;padding:10px 12px;font:inherit;background:#fff}
+.qr-wrap{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:22px;align-items:start}.qr-prev{background:#eceae3;border-radius:14px;padding:14px;display:flex;justify-content:center}.qr-prev svg{width:100%;max-width:340px;height:auto;box-shadow:0 8px 24px rgba(17,26,51,.18);border-radius:3px}.qr-acts{display:flex;flex-direction:column;gap:8px}.qr-acts .btn{justify-content:center}@media(max-width:700px){.qr-wrap{grid-template-columns:1fr}.qr-prev svg{max-width:260px}}#qrPrint{display:none}@media print{body.print-qr>*:not(#qrPrint){display:none!important}body.print-qr #qrPrint{display:block!important}body.print-qr #qrPrint svg{width:210mm;height:297mm;display:block}body.print-qr{background:#fff!important;margin:0}@page{size:A4;margin:0}}
 @media print{.side,.top,.bottom,.gtabs,.page-head .actions,.actions,.btn,#toasts{display:none!important}.app{display:block}main{padding:0!important;max-width:none}.card{break-inside:avoid;box-shadow:none}}
 body.admin-mode #syncBox,body.admin-mode #syncDot2{display:none!important}
 body.admin-mode .side nav a.active svg{color:var(--accent)}
@@ -377,9 +378,10 @@ const LIBS = {
   tesseract: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js',
   tessWorker: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js',
   tessCore: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1',
-  tessLang: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/por@1.0.0/4.0.0_best_int'
+  tessLang: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/por@1.0.0/4.0.0_best_int',
+  qrcode: 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js'
 };
-const APP_VERSION = '2026.11.1-1';
+const APP_VERSION = '2026.11.2-2';
 const sha16 = async t => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(t || ''))))].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
 const verNum = v => { const m = String(v || '').match(/^(\d+)\.(\d+)\.(\d+)-(\d+)$/); return m ? ((+m[1] * 100 + +m[2]) * 100 + +m[3]) * 1000 + +m[4] : 0; };
 const BC = (() => { try { return new BroadcastChannel('catedra'); } catch { return null; } })();
@@ -528,7 +530,8 @@ const SRI = {
   autotable: 'sha384-fCAW/rDWORTbQXSiB7mOg0QtQ5c+r0f544y6XoKjuVva0nMBlCpNUjiFeG5iMdS3',
   pdfjs: 'sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e',
   mammoth: 'sha384-nFoSjZIoH3CCp8W639jJyQkuPHinJ2NHe7on1xvlUA7SuGfJAfvMldrsoAVm6ECz',
-  tesseract: 'sha384-GJqSu7vueQ9qN0E9yLPb3Wtpd7OrgK8KmYzC8T1IysG1bcvxvIO4qtYR/D3A991F'
+  tesseract: 'sha384-GJqSu7vueQ9qN0E9yLPb3Wtpd7OrgK8KmYzC8T1IysG1bcvxvIO4qtYR/D3A991F',
+  qrcode: 'sha384-8FWZA6BGMXhsfO+BLtrJK0We6gg5o1JyO8xQm6peWDEUs17ACA5ziE/NIAkl9z2k'
 };
 function loadScript(src) {
   return new Promise((res, rej) => {
@@ -542,6 +545,7 @@ async function loadLib(name) {
   if (name === 'autotable' && window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API.autoTable) return;
   if (name === 'pdfjs' && window.pdfjsLib) return;
   if (name === 'mammoth' && window.mammoth) return;
+  if (name === 'qrcode' && window.qrcode) return;
   await loadScript(LIBS[name]);
   if (name === 'pdfjs') window.pdfjsLib.GlobalWorkerOptions.workerSrc = LIBS.pdfworker;
 }
@@ -709,7 +713,7 @@ const Gestao = {
   },
   async carregar() { try { this.d = this.norm(await Auth.call('/admin/profs')); await this.carregarSol(true); this.draw(); } catch (e) { const b = $('#gBody'); if (b) b.innerHTML = `<div class="alert bad">${ic('alert')}<div>${esc(e.message)}</div></div>`; } },
   aba(t) { location.hash = '#/gestao/' + t; },
-  TITULOS: { professores: ['Professores', 'Cadastros, alunos, plano, vencimento e bloqueio de acesso'], solicitacoes: ['Solicitações de plano', 'Pedidos de mudança feitos pelos professores: aprove ou recuse'], pagamentos: ['Pagamentos', 'Controle de mensalidades recebidas'], relatorios: ['Relatórios de gestão', 'Receita, situação dos professores e vencimentos'], convites: ['Convidar professores', 'Envie o link e o código de convite pelo WhatsApp'], planos: ['Plano e cobrança', 'Valor mensal, tolerância, bloqueio automático e PIX'] },
+  TITULOS: { professores: ['Professores', 'Cadastros, alunos, plano, vencimento e bloqueio de acesso'], solicitacoes: ['Solicitações de plano', 'Pedidos de mudança feitos pelos professores: aprove ou recuse'], pagamentos: ['Pagamentos', 'Controle de mensalidades recebidas'], relatorios: ['Relatórios de gestão', 'Receita, situação dos professores e vencimentos'], convites: ['Convidar professores', 'Envie o link e o código de convite pelo WhatsApp'], planos: ['Plano e cobrança', 'Valor mensal, tolerância, bloqueio automático e PIX'], backup: ['Backup global', 'Banco de dados, chaves, gestão e configurações em um arquivo criptografado'] },
   /* controle de quem já foi avisado (só neste navegador) */
   avisados() { try { return JSON.parse(localStorage.getItem('catedra_avisados') || '{}'); } catch { return {}; } },
   marcarAviso(p) { const a = this.avisados(); a[p.id + '|' + p.venc] = hojeISO(); try { localStorage.setItem('catedra_avisados', JSON.stringify(a)); } catch { } },
@@ -730,7 +734,7 @@ const Gestao = {
     if (this.tab !== 'professores') $('#gKpi').innerHTML = '';
     $('#gTabs').innerHTML = '';
     const tt = this.TITULOS[this.tab] || this.TITULOS.professores, ph = $('#gHead'); if (ph) { ph.querySelector('h2').textContent = tt[0]; ph.querySelector('p').textContent = tt[1]; document.title = tt[0] + ' · Cátedra'; $('#pageTitle').textContent = tt[0]; }
-    const B = $('#gBody'); B.innerHTML = this[this.tab](); if (this.tab === 'convites') Admin.convite(); if (this.tab === 'professores') this.lista();
+    const B = $('#gBody'); B.innerHTML = this[this.tab](); if (this.tab === 'convites') Admin.convite(); if (this.tab === 'professores') this.lista(); if (this.tab === 'backup') BackupAdm.status();
   },
   /* ---- professores ---- */
   avisosVenc() {
@@ -844,6 +848,7 @@ const Gestao = {
     <div class="card"><h3>Professores com mais alunos</h3><div style="display:grid;gap:10px;margin-top:12px">${top.length ? top.map(p => `<div><div style="display:flex;justify-content:space-between;font-size:13px"><span>${esc(p.nome)}</span><b>${p.alunos}</b></div>${bar(p.alunos / mxA * 100, 'var(--accent)')}</div>`).join('') : '<p class="muted small">Sem dados.</p>'}</div></div>
     <div class="card"><h3>Vencimentos e atrasos</h3>${prox.length ? `<div style="display:grid;gap:8px;margin-top:10px">${prox.map(p => `<div style="display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap"><div><b>${esc(p.nome)}</b><div class="muted small">${dBR(p.venc)} · ${brl(p.valor)}</div></div><div style="display:flex;gap:8px;align-items:center">${chip(p.status)}<button class="btn sm" onclick="Gestao.avisar(${jq(p.id)})">Avisar</button></div></div>`).join('')}</div>` : '<p class="muted small">Nenhum vencimento nos próximos 7 dias e nenhum atraso.</p>'}</div></div>`;
   },
+  backup() { return BackupAdm.html(); },
   convites() { return `<div class="card" id="admConvite"><div class="muted small">Carregando…</div></div>`; },
   /* ---- plano e cobrança ---- */
   planos() {
@@ -1131,9 +1136,9 @@ function setMain(html, title) {
 async function copyText(t) { try { await navigator.clipboard.writeText(t); toast('Copiado para a área de transferência', 'ok'); } catch { prompt('Copie o texto:', t); } }
 
 /* ---------- Navegação ---------- */
-const GTABS = ['professores', 'solicitacoes', 'pagamentos', 'relatorios', 'convites', 'planos'];
+const GTABS = ['professores', 'solicitacoes', 'pagamentos', 'relatorios', 'convites', 'planos', 'backup'];
 const NAV = Auth.admin
-  ? [['gestao/professores', 'users', 'Professores'], ['gestao/solicitacoes', 'clipboard', 'Solicitações'], ['gestao/pagamentos', 'check', 'Pagamentos'], ['gestao/relatorios', 'list', 'Relatórios'], ['gestao/convites', 'send', 'Convites'], ['gestao/planos', 'settings', 'Plano']]
+  ? [['gestao/professores', 'users', 'Professores'], ['gestao/solicitacoes', 'clipboard', 'Solicitações'], ['gestao/pagamentos', 'check', 'Pagamentos'], ['gestao/relatorios', 'list', 'Relatórios'], ['gestao/convites', 'send', 'Convites'], ['gestao/planos', 'settings', 'Plano'], ['gestao/backup', 'shield', 'Backup']]
   : [['painel', 'home', 'Painel'], ['turmas', 'users', 'Turmas'], ['config', 'settings', 'Meu perfil']];
 function renderNav(active) {
   const map = { turma: 'turmas', atividade: 'turmas', 'atividade-form': 'turmas', entrega: 'turmas', aluno: 'turmas' };
@@ -2307,7 +2312,7 @@ function viewAtividadeForm(tid, aid) {
     <div class="row"><div class="field" style="grid-column:span 2"><label>Título *</label><input name="titulo" value="${esc(a.titulo)}" placeholder="Ex.: Redação dissertativa — Ética na IA" required></div>
       <div class="field" data-only="trabalho"><label>Tipo de trabalho</label><select name="subtipo" onchange="faSubtipo()">${Object.entries(SUBTIPOS).map(([k, v]) => `<option value="${k}" ${a.subtipo === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div></div>
     <div class="field"><label>Enunciado / orientações para o aluno</label><textarea name="descricao" rows="4" placeholder="O que o aluno deve fazer…">${esc(a.descricao)}</textarea></div>
-    <div class="row"><div class="field"><label>Valor (nota máxima)</label><input type="number" step="0.1" min="0.1" name="notaMax" value="${a.notaMax}"></div><div class="field"><label>Prazo de entrega</label><input type="datetime-local" name="prazo" value="${esc(a.prazo)}"></div><div class="field"><label>Tentativas por aluno</label><input type="number" min="1" max="10" name="tentativas" value="${a.tentativas || 1}"></div><div class="field"><label>Rigor da correção</label><select name="rigor">${Object.keys(RIGOR).map(k => `<option value="${k}" ${a.rigor === k ? 'selected' : ''}>${{ flexivel: 'Flexível', moderado: 'Moderado', rigoroso: 'Rigoroso' }[k]}</option>`).join('')}</select></div></div>
+    <div class="row"><div class="field"><label>Valor (nota máxima)</label><input type="number" step="0.1" min="0.1" name="notaMax" value="${a.notaMax}"></div><div class="field"><label>Data e horário da atividade</label><input type="datetime-local" name="aplicacao" value="${esc(a.aplicacao || '')}"></div><div class="field"><label>Prazo de entrega</label><input type="datetime-local" name="prazo" value="${esc(a.prazo)}"></div><div class="field"><label>Tentativas por aluno</label><input type="number" min="1" max="10" name="tentativas" value="${a.tentativas || 1}"></div><div class="field"><label>Rigor da correção</label><select name="rigor">${Object.keys(RIGOR).map(k => `<option value="${k}" ${a.rigor === k ? 'selected' : ''}>${{ flexivel: 'Flexível', moderado: 'Moderado', rigoroso: 'Rigoroso' }[k]}</option>`).join('')}</select></div></div>
 
     <fieldset data-only="trabalho"><legend>Modelo de correção</legend>
       <div class="field"><label>Aplicar um modelo pronto (preenche critérios com níveis de desempenho, gênero, regra de tema e instruções)</label><div style="display:flex;gap:8px;flex-wrap:wrap"><select id="faModelo" style="flex:1;min-width:220px"><option value="">Escolha um modelo…</option>${Object.entries(MODELOS).map(([k, m]) => `<option value="${k}">${esc(m.nome)}</option>`).join('')}</select><button type="button" class="btn" onclick="faAplicarModelo()">${ic('check', 15)} Aplicar modelo</button></div><div class="hint">Depois de aplicar, você pode ajustar qualquer campo.</div></div>
@@ -2414,7 +2419,7 @@ async function faSave(tid, aid) {
   if (!d.titulo.trim()) { toast('Informe o título', 'bad'); return $('#fa [name=titulo]').focus(); }
   if (d.tipo === 'trabalho' && !String(d.p_tema || '').trim() && !confirm('O tema não foi informado. Sem ele, a verificação de fuga ao tema usa apenas o enunciado (IA) ou não é feita (correção gratuita). Salvar assim mesmo?')) return;
   const a = FA;
-  Object.assign(a, { tipo: d.tipo, subtipo: d.subtipo || a.subtipo, titulo: d.titulo.trim(), descricao: d.descricao, notaMax: +d.notaMax || 10, prazo: d.prazo, prazoTs: d.prazo ? new Date(d.prazo).getTime() : null, tentativas: Math.max(1, +d.tentativas || 1), rigor: d.rigor, modoCorrecao: d.modoCorrecao || 'padrao', aberta: !!d.aberta, aceitarAtraso: !!d.aceitarAtraso, mostrarNota: !!d.mostrarNota, mostrarRelatorio: !!d.mostrarRelatorio, mostrarGabarito: !!d.mostrarGabarito });
+  Object.assign(a, { tipo: d.tipo, subtipo: d.subtipo || a.subtipo, titulo: d.titulo.trim(), descricao: d.descricao, notaMax: +d.notaMax || 10, aplicacao: d.aplicacao || '', prazo: d.prazo, prazoTs: d.prazo ? new Date(d.prazo).getTime() : null, tentativas: Math.max(1, +d.tentativas || 1), rigor: d.rigor, modoCorrecao: d.modoCorrecao || 'padrao', aberta: !!d.aberta, aceitarAtraso: !!d.aceitarAtraso, mostrarNota: !!d.mostrarNota, mostrarRelatorio: !!d.mostrarRelatorio, mostrarGabarito: !!d.mostrarGabarito });
   for (const k of Object.keys(d)) if (k.startsWith('p_')) a.params[k.slice(2)] = d[k];
   a.params.exigirGenero = !!d.p_exigirGenero;
   a.params.criterios = a.params.criterios.filter(c => c.nome);
@@ -2436,11 +2441,11 @@ function viewAtividade(id) {
   const p = a.params || {};
   setMain(`<a class="crumb" href="#/turma/${t.id}/atividades">${ic('back', 15)} ${esc(t.nome)}</a>
   <div class="page-head"><div><div class="actions" style="margin-bottom:8px"><span class="badge ${a.tipo === 'prova' ? 'dark' : ''}">${a.tipo === 'prova' ? 'Prova' : esc(SUBTIPOS[a.subtipo])}</span><span class="badge ${isOpen(a) ? 'ok' : 'gray'}">${isOpen(a) ? 'Recebendo envios' : 'Encerrada'}</span><span class="badge ${modoDe(a, S.cfg) === 'local' ? 'ok' : ''}">${modoDe(a, S.cfg) === 'local' ? 'Correção gratuita' : 'Correção por IA'}</span></div><h2>${esc(a.titulo)}</h2><p class="muted">Vale ${fmtN(a.notaMax)}${a.prazo ? ' · prazo ' + fmtDate(a.prazo) : ''} · ${a.tentativas || 1} tentativa(s)</p></div>
-  <div class="actions">${a.tipo === 'prova' ? `<button class="btn" onclick="pdfFolhaRespostas('${id}')">${ic('file')} Folha de respostas</button>` : ''}<button class="btn" onclick="pdfAtividade('${id}')">${ic('download')} PDF</button><a class="btn" href="#/atividade-form/${t.id}/${id}">${ic('edit')} Editar</a><button class="btn" onclick="toggleAberta('${id}')">${isOpen(a) ? ic('x') + ' Encerrar' : ic('check') + ' Reabrir'}</button><button class="btn danger" onclick="delAtividade('${id}')">${ic('trash')}</button></div></div>
+  <div class="actions">${a.tipo === 'prova' ? `<button class="btn" onclick="pdfFolhaRespostas('${id}')">${ic('file')} Folha de respostas</button>` : ''}${link ? `<button class="btn" onclick="qrAtividade('${id}')">${ic('grid')} QR code</button>` : ''}<button class="btn" onclick="pdfAtividade('${id}')">${ic('download')} PDF</button><a class="btn" href="#/atividade-form/${t.id}/${id}">${ic('edit')} Editar</a><button class="btn" onclick="toggleAberta('${id}')">${isOpen(a) ? ic('x') + ' Encerrar' : ic('check') + ' Reabrir'}</button><button class="btn danger" onclick="delAtividade('${id}')">${ic('trash')}</button></div></div>
 
   <div class="card" style="margin-bottom:16px"><div class="card-head"><h3>${ic('link')} Link de envio para os alunos</h3></div>
     ${link ? `<div id="linkCheck" class="small muted" style="margin-bottom:8px">Verificando o link no servidor…</div><div class="linkbox"><code>${esc(link)}</code><button class="btn sm primary" onclick="copyText(${jq(link)})">${ic('copy', 15)} Copiar</button></div>
-      <div class="actions" style="margin-top:10px"><a class="btn sm" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(`${a.titulo} — envie sua ${a.tipo === 'prova' ? 'prova' : 'atividade'} por aqui: ${link}`)}">${ic('share', 15)} WhatsApp</a><a class="btn sm" href="mailto:?subject=${encodeURIComponent(a.titulo)}&body=${encodeURIComponent('Envie sua atividade pelo link: ' + link)}">${ic('send', 15)} E-mail</a><a class="btn sm ghost" target="_blank" href="${esc(link)}">${ic('eye', 15)} Abrir como aluno</a></div>
+      <div class="actions" style="margin-top:10px"><a class="btn sm" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(`${a.titulo} — envie sua ${a.tipo === 'prova' ? 'prova' : 'atividade'} por aqui: ${link}`)}">${ic('share', 15)} WhatsApp</a><a class="btn sm" href="mailto:?subject=${encodeURIComponent(a.titulo)}&body=${encodeURIComponent('Envie sua atividade pelo link: ' + link)}">${ic('send', 15)} E-mail</a><button class="btn sm primary" onclick="qrAtividade('${id}')">${ic('grid', 15)} QR code para a sala</button><a class="btn sm ghost" target="_blank" href="${esc(link)}">${ic('eye', 15)} Abrir como aluno</a></div>
       ${/^(file:|http:\/\/localhost|http:\/\/127)/.test(baseUrl()) ? `<div class="alert warn" style="margin:12px 0 0">${ic('alert')}<div>O sistema está aberto localmente (${esc(baseUrl().slice(0, 40))}…). Para que os alunos consigam abrir o link, publique este arquivo (ex.: GitHub Pages) e informe a <b>URL pública</b> em Configurações.</div></div>` : ''}
       ${a.tipo === 'prova' && modoDe(a, S.cfg) === 'local' && (a.gabarito || []).some(q => q.tipo === 'objetiva') ? `<div class="alert info" style="margin:12px 0 0">${ic('file')}<div><b>Correção gratuita:</b> imprima a <a href="javascript:pdfFolhaRespostas('${id}')"><u>folha de respostas</u></a> (uma por aluno, já com o nome). Ao final da prova, o aluno fotografa a folha pelo link${(a.gabarito || []).some(q => q.tipo === 'aberta') ? ' e digita as respostas das questões abertas' : ''}.</div></div>` : ''}
       `
@@ -2555,9 +2560,9 @@ function viewConfig() {
   ${Auth.admin ? `<div class="card" style="grid-column:1/-1"><h3>${ic('grid')} Gestão de professores</h3><p class="muted small" style="margin-top:0">Cadastros, planos, pagamentos, bloqueios e relatórios ficam em <b>Gestão</b>.</p><div class="actions"><a class="btn primary" href="#/gestao">Abrir Gestão</a><span data-install>${App.btn()}</span><button class="btn" onclick="Auth.logout()">Sair</button></div></div>`
   : `<div class="card"><h3>${ic('user')} Minha conta</h3><p class="small" style="margin-top:0">${esc(Auth.user?.email || '')}</p>${S.assin && S.assin.status !== 'isento' ? `<p class="small" style="margin:0 0 10px">Plano <b>${esc(S.assin.plano)}</b> · ${brl(S.assin.valor)}/mês<br>Vencimento: <b>${dBR(S.assin.venc)}</b>${S.assin.status === 'ativo' ? ` (${S.assin.diasRestantes === 0 ? 'hoje' : S.assin.diasRestantes + ' dia(s)'})` : ''} <button class="btn sm" onclick="comoPagar()">Como pagar</button></p>` : ''}<p class="small muted" id="iaUso">${S.ia ? (S.ia.disponivel ? `Correções por IA neste mês: <b>${S.ia.uso}</b>${S.ia.limite != null ? ' de <b>' + S.ia.limite + '</b>' : ''}` : 'Correção por IA indisponível no momento (use a gratuita).') : ''}</p><div class="actions"><span data-install>${App.btn()}</span><button class="btn" onclick="Auth.logout()">Sair</button></div></div>`}
 
-  <div class="card"><h3>${ic('download')} Backup global</h3><p class="muted small" style="margin-top:0">Leva <b>tudo</b> para outro aparelho: turmas, alunos, atividades e entregas, token do GitHub e ID do Gist, chave e configuração da IA, endereço do servidor e URL pública. O arquivo é <b>criptografado com uma senha</b> definida por você.</p>
+  <div class="card"><h3>${ic('download')} Backup global</h3><p class="muted small" style="margin-top:0">Leva <b>tudo</b> para outro aparelho: todas as turmas, alunos, atividades e entregas (baixadas do servidor na hora), perfil, modo de correção, plano, banco local e preferências deste navegador. O arquivo é <b>criptografado com uma senha</b> definida por você e verificado ao final.</p>
     <p class="hint">Versão do sistema: <b>${APP_VERSION}</b></p>
-    <div class="actions"><button class="btn primary" onclick="exportBackup()">${ic("download")} Exportar backup global</button><label class="btn">${ic("upload")} Importar backup<input type="file" accept=".json" hidden onchange="importBackup(this.files[0]);this.value=''"></label><button class="btn danger" onclick="wipeAll()">${ic('trash')} Apagar dados locais</button></div></div>
+    <div class="actions"><button class="btn primary" onclick="exportBackup()">${ic("download")} Exportar backup global</button><label class="btn">${ic("upload")} Importar backup<input type="file" accept=".json,application/json" hidden onchange="importBackup(this.files[0]);this.value=''"></label><button class="btn danger" onclick="wipeAll()">${ic('trash')} Apagar dados locais</button></div></div>
   </div>`, 'Configurações');
   if (Auth.admin) { Admin.convite(); Admin.load(); }
 }
@@ -2674,8 +2679,32 @@ async function ghFind() {
   try { const list = await gh('/gists?per_page=100', {}, d.token.trim()); const g = list.find(x => (x.description || '').startsWith('Cátedra') && x.files['data.json']); if (!g) return toast('Nenhum Gist da Cátedra encontrado nesta conta', 'bad'); $('#fGh [name=gistId]').value = g.id; toast('Gist encontrado — clique em Conectar', 'ok'); } catch (e) { toast(e.message, 'bad'); }
 }
 async function ghDisconnect() { if (!await confirmDlg('Desconectar a sincronização? Os dados locais serão mantidos.', 'Desconectar')) return; S.local.token = ''; S.local.gistId = ''; await saveLocal(); Sync.state = 'off'; Sync.ui(); router(); }
-/* ---------- Backup global criptografado (AES-GCM 256 + PBKDF2-SHA256) ---------- */
+/* =========================================================
+   BACKUP GLOBAL criptografado (AES-GCM 256 + PBKDF2-SHA256, 600 mil iterações)
+   Esquema 2 — nada fica de fora:
+   - navegador : TODOS os bancos IndexedDB "catedra*" (todas as stores, registros brutos) + localStorage catedra_*
+   - dados     : turmas, alunos, atividades e entregas COMPLETOS (antes de exportar, baixa tudo do servidor)
+   - conta     : usuário, plano/assinatura, solicitação de plano, cota de IA, configuração e perfil
+   - servidor  : /health, gestão (professores, pagamentos, regras de cobrança, planos, solicitações, convite)
+                 e, se o Worker oferecer, o dump completo de /admin/backup
+   - banco     : TODOS os arquivos do Gist usado como banco de dados pelo servidor
+   - chaves    : variáveis e segredos do Worker (GITHUB_TOKEN, GIST_ID, AI_KEY, SESSION_SECRET…)
+   ========================================================= */
 const BK_ITER = 600000;
+const BK_VARS = [
+  ['GITHUB_TOKEN', 'Segredo', 'Token do GitHub com permissão gist'],
+  ['GIST_ID', 'Texto', 'ID do Gist usado como banco de dados'],
+  ['AI_KEY', 'Segredo', 'Chave de API da IA'],
+  ['AI_PROVIDER', 'Texto', 'anthropic, openai ou gemini'],
+  ['AI_MODEL', 'Texto', 'Modelo da IA'],
+  ['ANTHROPIC_WORKSPACE', 'Texto', 'wrkspc_… (se a chave exigir)'],
+  ['SESSION_SECRET', 'Segredo', 'Assina as sessões de login'],
+  ['ALLOWED_ORIGIN', 'Texto', 'Endereço do site']
+];
+const BK_NAO_RESTAURA = ['catedra_tok', 'catedra_user', 'catedra_api']; // sessão/servidor deste aparelho
+const BK_DADOS = ['turmas', 'alunos', 'atividades', 'entregas'];
+const BkCofre = {}; // chaves digitadas pelo administrador: só na memória desta aba e dentro do arquivo cifrado
+
 function bytesParaB64(u8) { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
 function b64ParaBytes(b) { const s = atob(b); const u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
 async function comprimir(u8, modo) { if (!window.CompressionStream) return null; const st = new Blob([u8]).stream().pipeThrough(new (modo ? CompressionStream : DecompressionStream)('gzip')); return new Uint8Array(await new Response(st).arrayBuffer()); }
@@ -2684,7 +2713,7 @@ async function cifrarBackup(obj, senha) {
   let dados = new TextEncoder().encode(JSON.stringify(obj)); const gz = await comprimir(dados, true); if (gz) dados = gz;
   const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
   const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await chaveBackup(senha, salt, BK_ITER, 'encrypt'), dados));
-  return { app: 'catedra', formato: 'backup-cifrado', v: 3, tipo: obj.tipo, versao: APP_VERSION, criadoEm: new Date().toISOString(), cifra: { alg: 'AES-GCM-256', kdf: 'PBKDF2-SHA256', iteracoes: BK_ITER, salt: bytesParaB64(salt), iv: bytesParaB64(iv), gzip: !!gz }, dados: bytesParaB64(ct) };
+  return { app: 'catedra', formato: 'backup-cifrado', v: 4, tipo: obj.tipo, esquema: obj.esquema, papel: obj.papel, versao: APP_VERSION, criadoEm: obj.criadoEm || new Date().toISOString(), cifra: { alg: 'AES-GCM-256', kdf: 'PBKDF2-SHA256', iteracoes: BK_ITER, salt: bytesParaB64(salt), iv: bytesParaB64(iv), gzip: !!gz }, dados: bytesParaB64(ct) };
 }
 async function decifrarBackup(env, senha) {
   let pt;
@@ -2693,33 +2722,162 @@ async function decifrarBackup(env, senha) {
   if (env.cifra.gzip) { const d = await comprimir(pt, false); if (!d) throw new Error('Este navegador não consegue descompactar o backup. Use Chrome, Edge, Firefox ou Safari atualizados.'); pt = d; }
   return JSON.parse(new TextDecoder().decode(pt));
 }
-function baixarJSON(obj, nome) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(obj)], { type: 'application/json' })); a.download = nome; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
-function conteudoBackup() {
-  return {
-    tipo: 'backup-global', versao: APP_VERSION, criadoEm: new Date().toISOString(),
-    dados: { turmas: S.turmas, alunos: S.alunos, atividades: S.atividades, entregas: S.entregas },
-    configuracao: JSON.parse(JSON.stringify(S.cfg)),
-    conexao: { token: S.local.token || '', gistId: S.local.gistId || '', workerUrl: S.cfg.workerUrl || '', publicUrl: S.cfg.publicUrl || '' }
-  };
+function baixarJSON(obj, nome) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(obj)], { type: 'application/json' })); a.download = nome; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); }
+const bkTam = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+
+/* --- chamadas ao servidor sem efeito colateral (um 401 aqui não derruba a sessão) --- */
+async function bkCall(path, body, ms = 60000) {
+  const r = await fetch(Auth.api + path, { method: body ? 'POST' : 'GET', cache: 'no-store', headers: { ...(body ? { 'content-type': 'application/json' } : {}), ...(Auth.token ? { Authorization: 'Bearer ' + Auth.token } : {}) }, body: body ? JSON.stringify(body) : undefined, credentials: 'omit', referrerPolicy: 'no-referrer', signal: AbortSignal.timeout ? AbortSignal.timeout(ms) : undefined });
+  let j = null; try { j = await r.json(); } catch { }
+  if (!r.ok) { const e = new Error((j && j.erro) || 'Erro ' + r.status); e.status = r.status; throw e; }
+  return j;
 }
+const bkSemRota = e => [404, 405, 501].includes(e.status);
+
+/* --- navegador: IndexedDB bruto e localStorage --- */
+function bkAbrirDB(nome) {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(nome);
+    r.onupgradeneeded = () => { const d = r.result; STORES.forEach(s => { if (!d.objectStoreNames.contains(s)) d.createObjectStore(s, { keyPath: 'id' }); }); };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+}
+const bkTx = (db, s, mode, fn) => new Promise((res, rej) => { const q = fn(db.transaction(s, mode).objectStore(s)); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); });
+async function bkLerIndexedDB() {
+  let nomes = [];
+  try { if (indexedDB.databases) nomes = (await indexedDB.databases()).map(d => d.name).filter(n => n && /^catedra/.test(n)); } catch { }
+  if (!nomes.includes(Auth.dbName())) nomes.push(Auth.dbName());
+  const out = {};
+  for (const nome of nomes) {
+    let db = null;
+    try {
+      db = nome === Auth.dbName() && DB.db ? DB.db : await bkAbrirDB(nome);
+      const stores = {}; for (const s of [...db.objectStoreNames]) stores[s] = await bkTx(db, s, 'readonly', o => o.getAll());
+      out[nome] = stores;
+    } catch (e) { out[nome] = { _erro: e.message }; }
+    finally { if (db && db !== DB.db) db.close(); }
+  }
+  return out;
+}
+function bkLerLocalStorage() { const o = {}; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (/^catedra/.test(k)) o[k] = localStorage.getItem(k); } } catch { } return o; }
+
+/* --- banco do servidor (Gist) --- */
+async function bkLerGist(token, id) {
+  const g = await gh(`/gists/${encodeURIComponent(id)}`, {}, token);
+  const arquivos = {}, falhas = [];
+  for (const [nome, f] of Object.entries(g.files || {})) {
+    try {
+      if (!f.truncated && typeof f.content === 'string') arquivos[nome] = f.content;
+      else { const r = await fetch(f.raw_url, { cache: 'no-store' }); if (!r.ok) throw new Error('HTTP ' + r.status); arquivos[nome] = await r.text(); }
+    } catch (e) { falhas.push(nome + ' (' + e.message + ')'); }
+  }
+  return { id: g.id, descricao: g.description || '', publico: !!g.public, atualizadoEm: g.updated_at, total: Object.keys(g.files || {}).length, listaTruncada: !!g.truncated, falhas, arquivos };
+}
+async function bkGravarGist(token, id, arquivos, { criar = false, removerExtras = false, descricao = 'Cátedra — base de dados (não editar manualmente)' } = {}) {
+  const nomes = Object.keys(arquivos).filter(n => String(arquivos[n] ?? '').length); // o Gist não aceita arquivo vazio
+  let atuais = {}; if (!criar) atuais = (await gh(`/gists/${encodeURIComponent(id)}`, {}, token)).files || {};
+  const lotes = []; let lote = {}, tam = 0;
+  for (const n of nomes) {
+    const c = String(arquivos[n]);
+    if (Object.keys(lote).length && (tam + c.length > 4e6 || Object.keys(lote).length >= 50)) { lotes.push(lote); lote = {}; tam = 0; }
+    lote[n] = { content: c }; tam += c.length;
+  }
+  if (Object.keys(lote).length) lotes.push(lote);
+  const remover = removerExtras && !criar ? Object.keys(atuais).filter(n => !nomes.includes(n)) : [];
+  if (remover.length) lotes.push(Object.fromEntries(remover.map(n => [n, null])));
+  let gid = id;
+  for (let i = 0; i < lotes.length; i++) {
+    toast(`Gravando o banco (Gist): lote ${i + 1} de ${lotes.length}…`, 'info', 2500);
+    if (criar && i === 0) gid = (await gh('/gists', { method: 'POST', body: JSON.stringify({ description: descricao, public: false, files: lotes[0] }) }, token)).id;
+    else await gh(`/gists/${encodeURIComponent(gid)}`, { method: 'PATCH', body: JSON.stringify({ files: lotes[i] }) }, token);
+  }
+  return { id: gid, gravados: nomes.length, removidos: remover.length };
+}
+
+/* --- coleta --- */
+function bkChavesDoCofre() {
+  const k = {}; BK_VARS.forEach(([n]) => { const v = String(BkCofre[n] || '').trim(); if (v) k[n] = v; });
+  String(BkCofre._extras || '').split(/\r?\n/).forEach(l => { const m = l.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/); if (m && m[2]) k[m[1]] = m[2]; });
+  return k;
+}
+async function montarBackup() {
+  const avisos = [], c = { tipo: 'backup-global', esquema: 2, versao: APP_VERSION, criadoEm: new Date().toISOString(), papel: Auth.admin ? 'admin' : 'professor', origem: location.origin + location.pathname, servidorApi: Auth.api, usuario: Auth.user ? { ...Auth.user } : null };
+  // 1) professor: baixa TUDO do servidor (desde o início) antes de copiar, para não faltar nenhuma entrega
+  if (!Auth.admin && Sync.configured()) {
+    toast('Baixando todos os dados do servidor…', 'info', 4000);
+    while (Sync.busy) await sleep(200);
+    const s0 = S.local.since, r0 = S.local.rev; S.local.since = 0; S.local.rev = 0;
+    await Sync.run(true); while (Sync.busy) await sleep(200);
+    if (Sync.state === 'err') { S.local.since = s0; S.local.rev = r0; await saveLocal(); avisos.push('Não foi possível baixar tudo do servidor (' + Sync.lastError + '). O backup contém os dados que estão neste aparelho.'); }
+  }
+  c.dados = { turmas: S.turmas, alunos: S.alunos, atividades: S.atividades, entregas: S.entregas };
+  c.configuracao = JSON.parse(JSON.stringify(S.cfg || {}));
+  c.local = JSON.parse(JSON.stringify(S.local || {}));
+  c.conta = { assinatura: S.assin || null, solicitacao: S.sol || null, ia: S.ia || null };
+  toast('Copiando o banco local do navegador…', 'info', 2500);
+  c.navegador = { indexedDB: await bkLerIndexedDB(), localStorage: bkLerLocalStorage(), userAgent: navigator.userAgent };
+  c.servidor = { health: null };
+  try { c.servidor.health = await (await fetch(Auth.api + '/health', { cache: 'no-store' })).json(); } catch (e) { avisos.push('Servidor inacessível (/health): ' + e.message); }
+  if (Auth.admin) {
+    toast('Copiando os dados de gestão do servidor…', 'info', 2500);
+    const g = {};
+    for (const [k, p] of [['profs', '/admin/profs'], ['solicitacoes', '/admin/solicitacoes'], ['convite', '/admin/convite']]) { try { g[k] = await bkCall(p); } catch (e) { g[k] = null; avisos.push(`Gestão ${p}: ${e.message}`); } }
+    c.servidor.gestao = g;
+    try { c.servidor.dump = await bkCall('/admin/backup', null, 180000); } catch (e) { c.servidor.dump = null; if (!bkSemRota(e)) avisos.push('Cópia completa do servidor (/admin/backup): ' + e.message); }
+    c.chaves = { ...(c.servidor.dump?.segredos || {}), ...bkChavesDoCofre() };
+    const faltam = BK_VARS.map(v => v[0]).filter(n => c.servidor.health?.vars?.[n] && !c.chaves[n]);
+    if (faltam.length) avisos.push('Chaves que o servidor usa e NÃO entraram no backup (preencha em "Chaves e segredos do servidor"): ' + faltam.join(', ') + '.');
+    if (c.chaves.GITHUB_TOKEN && c.chaves.GIST_ID) {
+      toast('Copiando o banco de dados do servidor (Gist)…', 'info', 4000);
+      try {
+        c.banco = await bkLerGist(c.chaves.GITHUB_TOKEN, c.chaves.GIST_ID);
+        if (c.banco.listaTruncada) avisos.push(`O Gist tem mais de 300 arquivos e a API do GitHub só lista os primeiros ${c.banco.total}. Faça também uma cópia com: git clone https://gist.github.com/${c.banco.id}.git`);
+        if (c.banco.falhas.length) avisos.push('Arquivos do banco que não puderam ser lidos: ' + c.banco.falhas.join(', '));
+        if (c.servidor.health?.gistHash && c.servidor.health.gistHash !== await sha16(c.chaves.GIST_ID)) avisos.push('Atenção: o GIST_ID informado NÃO é o que o servidor está usando. Confira o GIST_ID na Cloudflare.');
+      } catch (e) { c.banco = null; avisos.push('Banco de dados (Gist): ' + e.message); }
+    } else { c.banco = null; if (!c.servidor.dump) avisos.push('Sem GITHUB_TOKEN e GIST_ID: o banco de dados do servidor (contas, professores, turmas e entregas de todos) NÃO entrou no backup.'); }
+  }
+  const nArq = c.banco ? Object.keys(c.banco.arquivos).length : 0;
+  c.manifesto = {
+    contagens: { turmas: live(S.turmas).length, alunos: live(S.alunos).length, atividades: live(S.atividades).length, entregas: live(S.entregas).length, bancosLocais: Object.keys(c.navegador.indexedDB).length, preferencias: Object.keys(c.navegador.localStorage).length, professores: c.servidor.gestao?.profs?.profs?.length ?? null, pagamentos: c.servidor.gestao?.profs?.pagamentos?.length ?? null, arquivosBanco: nArq, chaves: Object.keys(c.chaves || {}).length },
+    completo: !avisos.length, avisos
+  };
+  return c;
+}
+
+/* --- exportação --- */
 function exportBackup() {
-  const c = conteudoBackup(); const n = ['turmas', 'alunos', 'atividades', 'entregas'].map(k => live(c.dados[k]).length);
   modal({
     title: 'Exportar backup global', body: `<form onsubmit="return false">
-      <p style="margin-top:0" class="small">O arquivo terá: <b>${n[0]}</b> turmas, <b>${n[1]}</b> alunos, <b>${n[2]}</b> atividades e <b>${n[3]}</b> entregas;
-      ${c.conexao.token ? 'token do GitHub' : '<span class="muted">sem token do GitHub</span>'}${c.conexao.gistId ? ' e ID do Gist' : ''}; ${c.configuracao.ai?.key ? 'chave da IA (' + esc(PROVIDERS[c.configuracao.ai.provider] || c.configuracao.ai.provider) + ')' : '<span class="muted">sem chave de IA</span>'}; ${c.conexao.workerUrl ? 'endereço do servidor' : '<span class="muted">sem servidor</span>'}.</p>
+      <p style="margin-top:0" class="small">${Auth.admin
+        ? 'O arquivo terá: <b>banco de dados do servidor</b> (Gist), <b>chaves e segredos</b> informados, professores, pagamentos, planos, solicitações, convite e os dados deste navegador.'
+        : 'O arquivo terá: <b>todas</b> as suas turmas, alunos, atividades e entregas (baixadas do servidor agora), perfil, plano, configurações e o banco local deste navegador.'}</p>
+      ${Auth.admin && !Object.keys(bkChavesDoCofre()).length ? `<div class="alert warn" style="margin:0 0 12px">${ic('key')}<div class="small">Nenhuma chave informada. Preencha <b>Chaves e segredos do servidor</b> antes de exportar para incluir o banco e as chaves.</div></div>` : ''}
       <div class="field"><label>Senha do backup (mínimo 12 caracteres)</label><input type="password" name="s1" autocomplete="new-password" required></div>
       <div class="field"><label>Repita a senha</label><input type="password" name="s2" autocomplete="new-password" required></div>
       <div class="alert warn" style="margin:0">${ic('shield')}<div class="small">Guarde esta senha: <b>sem ela o backup não pode ser aberto</b>, nem por você. Não envie a senha junto com o arquivo.</div></div></form>`,
     actions: [{ label: 'Cancelar' }, {
       label: ic('download') + ' Exportar', cls: 'primary', onClick: async el => {
         const d = formData(el); if (d.s1.length < 12) throw new Error('A senha deve ter pelo menos 12 caracteres.'); if (d.s1 !== d.s2) throw new Error('As senhas não conferem.');
-        toast('Criptografando…'); const env = await cifrarBackup(conteudoBackup(), d.s1);
-        baixarJSON(env, `catedra-backup-global-${new Date().toISOString().slice(0, 10)}.json`); toast('Backup exportado', 'ok');
+        const c = await montarBackup();
+        toast('Criptografando…'); const env = await cifrarBackup(c, d.s1);
+        const volta = await decifrarBackup(env, d.s1); // verificação: o arquivo abre e é idêntico ao coletado
+        if (JSON.stringify(volta) !== JSON.stringify(c)) throw new Error('Falha na verificação do backup. Tente novamente.');
+        const nome = `catedra-backup-global-${Auth.admin ? 'sistema' : 'professor'}-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.json`;
+        baixarJSON(env, nome); bkRelatorio(c, JSON.stringify(env).length, nome);
       }
     }]
   });
 }
+function bkRelatorio(c, tam, nome) {
+  const k = c.manifesto.contagens, L = [['Turmas', k.turmas], ['Alunos', k.alunos], ['Atividades', k.atividades], ['Entregas', k.entregas], ['Bancos locais do navegador', k.bancosLocais], ['Preferências do navegador', k.preferencias]];
+  if (c.papel === 'admin') L.push(['Professores', k.professores ?? '—'], ['Pagamentos', k.pagamentos ?? '—'], ['Arquivos do banco (Gist)', k.arquivosBanco], ['Cópia completa do servidor', c.servidor.dump ? 'sim' : 'não disponível no Worker'], ['Chaves e segredos', k.chaves ? Object.keys(c.chaves).join(', ') : 'nenhuma']);
+  modal({ title: c.manifesto.completo ? 'Backup exportado e verificado' : 'Backup exportado com pendências', wide: true, body: `<div class="alert ${c.manifesto.completo ? 'ok' : 'warn'}">${ic(c.manifesto.completo ? 'check' : 'alert')}<div><b>${esc(nome)}</b> · ${bkTam(tam)}<br><span class="small">O arquivo foi aberto de novo com a senha e confere com os dados coletados.</span></div></div>
+    <table class="tbl"><tbody>${L.map(([a, b]) => `<tr><td class="muted" style="width:45%">${esc(a)}</td><td style="word-break:break-word">${esc(String(b))}</td></tr>`).join('')}</tbody></table>
+    ${c.manifesto.avisos.length ? `<div class="alert warn" style="margin-top:12px">${ic('alert')}<div class="small"><b>O que ficou de fora:</b><ul style="margin:6px 0 0;padding-left:18px">${c.manifesto.avisos.map(a => `<li>${esc(a)}</li>`).join('')}</ul></div></div>` : ''}`, actions: [{ label: 'Fechar', cls: 'primary' }] });
+}
+
+/* --- importação --- */
 function pedirSenhaBackup(info) {
   return new Promise(res => {
     const m = modal({ title: 'Abrir backup', body: `<form onsubmit="return false"><p class="small" style="margin-top:0">Backup criado em <b>${esc(fmtDate(info.criadoEm))}</b> (versão ${esc(info.versao || '?')}). Digite a senha usada ao exportar.</p><div class="field"><label>Senha do backup</label><input type="password" name="s" autocomplete="off" required></div></form>`,
@@ -2727,45 +2885,288 @@ function pedirSenhaBackup(info) {
     m.el.parentElement.addEventListener('mousedown', e => { if (e.target === m.el.parentElement) res(null); });
   });
 }
+async function abrirArquivoBackup(f) {
+  let d; try { d = JSON.parse(await f.text()); } catch { toast('Arquivo inválido: não é um backup do Cátedra.', 'bad'); return null; }
+  if (d.formato === 'backup-cifrado') {
+    for (;;) { const senha = await pedirSenhaBackup(d); if (senha == null) return null; try { toast('Abrindo…'); return await decifrarBackup(d, senha); } catch (e) { toast(e.message, 'bad'); } }
+  }
+  return d;
+}
+async function bkMesclarDados(dd) { // vale o registro mais recente
+  let n = 0;
+  for (const st of BK_DADOS) for (const r of dd[st] || []) { const l = byId(st, r.id); if (!l || (r.updatedAt || 0) > (l.updatedAt || 0)) { await putLocal(st, r); n++; } }
+  return n;
+}
+async function bkRestaurarIndexedDB(bancos) {
+  let n = 0;
+  for (const [nome, stores] of Object.entries(bancos || {})) {
+    if (!/^catedra/.test(nome) || !stores || stores._erro) continue;
+    const atual = nome === Auth.dbName(); let db = null;
+    try {
+      db = atual && DB.db ? DB.db : await bkAbrirDB(nome);
+      for (const [s, regs] of Object.entries(stores)) {
+        if (!db.objectStoreNames.contains(s) || !Array.isArray(regs)) continue;
+        for (const r of regs) {
+          if (!r || r.id == null) continue;
+          if (atual && s === 'meta' && r.id === 'local') continue; // cursores de sincronização deste aparelho
+          const l = await bkTx(db, s, 'readonly', o => o.get(r.id));
+          if (!l || (r.updatedAt || 0) > (l.updatedAt || 0)) { await bkTx(db, s, 'readwrite', o => o.put(r)); n++; }
+        }
+      }
+    } finally { if (db && db !== DB.db) db.close(); }
+  }
+  if (DB.db) { for (const st of BK_DADOS) S[st] = (await DB.all(st)).filter(r => r && idOk(r.id)); S.cfg = await DB.get('meta', 'cfg') || S.cfg; }
+  return n;
+}
+function bkRestaurarLocalStorage(ls) { let n = 0; for (const [k, v] of Object.entries(ls || {})) { if (!/^catedra/.test(k) || BK_NAO_RESTAURA.includes(k)) continue; try { localStorage.setItem(k, v); n++; } catch { } } return n; }
+async function bkReaplicarGestao(g) {
+  const res = []; if (!g) return res;
+  const fin = g.profs?.fin; if (fin) { try { await bkCall('/admin/fin', fin); res.push('regras de cobrança e planos'); } catch (e) { res.push('regras de cobrança: ' + e.message); } }
+  const cod = g.convite?.codigo; if (cod) { try { await bkCall('/admin/convite', { codigo: cod }); res.push('código de convite'); } catch (e) { res.push('convite: ' + e.message); } }
+  let atuais = []; try { atuais = (await bkCall('/admin/profs')).profs || []; } catch { }
+  const ids = new Set(atuais.map(p => p.id)); let ok = 0; const ausentes = [];
+  for (const p of g.profs?.profs || []) {
+    if (!ids.has(p.id)) { ausentes.push(p.nome || p.email || p.id); continue; }
+    try {
+      await bkCall('/admin/prof', { id: p.id, telefone: p.telefone || '', plano: p.plano || 'Mensal', valor: +p.valor || 0, venc: p.venc || p.vencimento || '', cota: p.cota ?? '' });
+      await bkCall('/admin/prof', { id: p.id, bloqueado: !!p.bloqueado }); ok++;
+    } catch (e) { res.push(`${p.nome || p.id}: ${e.message}`); }
+  }
+  if (ok) res.push(`${ok} professor(es): plano, valor, vencimento, WhatsApp, limite de IA e bloqueio`);
+  if (ausentes.length) res.push(`${ausentes.length} professor(es) do backup não existem neste servidor (${ausentes.slice(0, 5).join(', ')}${ausentes.length > 5 ? '…' : ''}): restaure o banco de dados (Gist) para recriar as contas.`);
+  return res;
+}
 async function importBackup(f) {
   if (!f) return;
-  let d; try { d = JSON.parse(await f.text()); } catch { return toast('Arquivo inválido: não é um backup do Cátedra.', 'bad'); }
-  if (d.formato === 'backup-cifrado') {
-    for (;;) { const senha = await pedirSenhaBackup(d); if (senha == null) return; try { d = await decifrarBackup(d, senha); break; } catch (e) { toast(e.message, 'bad'); } }
-  }
-  if (d.tipo !== 'backup-global') { // backups antigos (apenas dados)
-    let n = 0;
-    for (const st of ['turmas', 'alunos', 'atividades', 'entregas']) for (const r of d[st] || []) { const l = byId(st, r.id); if (!l || (r.updatedAt || 0) > (l.updatedAt || 0)) { await putLocal(st, r); if (st === 'entregas') Sync.dirtyArq.add(r.atividadeId); n++; } }
-    toast(`${n} registro(s) importado(s)`, 'ok'); Sync.schedule(); router(); return;
-  }
-  const c = d.conexao || {}, cfg = d.configuracao || {}, dd = d.dados || {};
-  const mudaGist = c.gistId && S.local.gistId && c.gistId !== S.local.gistId;
+  const d = await abrirArquivoBackup(f); if (!d) return;
+  if (d.tipo !== 'backup-global') { const n = await bkMesclarDados(d); if (n) { S.local.pushed = 0; await saveLocal(); } toast(`${n} registro(s) importado(s)`, 'ok'); Sync.schedule(); router(); return; } // backups antigos (apenas dados)
+  const v2 = d.esquema >= 2, dd = d.dados || {}, cfg = d.configuracao || {}, nav = d.navegador || {}, ch = d.chaves || {}, srv = d.servidor || {};
+  const outro = d.usuario && Auth.user && d.usuario.id !== Auth.user.id;
+  const nDados = BK_DADOS.reduce((s, k) => s + live(dd[k] || []).length, 0);
+  const temGist = d.banco && Object.keys(d.banco.arquivos || {}).length;
+  const box = (name, on, label, extra = '') => `<label class="check"><input type="checkbox" name="${name}" ${on ? 'checked' : 'disabled'}> <span>${label}${extra}</span></label>`;
   modal({
-    title: 'Restaurar backup global', body: `<form onsubmit="return false"><p class="small" style="margin-top:0">Backup de <b>${esc(fmtDate(d.criadoEm))}</b>. Escolha o que restaurar neste aparelho:</p>
-      <label class="check"><input type="checkbox" name="dados" checked> <span><b>Dados</b>: ${live(dd.turmas || []).length} turmas, ${live(dd.alunos || []).length} alunos, ${live(dd.atividades || []).length} atividades, ${live(dd.entregas || []).length} entregas <span class="muted small">(mesclados com os atuais; vale o registro mais recente)</span></span></label>
-      <label class="check"><input type="checkbox" name="conexao" ${c.token || c.gistId ? 'checked' : 'disabled'}> <span><b>Sincronização</b>: ${c.token ? 'token do GitHub' : 'sem token'}${c.gistId ? ' + Gist <code>' + esc(c.gistId.slice(0, 10)) + '…</code>' : ''}${mudaGist ? ' <span class="badge warn">diferente do Gist atual</span>' : ''}</span></label>
-      <label class="check"><input type="checkbox" name="ia" ${cfg.ai?.key ? 'checked' : 'disabled'}> <span><b>Inteligência artificial</b>: ${cfg.ai?.key ? esc(PROVIDERS[cfg.ai.provider] || cfg.ai.provider) + ' · ' + esc(cfg.ai.model || '') + ' · chave ' + esc(maskKey(cfg.ai.key)) + (cfg.ai.workspace ? ' · ' + esc(cfg.ai.workspace) : '') : 'sem chave'}</span></label>
-      <label class="check"><input type="checkbox" name="servidor" ${cfg.workerUrl || c.workerUrl ? 'checked' : 'disabled'}> <span><b>Servidor de envio e URL pública</b>: ${esc(c.workerUrl || cfg.workerUrl || '—')}</span></label>
-      <label class="check"><input type="checkbox" name="perfil" checked> <span><b>Professor, instituição e modo de correção</b>: ${esc(cfg.professor || '—')}${cfg.instituicao ? ' · ' + esc(cfg.instituicao) : ''}</span></label></form>`,
+    title: 'Restaurar backup global', wide: true, body: `<form onsubmit="return false"><p class="small" style="margin-top:0">Backup ${d.papel === 'admin' ? '<b>do sistema</b>' : 'de professor'} de <b>${esc(fmtDate(d.criadoEm))}</b>${d.usuario ? ' · ' + esc(d.usuario.nome || d.usuario.email || '') : ''} (versão ${esc(d.versao || '?')}). Escolha o que restaurar:</p>
+      ${outro ? `<div class="alert warn" style="margin:0 0 10px">${ic('alert')}<div class="small">Este backup pertence a <b>outra conta</b> (${esc(d.usuario.email || d.usuario.nome || '')}). Os dados serão copiados para a conta atual.</div></div>` : ''}
+      ${box('dados', nDados && !Auth.admin, `<b>Turmas, alunos, atividades e entregas</b>: ${live(dd.turmas || []).length} turmas, ${live(dd.alunos || []).length} alunos, ${live(dd.atividades || []).length} atividades, ${live(dd.entregas || []).length} entregas`, ' <span class="muted small">(mesclados; vale o mais recente; depois enviados ao servidor)</span>')}
+      ${box('navegador', v2 && nav.indexedDB && Object.keys(nav.indexedDB).length, `<b>Banco local do navegador</b>: ${Object.keys(nav.indexedDB || {}).length} banco(s) IndexedDB`, ' <span class="muted small">(todos os registros brutos)</span>')}
+      ${box('preferencias', v2 && Object.keys(nav.localStorage || {}).filter(k => !BK_NAO_RESTAURA.includes(k)).length, `<b>Preferências do navegador</b>: modelo de convite, avisos enviados, alunos lembrados…`)}
+      ${box('perfil', true, `<b>Perfil e modo de correção</b>: ${esc(cfg.professor || '—')}${cfg.instituicao ? ' · ' + esc(cfg.instituicao) : ''}${cfg.publicUrl ? ' · URL pública' : ''}`)}
+      ${Auth.admin ? `<hr style="border:0;border-top:1px solid var(--line);margin:12px 0">
+      ${box('banco', temGist, `<b>Banco de dados do servidor (Gist)</b>: ${temGist ? Object.keys(d.banco.arquivos).length + ' arquivo(s) · ' + bkTam(JSON.stringify(d.banco.arquivos).length) : 'não incluído neste backup'}`, ' <span class="muted small">(contas, professores, turmas e entregas de todos)</span>')}
+      ${temGist ? `<div id="bkGistAlvo" style="margin:4px 0 10px 28px"><div class="field"><label>GITHUB_TOKEN para gravar</label><input name="gtoken" type="password" autocomplete="off" value="${esc(ch.GITHUB_TOKEN || BkCofre.GITHUB_TOKEN || '')}"></div>
+        <label class="check"><input type="radio" name="galvo" value="mesmo" checked> <span>Gravar no Gist <code>${esc(ch.GIST_ID || d.banco.id)}</code></span></label>
+        <label class="check"><input type="radio" name="galvo" value="novo"> <span>Criar um <b>Gist novo</b> (depois troque o GIST_ID na Cloudflare)</span></label>
+        <label class="check"><input type="checkbox" name="gexato"> <span>Apagar do Gist os arquivos que não estão no backup (restauração exata)</span></label></div>` : ''}
+      ${box('dump', !!srv.dump, `<b>Cópia completa do servidor</b> (/admin/restaurar): ${srv.dump ? 'incluída' : 'não incluída'}`)}
+      ${box('gestao', !!srv.gestao?.profs, `<b>Regras de cobrança, convite e cadastro dos professores</b>: ${srv.gestao?.profs?.profs?.length ?? 0} professor(es)`, ' <span class="muted small">(reaplica plano, valor, vencimento, limite e bloqueio de quem já existe)</span>')}
+      ${box('chaves', Object.keys(ch).length, `<b>Chaves e segredos</b>: ${Object.keys(ch).length ? esc(Object.keys(ch).join(', ')) : 'nenhuma'}`, ' <span class="muted small">(carrega no cofre e mostra para colar na Cloudflare)</span>')}` : (Object.keys(ch).length ? `<p class="hint">Este backup contém chaves do servidor: importe-o pela conta de administrador.</p>` : '')}
+      ${!v2 && (d.conexao?.token || cfg.ai?.key) ? `<p class="hint">Backup antigo: o token do GitHub e a chave da IA não são mais usados no navegador (ficam no servidor) e não serão restaurados aqui.</p>` : ''}</form>`,
     actions: [{ label: 'Cancelar' }, {
       label: ic('check') + ' Restaurar', cls: 'primary', onClick: async el => {
-        const o = formData(el); let n = 0;
-        if (o.dados) for (const st of ['turmas', 'alunos', 'atividades', 'entregas']) for (const r of dd[st] || []) { const l = byId(st, r.id); if (!l || (r.updatedAt || 0) > (l.updatedAt || 0)) { await putLocal(st, r); if (st === 'entregas') Sync.dirtyArq.add(r.atividadeId); n++; } }
-        if (o.perfil) ['professor', 'instituicao', 'modoPadrao', 'fallbackLocal'].forEach(k => { if (cfg[k] !== undefined) S.cfg[k] = cfg[k]; });
-        if (o.ia && cfg.ai) S.cfg.ai = { ...S.cfg.ai, ...cfg.ai, key: cleanKey(cfg.ai.key) };
-        if (o.servidor) { const w = c.workerUrl || cfg.workerUrl, pu = c.publicUrl || cfg.publicUrl; if (httpsOk(w)) S.cfg.workerUrl = w; if (httpsOk(pu)) S.cfg.publicUrl = pu; }
-        if (o.perfil || o.ia || o.servidor) { S.cfg.updatedAt = Date.now(); await DB.put('meta', S.cfg); }
-        if (o.conexao) { if (c.token) S.local.token = c.token; if (c.gistId) S.local.gistId = c.gistId; await saveLocal(); }
-        toast(`Backup restaurado${o.dados ? ` (${n} registro(s) de dados)` : ''}. Sincronizando…`, 'ok', 5000);
-        if (Sync.configured()) { await Sync.run(true); }
+        const o = formData(el), feito = [];
+        if (o.banco && !await confirmDlg(`Gravar ${Object.keys(d.banco.arquivos).length} arquivo(s) no banco de dados do servidor? Os registros atuais com o mesmo nome serão <b>substituídos</b> pelos do backup.`, 'Gravar no banco')) return false;
+        if (o.dados) { const n = await bkMesclarDados(dd); feito.push(`${n} registro(s) de dados`); }
+        if (o.navegador) { const n = await bkRestaurarIndexedDB(nav.indexedDB); feito.push(`${n} registro(s) no banco local`); }
+        if (o.dados || o.navegador) { S.local.pushed = 0; await saveLocal(); } // reenvia tudo ao servidor
+        if (o.preferencias) feito.push(`${bkRestaurarLocalStorage(nav.localStorage)} preferência(s)`);
+        if (o.perfil) { ['professor', 'instituicao', 'modoPadrao', 'fallbackLocal', 'publicUrl'].forEach(k => { if (cfg[k] !== undefined && (k !== 'publicUrl' || !cfg[k] || httpsOk(cfg[k]))) S.cfg[k] = cfg[k]; }); if (Auth.admin) { S.cfg.updatedAt = Date.now(); await DB.put('meta', S.cfg); } else await saveCfg(); feito.push('perfil'); }
+        if (o.banco) {
+          const tok = String(o.gtoken || '').trim(); if (!tok) throw new Error('Informe o GITHUB_TOKEN para gravar o banco.');
+          const r = await bkGravarGist(tok, ch.GIST_ID || d.banco.id, d.banco.arquivos, { criar: o.galvo === 'novo', removerExtras: !!o.gexato, descricao: d.banco.descricao || undefined });
+          feito.push(`banco de dados: ${r.gravados} arquivo(s) gravados${r.removidos ? ', ' + r.removidos + ' removido(s)' : ''} no Gist ${r.id}`);
+          BkCofre.GITHUB_TOKEN = tok; BkCofre.GIST_ID = r.id;
+          if (o.galvo === 'novo') feito.push(`IMPORTANTE: na Cloudflare, troque GIST_ID para ${r.id}`);
+        }
+        if (o.dump) { try { await bkCall('/admin/restaurar', { dump: srv.dump }, 180000); feito.push('cópia completa do servidor'); } catch (e) { feito.push('cópia completa do servidor: ' + (bkSemRota(e) ? 'o Worker não oferece /admin/restaurar' : e.message)); } }
+        if (o.gestao) (await bkReaplicarGestao(srv.gestao)).forEach(x => feito.push(x));
+        if (o.chaves) { Object.entries(ch).forEach(([k, v]) => { if (BK_VARS.some(x => x[0] === k)) BkCofre[k] = v; else BkCofre._extras = (BkCofre._extras ? BkCofre._extras + '\n' : '') + k + '=' + v; }); }
+        if (!Auth.admin && Sync.configured()) await Sync.run(true);
         router();
+        modal({ title: 'Backup restaurado', body: `<ul class="small" style="padding-left:18px;margin-top:0">${feito.map(x => `<li>${esc(x)}</li>`).join('') || '<li>Nada selecionado.</li>'}</ul>`, actions: [...(o.chaves ? [{ label: ic('key') + ' Ver chaves', onClick: () => { bkMostrarChaves(ch); } }] : []), { label: 'Fechar', cls: 'primary' }] });
       }
     }]
   });
 }
+function bkMostrarChaves(ch) {
+  const linhas = Object.entries(ch || {});
+  window._bkCh = ch;
+  modal({ title: 'Chaves e segredos do backup', wide: true, body: `<p class="small" style="margin-top:0">No painel da Cloudflare, abra o worker → <b>Configurações → Variáveis e segredos</b> e cadastre cada item abaixo (segredos como tipo <b>Segredo</b>). Depois clique em <b>Implantar</b>.</p>
+    <table class="tbl"><tbody>${linhas.map(([k, v]) => `<tr><td style="width:32%"><b>${esc(k)}</b><div class="muted small">${esc((BK_VARS.find(x => x[0] === k) || [, 'Texto'])[1])}</div></td><td style="word-break:break-all"><code>${esc(maskKey(String(v)))}</code></td><td style="width:1%"><button class="btn sm" onclick="copyText(window._bkCh[${jq(k)}])">${ic('copy', 14)} Copiar</button></td></tr>`).join('')}</tbody></table>
+    <p class="hint">Os valores aparecem mascarados; o botão copia o valor completo.</p>`, actions: [{ label: ic('copy') + ' Copiar tudo (NOME=valor)', onClick: () => { copyText(linhas.map(([k, v]) => k + '=' + v).join('\n')); return false; } }, { label: 'Fechar', cls: 'primary', onClick: () => { delete window._bkCh; } }] });
+}
+
+/* --- tela de backup do administrador (Gestão → Backup) --- */
+const BackupAdm = {
+  html() {
+    const campo = ([n, tipo, dica]) => `<div class="field"><label>${n} <span class="muted small">(${tipo})</span></label><input data-k="${n}" type="${tipo === 'Segredo' ? 'password' : 'text'}" autocomplete="off" spellcheck="false" value="${esc(BkCofre[n] || '')}" placeholder="${esc(dica)}" oninput="BkCofre[this.dataset.k]=this.value"></div>`;
+    return `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(340px,1fr));align-items:start">
+    <div class="card"><h3>${ic('download')} Backup global do sistema</h3><p class="muted small" style="margin-top:0">Um único arquivo <b>criptografado com senha</b> com tudo o que é preciso para reconstruir o sistema em outro lugar:</p>
+      <ul class="small" style="padding-left:18px;margin:0 0 12px;line-height:1.7"><li><b>Banco de dados do servidor</b> (Gist): contas, professores, turmas, alunos, atividades e entregas de todos</li><li><b>Chaves e segredos</b> do Worker: GITHUB_TOKEN, GIST_ID, AI_KEY, SESSION_SECRET…</li><li>Professores, <b>pagamentos</b>, regras de cobrança, planos, solicitações e código de convite</li><li>Banco local e preferências deste navegador, URL pública e configuração</li></ul>
+      <div id="bkSrv" class="small muted" style="margin-bottom:12px">Verificando o servidor…</div>
+      <div class="actions"><button class="btn primary" onclick="exportBackup()">${ic('download')} Exportar backup global</button><label class="btn">${ic('upload')} Importar backup<input type="file" accept=".json,application/json" hidden onchange="importBackup(this.files[0]);this.value=''"></label></div></div>
+    <div class="card"><h3>${ic('key')} Chaves e segredos do servidor</h3><p class="muted small" style="margin-top:0">A Cloudflare não mostra um segredo depois de salvo, então informe-os aqui (os mesmos valores cadastrados no Worker) ou carregue de um backup anterior. Ficam só na memória desta aba e dentro do arquivo criptografado.</p>
+      <form id="fCofre" onsubmit="return false">${BK_VARS.map(campo).join('')}
+      <div class="field"><label>Outras variáveis <span class="muted small">(uma por linha: NOME=valor)</span></label><textarea rows="3" spellcheck="false" placeholder="CATEDRA_WHATSAPP=5582999999999" oninput="BkCofre._extras=this.value">${esc(BkCofre._extras || '')}</textarea></div></form>
+      <div class="actions"><button class="btn" onclick="BackupAdm.testar()">${ic('cloud')} Testar acesso ao banco</button><label class="btn">${ic('upload')} Carregar de um backup<input type="file" accept=".json,application/json" hidden onchange="BackupAdm.carregar(this.files[0]);this.value=''"></label><button class="btn" onclick="BackupAdm.limpar()">${ic('x')} Limpar</button></div>
+      <div id="bkGist" style="margin-top:10px"></div></div></div>`;
+  },
+  async status() {
+    const box = $('#bkSrv'); if (!box) return;
+    try {
+      const h = await (await fetch(Auth.api + '/health', { cache: 'no-store' })).json(); const V = h.vars || {};
+      const usados = BK_VARS.map(v => v[0]).filter(n => V[n]);
+      box.innerHTML = `Servidor <b>online</b> (versão ${esc(h.versao || '?')}).${usados.length ? ` Variáveis cadastradas no Worker: ${usados.map(n => `<code>${esc(n)}</code>`).join(', ')}. Informe os valores ao lado para incluí-los.` : ''}`;
+    } catch (e) { box.innerHTML = `<span style="color:#b3261e">Servidor inacessível: ${esc(e.message)}</span>`; }
+  },
+  async testar() {
+    const box = $('#bkGist'), t = String(BkCofre.GITHUB_TOKEN || '').trim(), id = String(BkCofre.GIST_ID || '').trim().replace(/.*\//, '');
+    if (!t || !id) return toast('Informe GITHUB_TOKEN e GIST_ID', 'bad'); BkCofre.GIST_ID = id;
+    box.innerHTML = '<div class="muted small">Testando…</div>';
+    try {
+      const g = await gh(`/gists/${encodeURIComponent(id)}`, {}, t); let mesmo = null;
+      try { const h = await (await fetch(Auth.api + '/health', { cache: 'no-store' })).json(); if (h.gistHash) mesmo = h.gistHash === await sha16(id); } catch { }
+      const n = Object.keys(g.files || {}).length;
+      box.innerHTML = `<div class="alert ${mesmo === false ? 'warn' : 'ok'}">${ic(mesmo === false ? 'alert' : 'check')}<div class="small"><b>Banco acessível:</b> ${n} arquivo(s)${g.truncated ? ' (mais de 300: a lista está incompleta)' : ''}, atualizado em ${esc(fmtDate(Date.parse(g.updated_at)))}.${mesmo === true ? '<br>É o mesmo Gist usado pelo servidor ✓' : mesmo === false ? '<br><b>Atenção:</b> o servidor usa OUTRO Gist. Confira o GIST_ID na Cloudflare.' : ''}</div></div>`;
+    } catch (e) { box.innerHTML = `<div class="alert bad">${ic('alert')}<div class="small">${esc(e.message)}</div></div>`; }
+  },
+  async carregar(f) {
+    if (!f) return; const d = await abrirArquivoBackup(f); if (!d) return;
+    const ch = d.chaves || {}; let n = 0;
+    Object.entries(ch).forEach(([k, v]) => { if (BK_VARS.some(x => x[0] === k)) BkCofre[k] = v; else BkCofre._extras = (BkCofre._extras ? BkCofre._extras + '\n' : '') + k + '=' + v; n++; });
+    if (!n && d.conexao?.token) { BkCofre.GITHUB_TOKEN = d.conexao.token; BkCofre.GIST_ID = d.conexao.gistId || ''; n = 2; } // backup antigo
+    if (!n && d.configuracao?.ai?.key && d.configuracao.ai.key !== 'servidor') { BkCofre.AI_KEY = d.configuracao.ai.key; n++; }
+    toast(n ? `${n} chave(s) carregada(s)` : 'Este backup não contém chaves', n ? 'ok' : 'bad'); Gestao.draw();
+  },
+  limpar() { Object.keys(BkCofre).forEach(k => delete BkCofre[k]); Gestao.draw(); }
+};
 async function wipeAll() {
   if (!await confirmDlg('Apagar TODOS os dados deste navegador? (O Gist não é afetado; ao reconectar, os dados voltam.)', 'Apagar tudo')) return;
   for (const s of STORES) await DB.clear(s); location.hash = ''; location.reload();
+}
+
+/* =========================================================
+   QR CODE DA ATIVIDADE — cartaz A4 para imprimir na sala
+   Uma única arte em SVG (210 × 297 mm) serve para a prévia, a impressão, o PDF e o PNG.
+   ========================================================= */
+const QR_F = { tit: "Georgia, 'Times New Roman', serif", txt: "'Helvetica Neue', Helvetica, Arial, sans-serif" };
+const DIAS = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+const QrCartaz = {
+  _ctx: null,
+  medir(txt, tam, fam, peso = 400) { const c = this._ctx || (this._ctx = document.createElement('canvas').getContext('2d')); c.font = `${peso} ${tam * 10}px ${fam}`; return c.measureText(txt).width / 10; },
+  quebrar(txt, larg, tam, fam, peso, maxL) {
+    const pal = String(txt || '').replace(/\s+/g, ' ').trim().split(' '); const L = []; let l = '';
+    for (const p of pal) { const t = l ? l + ' ' + p : p; if (this.medir(t, tam, fam, peso) <= larg || !l) l = t; else { L.push(l); l = p; } }
+    if (l) L.push(l);
+    if (L.length > maxL) { L.length = maxL; let u = L[maxL - 1]; while (u.length > 1 && this.medir(u + '…', tam, fam, peso) > larg) u = u.slice(0, -1); L[maxL - 1] = u.replace(/[\s,.;:–-]+$/, '') + '…'; }
+    return L.map(x => { let s = x; while (s.length > 1 && this.medir(s, tam, fam, peso) > larg) s = s.slice(0, -1); return s === x ? x : s + '…'; });
+  },
+  matriz(texto) { const q = window.qrcode(0, 'M'); q.addData(texto); q.make(); const n = q.getModuleCount(); return { n, dark: (r, c) => q.isDark(r, c) }; },
+  dados(a, extra = {}) {
+    const t = byId('turmas', a.turmaId) || {}; const quando = extra.aplicacao ?? a.aplicacao ?? '';
+    const m = String(quando).match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/);
+    const dt = m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
+    return {
+      link: linkAluno(a), titulo: a.titulo || 'Atividade', tipo: a.tipo === 'prova' ? 'Prova' : (SUBTIPOS[a.subtipo] || 'Trabalho'), prova: a.tipo === 'prova',
+      turma: [t.nome, t.disciplina].filter(Boolean).join(' · '),
+      professor: S.cfg.professor || Auth.user?.nome || '—', instituicao: S.cfg.instituicao || '—',
+      data: dt ? `${m[3]}/${m[2]}/${m[1]}` : '—', dia: dt ? DIAS[dt.getDay()] : '', horario: m && m[4] ? `${m[4]}:${m[5]}` : '—',
+      prazo: a.prazo ? fmtDate(a.prazo) : 'Sem prazo', valor: `${fmtN(a.notaMax)} ponto${+a.notaMax === 1 ? '' : 's'}`, tentativas: a.tentativas || 1,
+      codigo: String(a.id || '').slice(-6).toUpperCase()
+    };
+  },
+  svg(d) {
+    const W = 210, H = 297, M = 16, X = esc, f = QR_F; let y, o = '';
+    const T = (x, yy, s, tam, cor, fam = f.txt, peso = 400, anc = 'start', ext = '') => `<text x="${x}" y="${yy}" font-family="${X(fam)}" font-size="${tam}" font-weight="${peso}" fill="${cor}" text-anchor="${anc}" ${ext}>${X(s)}</text>`;
+    // cabeçalho
+    let ts = 10.5; for (const s of [10.5, 9.2, 8]) { ts = s; if (this.quebrar(d.titulo, W - 2 * M, s, f.tit, 700, 9).length <= 3) break; }
+    const tl = this.quebrar(d.titulo, W - 2 * M, ts, f.tit, 700, 3), tt = this.quebrar(d.turma, W - 2 * M, 4.4, f.txt, 400, 1);
+    const lh = ts * 1.1, hH = 44 + tl.length * lh + (d.turma ? 8 : 0);
+    o += `<defs><clipPath id="qrTopo"><rect width="${W}" height="${hH}"/></clipPath></defs><rect width="${W}" height="${hH}" fill="#111a33"/><g clip-path="url(#qrTopo)"><circle cx="${W - 6}" cy="4" r="40" fill="#e8a33d" opacity=".09"/><circle cx="${W - 34}" cy="${hH + 4}" r="22" fill="#2948d1" opacity=".35"/></g><rect y="${hH}" width="${W}" height="1.6" fill="#e8a33d"/>`;
+    o += T(M, 17, this.quebrar(d.instituicao === '—' ? 'Cátedra' : d.instituicao, W - 2 * M - 30, 3.6, f.txt, 700, 1)[0].toUpperCase(), 3.6, '#e8a33d', f.txt, 700, 'start', 'letter-spacing=".6"');
+    const pw = this.medir(d.tipo.toUpperCase(), 3.1, f.txt, 700) + 9;
+    o += `<rect x="${M}" y="23" width="${pw}" height="7.4" rx="3.7" fill="#ffffff" opacity=".14"/>` + T(M + 4.5, 28.2, d.tipo.toUpperCase(), 3.1, '#ffffff', f.txt, 700, 'start', 'letter-spacing=".4"');
+    y = 45; tl.forEach(l => { o += T(M, y, l, ts, '#ffffff', f.tit, 700); y += lh; });
+    if (d.turma) o += T(M, y - 2.5, tt[0], 4.4, '#c9d1e6');
+    // bloco inferior (posições fixas a partir do rodapé)
+    const yRod = H - 14, yPas = yRod - 31, yInf = yPas - 54;
+    // QR
+    const yQ0 = hH + 13; o += T(W / 2, yQ0, d.prova ? 'Escaneie para enviar sua prova' : 'Escaneie para enviar sua atividade', 6.4, '#111a33', f.tit, 700, 'middle');
+    o += T(W / 2, yQ0 + 6.5, 'Aponte a câmera do celular para o código abaixo', 3.6, '#5b6478', f.txt, 400, 'middle');
+    const disp = yInf - 8 - (yQ0 + 12); const lado = Math.max(60, Math.min(108, disp - 10)); const cx = (W - lado) / 2, cy = yQ0 + 12 + (disp - lado) / 2;
+    o += `<rect x="${cx - 6}" y="${cy - 6}" width="${lado + 12}" height="${lado + 12}" rx="6" fill="#ffffff" stroke="#e6e2d8" stroke-width=".5"/>`;
+    // cantos decorativos
+    [[cx - 6, cy - 6, 1, 1], [cx + lado + 6, cy - 6, -1, 1], [cx - 6, cy + lado + 6, 1, -1], [cx + lado + 6, cy + lado + 6, -1, -1]].forEach(([px, py, sx, sy]) => { o += `<path d="M${px + sx * 1.2} ${py + sy * 13}V${py + sy * 7.2}q0 ${-sy * 6} ${sx * 6} ${-sy * 6}H${px + sx * 13}" fill="none" stroke="#e8a33d" stroke-width="1.4" stroke-linecap="round"/>`; });
+    if (d.link) {
+      const Q = this.matriz(d.link), mod = lado / Q.n; let p = '';
+      for (let r = 0; r < Q.n; r++) for (let c = 0; c < Q.n; c++) if (Q.dark(r, c)) p += `M${(cx + c * mod).toFixed(3)} ${(cy + r * mod).toFixed(3)}h${(mod + .02).toFixed(3)}v${(mod + .02).toFixed(3)}h-${(mod + .02).toFixed(3)}z`;
+      o += `<path d="${p}" fill="#111a33"/>`;
+    } else o += T(W / 2, cy + lado / 2, 'Link indisponível', 5, '#b3261e', f.txt, 700, 'middle');
+    // informações (3 × 2)
+    const cols = 3, gap = 4, bw = (W - 2 * M - gap * (cols - 1)) / cols, bh = 21;
+    const info = [['Professor(a)', d.professor], ['Instituição', d.instituicao], ['Turma', d.turma || '—'], ['Data', d.data], ['Horário', d.horario], ['Prazo de envio', d.prazo]];
+    info.forEach(([k, v], i) => {
+      const bx = M + (i % cols) * (bw + gap), by = yInf + Math.floor(i / cols) * (bh + gap);
+      o += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="3.5" fill="#f6f4ee"/><rect x="${bx}" y="${by + 4}" width="1.1" height="${bh - 8}" rx=".55" fill="${i < 3 ? '#2948d1' : '#e8a33d'}"/>`;
+      o += T(bx + 5, by + 7, k.toUpperCase(), 2.6, '#8a8f9c', f.txt, 700, 'start', 'letter-spacing=".35"');
+      const vl = this.quebrar(v, bw - 8, 4.2, f.txt, 700, 2); vl.forEach((l, j) => { o += T(bx + 5, by + 13 + j * 5, l, 4.2, '#111a33', f.txt, 700); });
+      if (k === 'Data' && d.dia && vl.length === 1) o += T(bx + 5, by + 18, d.dia, 3, '#5b6478');
+    });
+    // passos
+    const passos = [['Escaneie', 'o QR code com a câmera'], ['Identifique-se', 'escolhendo o seu nome'], ['Envie', d.prova ? 'a foto da sua prova' : 'o seu arquivo ou foto']];
+    const pw3 = (W - 2 * M) / 3; o += `<line x1="${M + pw3 / 2}" y1="${yPas + 5}" x2="${W - M - pw3 / 2}" y2="${yPas + 5}" stroke="#e6e2d8" stroke-width=".5" stroke-dasharray="1.5 1.5"/>`;
+    passos.forEach(([a1, a2], i) => { const px = M + pw3 * i + pw3 / 2; o += `<circle cx="${px}" cy="${yPas + 5}" r="5" fill="#111a33"/>` + T(px, yPas + 6.6, String(i + 1), 4.4, '#e8a33d', f.txt, 700, 'middle') + T(px, yPas + 15, a1, 3.8, '#111a33', f.txt, 700, 'middle') + T(px, yPas + 19.5, a2, 3, '#5b6478', f.txt, 400, 'middle'); });
+    // rodapé
+    o += `<line x1="${M}" y1="${yRod - 4}" x2="${W - M}" y2="${yRod - 4}" stroke="#e6e2d8" stroke-width=".4"/>`;
+    o += T(M, yRod + 1, `Vale ${d.valor} · ${d.tentativas} tentativa${d.tentativas > 1 ? 's' : ''} · código ${d.codigo}`, 2.9, '#5b6478');
+    o += T(W - M, yRod + 1, 'Cátedra · ' + new Date().toLocaleDateString('pt-BR'), 2.9, '#8a8f9c', f.txt, 400, 'end');
+    if (d.link) o += T(M, yRod + 6, this.quebrar(d.link, W - 2 * M, 2.3, "'Courier New', monospace", 400, 1)[0], 2.3, '#8a8f9c', "'Courier New', monospace");
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}mm" height="${H}mm"><rect width="${W}" height="${H}" fill="#fbfaf7"/>${o}</svg>`;
+  },
+  async png(svg, larg = 2480) {
+    const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+    try {
+      const img = new Image(); await new Promise((res, rej) => { img.onload = res; img.onerror = () => rej(new Error('Não foi possível desenhar o cartaz.')); img.src = url; });
+      const cv = document.createElement('canvas'); cv.width = larg; cv.height = Math.round(larg * 297 / 210);
+      const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height); g.drawImage(img, 0, 0, cv.width, cv.height); return cv;
+    } finally { URL.revokeObjectURL(url); }
+  },
+  nome(d, ext) { return `qr-${String(d.titulo).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w]+/g, '-').replace(/^-|-$/g, '').toLowerCase().slice(0, 50) || 'atividade'}.${ext}`; },
+  baixar(blob, nome) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); },
+  imprimir(svg) {
+    let el = document.getElementById('qrPrint'); if (!el) { el = document.createElement('div'); el.id = 'qrPrint'; document.body.appendChild(el); }
+    el.innerHTML = svg; document.body.classList.add('print-qr');
+    const fim = () => { document.body.classList.remove('print-qr'); el.innerHTML = ''; window.removeEventListener('afterprint', fim); };
+    window.addEventListener('afterprint', fim); setTimeout(() => { window.print(); setTimeout(fim, 1500); }, 60);
+  }
+};
+async function qrAtividade(id) {
+  const a = byId('atividades', id); if (!a) return;
+  if (!linkAluno(a)) return toast('Configure o servidor de envio para gerar o link e o QR code.', 'bad');
+  try { await loadLib('qrcode'); } catch (e) { return toast('Não foi possível carregar o gerador de QR code. Verifique a internet.', 'bad'); }
+  const ini = a.aplicacao || (a.prazo || ''), [d0, h0] = [String(ini).slice(0, 10), String(ini).slice(11, 16)];
+  const m = modal({ title: 'QR code da atividade', wide: true, body: `<div class="qr-wrap">
+      <div class="qr-prev" id="qrPrev"></div>
+      <form id="fQr" onsubmit="return false" class="qr-form">
+        <p class="small muted" style="margin-top:0">Imprima e deixe na sala, ou projete na tela: os alunos leem com a câmera do celular e caem direto na página de envio.</p>
+        <div class="field"><label>Data da atividade</label><input type="date" name="data" value="${esc(d0)}"></div>
+        <div class="field"><label>Horário</label><input type="time" name="hora" value="${esc(h0)}"></div>
+        <div class="hint" style="margin:-6px 0 12px">Professor e instituição vêm do seu perfil (<a href="#/config"><u>editar</u></a>).</div>
+        <div class="qr-acts"><button class="btn primary" data-q="print">${ic('file')} Imprimir</button><button class="btn" data-q="pdf">${ic('download')} Baixar PDF</button><button class="btn" data-q="png">${ic('image')} Baixar imagem</button></div>
+      </form></div>`, actions: [{ label: 'Fechar' }] });
+  const atual = () => { const f = formData(m.el); return f.data ? f.data + (f.hora ? 'T' + f.hora : '') : ''; };
+  const draw = () => { const p = m.el.querySelector('#qrPrev'); if (p) p.innerHTML = QrCartaz.svg(QrCartaz.dados(a, { aplicacao: atual() })); };
+  const guardar = async () => { const v = atual(); if (v !== (a.aplicacao || '')) { a.aplicacao = v; await save('atividades', a); } };
+  m.el.querySelectorAll('#fQr input').forEach(i => i.addEventListener('input', draw)); draw();
+  m.el.querySelectorAll('[data-q]').forEach(b => b.onclick = async () => {
+    b.disabled = true;
+    try {
+      await guardar(); const d = QrCartaz.dados(a), svg = QrCartaz.svg(d);
+      if (b.dataset.q === 'print') QrCartaz.imprimir(svg);
+      else if (b.dataset.q === 'png') { const cv = await QrCartaz.png(svg); cv.toBlob(bl => QrCartaz.baixar(bl, QrCartaz.nome(d, 'png')), 'image/png'); toast('Imagem baixada', 'ok'); }
+      else { await loadLib('jspdf'); const cv = await QrCartaz.png(svg); const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' }); doc.setProperties({ title: 'QR code — ' + d.titulo }); doc.addImage(cv.toDataURL('image/jpeg', .93), 'JPEG', 0, 0, 210, 297, undefined, 'FAST'); doc.save(QrCartaz.nome(d, 'pdf')); toast('PDF baixado', 'ok'); }
+    } catch (e) { toast(e.message, 'bad'); } finally { b.disabled = false; }
+  });
 }
 
 /* =========================================================
