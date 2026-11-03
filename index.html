@@ -391,7 +391,7 @@ const LIBS = {
   tessLang: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/por@1.0.0/4.0.0_best_int',
   qrcode: 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js'
 };
-const APP_VERSION = '2026.11.3-1';
+const APP_VERSION = '2026.11.3-2';
 const sha16 = async t => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(t || ''))))].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
 const verNum = v => { const m = String(v || '').match(/^(\d+)\.(\d+)\.(\d+)-(\d+)$/); return m ? ((+m[1] * 100 + +m[2]) * 100 + +m[3]) * 1000 + +m[4] : 0; };
 const BC = (() => { try { return new BroadcastChannel('catedra'); } catch { return null; } })();
@@ -950,7 +950,9 @@ const Status = {
     L.push([h.gist !== false, 'Banco de dados', h.gist === false ? 'O servidor não acessa o banco: ' + (h.gistErro || 'confira GITHUB_TOKEN e GIST_ID') : 'Acessível pelo servidor', true]);
     L.push([!this.dadosErro && !!this.dadosEm, 'Sincronização da gestão', this.dadosErro ? 'Falhou: ' + this.dadosErro : this.dadosEm ? `Dados recebidos do servidor às ${this.hora(this.dadosEm)} (${this.quando(this.dadosEm)})` : 'Aguardando a primeira carga', true]);
     L.push([verNum(h.versao) >= verNum(APP_VERSION), 'Versão do servidor', `Servidor ${h.versao || '?'} · site ${APP_VERSION}${verNum(h.versao) >= verNum(APP_VERSION) ? '' : ' (o site é mais novo; atualize o worker.js só se alguma função nova pedir)'}`, false]);
-    if (h.vars) { const f = ['GITHUB_TOKEN', 'GIST_ID', 'SESSION_SECRET'].filter(k => !V[k]); L.push([!f.length, 'Variáveis do servidor', f.length ? 'Faltando: ' + f.join(', ') : 'Todas encontradas', true]); }
+    if (h.vars) { // se o banco responde, o acesso a ele está configurado (o Worker pode usar outros nomes ou outro tipo de banco)
+      const f = (h.gist === true ? ['SESSION_SECRET'] : ['GITHUB_TOKEN', 'GIST_ID', 'SESSION_SECRET']).filter(k => !V[k] && !(k === 'SESSION_SECRET' && h.sessao));
+      L.push([!f.length, 'Variáveis do servidor', f.length ? 'Faltando: ' + f.join(', ') : 'Todas as obrigatórias estão configuradas', true]); }
     else if (h.sessao === false) L.push([false, 'Sessões', 'Defina SESSION_SECRET no servidor', true]);
     L.push([!!h.ia?.configurada, 'Correção por IA', h.ia?.configurada ? `Ativa · ${PROVIDERS[h.ia.provider] || h.ia.provider || ''}${h.ia.model ? ' · ' + h.ia.model : ''}` : 'Sem AI_KEY: professores usam a correção gratuita', false]);
     return L;
