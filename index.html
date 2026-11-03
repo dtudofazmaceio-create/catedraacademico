@@ -320,6 +320,16 @@ input[type=date],input[type=tel]{width:100%;border:1px solid #dcd8ce;border-radi
 .qr-wrap{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:22px;align-items:start}.qr-prev{background:#eceae3;border-radius:14px;padding:14px;display:flex;justify-content:center}.qr-prev svg{width:100%;max-width:340px;height:auto;box-shadow:0 8px 24px rgba(17,26,51,.18);border-radius:3px}.qr-acts{display:flex;flex-direction:column;gap:8px}.qr-acts .btn{justify-content:center}@media(max-width:700px){.qr-wrap{grid-template-columns:1fr}.qr-prev svg{max-width:260px}}#qrPrint{display:none}@media print{body.print-qr>*:not(#qrPrint){display:none!important}body.print-qr #qrPrint{display:block!important}body.print-qr #qrPrint svg{width:210mm;height:297mm;display:block}body.print-qr{background:#fff!important;margin:0}@page{size:A4;margin:0}}
 @media print{.side,.top,.bottom,.gtabs,.page-head .actions,.actions,.btn,#toasts{display:none!important}.app{display:block}main{padding:0!important;max-width:none}.card{break-inside:avoid;box-shadow:none}}
 body.admin-mode #syncBox,body.admin-mode #syncDot2{display:none!important}
+#admStatus,#admDot{display:none}body.admin-mode #admStatus{display:block;background:rgba(255,255,255,.05);border-radius:12px;padding:12px;font-size:13px;line-height:1.35}body.admin-mode #admDot{display:block}
+.dot.warn{background:var(--accent)}
+.st-bar{display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px;background:#fff;border:1px solid var(--line);border-left:4px solid #7c859c;border-radius:14px;padding:12px 16px;margin:0 0 18px}
+.st-bar.ok{border-left-color:#35c88a}.st-bar.warn{border-left-color:var(--accent);background:#fffaf0}.st-bar.err{border-left-color:#ef5a5a;background:#fff7f7}.st-bar.busy{border-left-color:var(--accent)}
+.st-main{display:flex;align-items:center;gap:12px;min-width:220px}.st-main b{font-size:15px}
+.st-pills{display:flex;flex-wrap:wrap;gap:6px;flex:1}
+.st-pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:4px 10px;border-radius:99px;white-space:nowrap}
+.st-pill.ok{background:#e2f4ec;color:#1b8f62}.st-pill.bad{background:#fde8e6;color:#b3261e}
+.st-acts{display:flex;gap:6px;margin-left:auto}
+@media(max-width:700px){.st-acts{margin-left:0;width:100%}.st-acts .btn{flex:1;justify-content:center}}
 body.admin-mode .side nav a.active svg{color:var(--accent)}
 .warn-row{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)}
 .warn-row:first-of-type{border-top:0}
@@ -351,10 +361,10 @@ body.admin-mode .bottom a{font-size:10px!important;padding:6px 1px!important;min
     <div class="side-foot" style="background:none;padding:0"><div id="sideUser" class="side-user"></div><div data-install class="side-install"></div><div id="syncBox" style="background:rgba(255,255,255,.05);border-radius:12px;padding:12px;font-size:13px">
       <div class="sync"><span class="dot" id="syncDot"></span><span id="syncText">Somente local</span></div>
       <button onclick="Sync.run()" id="syncBtn"></button>
-    </div></div>
+    </div><div id="admStatus"></div></div>
   </aside>
   <div class="content">
-    <header class="top"><div class="logo">C</div><h1 id="pageTitle">Cátedra</h1><span class="dot" id="syncDot2"></span></header>
+    <header class="top"><div class="logo">C</div><h1 id="pageTitle">Cátedra</h1><span class="dot" id="syncDot2"></span><span class="dot" id="admDot" role="button" tabindex="0" onclick="Status.detalhes()" style="cursor:pointer"></span></header>
     <main id="main"></main>
   </div>
   <nav class="bottom" id="bottomNav"></nav>
@@ -381,7 +391,7 @@ const LIBS = {
   tessLang: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/por@1.0.0/4.0.0_best_int',
   qrcode: 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js'
 };
-const APP_VERSION = '2026.11.2-3';
+const APP_VERSION = '2026.11.3-1';
 const sha16 = async t => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(t || ''))))].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
 const verNum = v => { const m = String(v || '').match(/^(\d+)\.(\d+)\.(\d+)-(\d+)$/); return m ? ((+m[1] * 100 + +m[2]) * 100 + +m[3]) * 1000 + +m[4] : 0; };
 const BC = (() => { try { return new BroadcastChannel('catedra'); } catch { return null; } })();
@@ -712,7 +722,7 @@ const Gestao = {
     r.fin = { plano: 'Mensal', valor: 0, teste: 0, tolerancia: 0, bloqueioAuto: false, pix: '', contato: '', planos: [], ...(r.fin || {}) }; if (!Array.isArray(r.fin.planos)) r.fin.planos = [];
     r.cotaPadrao = r.cotaPadrao ?? 0; return r;
   },
-  async carregar() { try { this.d = this.norm(await Auth.call('/admin/profs')); await this.carregarSol(true); this.draw(); } catch (e) { const b = $('#gBody'); if (b) b.innerHTML = `<div class="alert bad">${ic('alert')}<div>${esc(e.message)}</div></div>`; } },
+  async carregar() { try { this.d = this.norm(await Auth.call('/admin/profs')); Status.dados(true); await this.carregarSol(true); this.draw(); } catch (e) { Status.dados(false, e.message); const b = $('#gBody'); if (b) b.innerHTML = `<div class="alert bad">${ic('alert')}<div>${esc(e.message)}</div></div>`; } },
   aba(t) { location.hash = '#/gestao/' + t; },
   TITULOS: { professores: ['Professores', 'Cadastros, alunos, plano, vencimento e bloqueio de acesso'], solicitacoes: ['Solicitações de plano', 'Pedidos de mudança feitos pelos professores: aprove ou recuse'], pagamentos: ['Pagamentos', 'Controle de mensalidades recebidas'], relatorios: ['Relatórios de gestão', 'Receita, situação dos professores e vencimentos'], convites: ['Convidar professores', 'Envie o link e o código de convite pelo WhatsApp'], planos: ['Plano e cobrança', 'Valor mensal, tolerância, bloqueio automático e PIX'], backup: ['Backup global', 'Banco de dados, chaves, gestão e configurações em um arquivo criptografado'] },
   /* controle de quem já foi avisado (só neste navegador) */
@@ -878,8 +888,8 @@ Object.assign(Gestao, {
   pend() { return (this.sol.itens || []).filter(x => (x.status || 'pendente') === 'pendente').length; },
   async carregarSol(silencioso) {
     const antes = this.pend();
-    try { const r = await Auth.call('/admin/solicitacoes'); this.sol = { ok: true, itens: Array.isArray(r.itens) ? r.itens : Array.isArray(r.solicitacoes) ? r.solicitacoes : [] }; }
-    catch (e) { this.sol = { ok: false, itens: [], erro: e.status }; }
+    try { const r = await Auth.call('/admin/solicitacoes'); this.sol = { ok: true, itens: Array.isArray(r.itens) ? r.itens : Array.isArray(r.solicitacoes) ? r.solicitacoes : [] }; Status.dados(true); }
+    catch (e) { this.sol = { ok: false, itens: [], erro: e.status }; Status.dados(false, e.message); }
     const n = this.pend();
     if (n > 0 && (this.ultPend == null || n > this.ultPend)) toast(this.ultPend == null ? `Você tem ${n} solicitação(ões) de mudança de plano pendente(s)` : `${n - this.ultPend} nova(s) solicitação(ões) de mudança de plano`, 'info', 9000);
     this.ultPend = n; renderNav('gestao/' + this.tab);
@@ -911,11 +921,99 @@ Object.assign(Gestao, {
   },
   addPlano(n = '', v = '', d = '') { const el = $('#plRows'); if (!el) return; const r = document.createElement('div'); r.className = 'pl-row'; r.innerHTML = `<input class="plN" placeholder="Nome (ex.: Anual)" value="${esc(n)}"><input class="plV" type="number" step="0.01" min="0" placeholder="R$/mês" value="${esc(String(v))}"><input class="plD" placeholder="Descrição curta" value="${esc(d)}"><button type="button" class="btn sm danger" onclick="this.parentNode.remove()" aria-label="Remover">${ic('x', 14)}</button>`; el.appendChild(r); }
 });
+/* =========================================================
+   STATUS DO SISTEMA (painel do administrador)
+   Verifica o servidor (/health) a cada minuto e registra a última sincronização
+   dos dados de gestão com o servidor. Aparece no topo da Gestão, no menu lateral
+   e como um ponto no cabeçalho do celular.
+   ========================================================= */
+const Status = {
+  h: null, ms: null, checadoEm: 0, erro: '', busy: false,
+  dadosEm: 0, dadosErro: '', timer: null, relogio: null,
+  quando(ts) {
+    if (!ts) return 'nunca';
+    const s = Math.max(0, Math.round((Date.now() - ts) / 1000));
+    if (s < 10) return 'agora';
+    if (s < 60) return `há ${s} s`;
+    if (s < 3600) return `há ${Math.round(s / 60)} min`;
+    if (s < 86400) return `há ${Math.round(s / 3600)} h`;
+    return fmtDate(ts);
+  },
+  hora: ts => ts ? new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—',
+  dados(ok, erro) { if (ok) { this.dadosEm = Date.now(); this.dadosErro = ''; } else this.dadosErro = erro || 'falha'; this.pintar(); },
+  /* lista de verificações: [ok, título, detalhe, grave] — grave=false é só informativo */
+  itens() {
+    const h = this.h || {}, V = h.vars || {}, L = [];
+    if (!navigator.onLine) return [[false, 'Internet deste aparelho', 'Sem conexão. Verifique o Wi-Fi ou os dados móveis.', true]];
+    if (!this.h) return [[false, 'Servidor', this.erro ? 'Não respondeu: ' + this.erro : 'Ainda não verificado', true]];
+    L.push([!!h.ok, 'Servidor', h.ok ? `Online · versão ${h.versao || '?'} · resposta em ${this.ms} ms` : 'Respondeu com erro', true]);
+    L.push([h.gist !== false, 'Banco de dados', h.gist === false ? 'O servidor não acessa o banco: ' + (h.gistErro || 'confira GITHUB_TOKEN e GIST_ID') : 'Acessível pelo servidor', true]);
+    L.push([!this.dadosErro && !!this.dadosEm, 'Sincronização da gestão', this.dadosErro ? 'Falhou: ' + this.dadosErro : this.dadosEm ? `Dados recebidos do servidor às ${this.hora(this.dadosEm)} (${this.quando(this.dadosEm)})` : 'Aguardando a primeira carga', true]);
+    L.push([verNum(h.versao) >= verNum(APP_VERSION), 'Versão do servidor', `Servidor ${h.versao || '?'} · site ${APP_VERSION}${verNum(h.versao) >= verNum(APP_VERSION) ? '' : ' (o site é mais novo; atualize o worker.js só se alguma função nova pedir)'}`, false]);
+    if (h.vars) { const f = ['GITHUB_TOKEN', 'GIST_ID', 'SESSION_SECRET'].filter(k => !V[k]); L.push([!f.length, 'Variáveis do servidor', f.length ? 'Faltando: ' + f.join(', ') : 'Todas encontradas', true]); }
+    else if (h.sessao === false) L.push([false, 'Sessões', 'Defina SESSION_SECRET no servidor', true]);
+    L.push([!!h.ia?.configurada, 'Correção por IA', h.ia?.configurada ? `Ativa · ${PROVIDERS[h.ia.provider] || h.ia.provider || ''}${h.ia.model ? ' · ' + h.ia.model : ''}` : 'Sem AI_KEY: professores usam a correção gratuita', false]);
+    return L;
+  },
+  nivel() {
+    if (!navigator.onLine) return ['err', 'Sem internet'];
+    if (!this.h) return this.erro ? ['err', 'Servidor fora do ar'] : ['busy', 'Verificando…'];
+    const ruins = this.itens().filter(x => !x[0] && x[3]);
+    if (!this.h.ok) return ['err', 'Servidor com erro'];
+    return ruins.length ? ['warn', `Online com ${ruins.length} alerta${ruins.length > 1 ? 's' : ''}`] : ['ok', 'Sistema online'];
+  },
+  async checar(manual) {
+    if (this.busy) return; this.busy = true; if (manual) this.pintar(true);
+    const t0 = performance.now();
+    try {
+      const r = await fetch(Auth.api + '/health', { cache: 'no-store', credentials: 'omit', referrerPolicy: 'no-referrer', signal: AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined });
+      const j = await r.json(); this.ms = Math.round(performance.now() - t0); this.h = j; this.erro = r.ok ? '' : 'HTTP ' + r.status;
+    } catch (e) { this.h = null; this.ms = null; this.erro = e.name === 'TimeoutError' ? 'sem resposta em 15 s' : (e.message || 'falha de conexão'); }
+    this.checadoEm = Date.now(); this.busy = false;
+    if (manual) { try { await Gestao.carregar(); } catch { } }
+    this.pintar();
+    if (manual) toast(this.nivel()[0] === 'ok' ? 'Tudo funcionando' : this.nivel()[1], this.nivel()[0] === 'ok' ? 'ok' : 'bad');
+  },
+  pintar(verificando) {
+    const [nv, txt] = verificando ? ['busy', 'Verificando…'] : this.nivel(), dot = nv === 'warn' ? 'busy' : nv;
+    const sinc = this.dadosEm ? `Sincronizado às ${this.hora(this.dadosEm).slice(0, 5)}` : 'Aguardando sincronização';
+    const side = $('#admStatus');
+    if (side) side.innerHTML = `<div class="sync"><span class="dot ${dot}"></span><span><b style="font-weight:600">${esc(txt)}</b><br><span style="opacity:.7">${esc(sinc)} · ${esc(this.quando(this.dadosEm))}</span></span></div><button onclick="Status.checar(true)">${ic('refresh', 15)} Verificar agora</button>`;
+    const d2 = $('#admDot'); if (d2) { d2.className = 'dot ' + dot; d2.title = txt; }
+    const g = $('#gStatus'); if (!g) return;
+    const ok = this.itens(), pill = (v, t) => `<span class="st-pill ${v ? 'ok' : 'bad'}">${ic(v ? 'check' : 'x', 12)} ${esc(t)}</span>`;
+    const h = this.h || {};
+    g.className = 'st-bar ' + nv;
+    g.innerHTML = `<div class="st-main"><span class="dot ${dot}"></span><div><b>${esc(txt)}</b><div class="muted small">${this.checadoEm ? `Verificado às ${this.hora(this.checadoEm)} · próxima verificação automática em 1 min` : 'Primeira verificação em andamento'}</div></div></div>
+      <div class="st-pills">${this.h ? pill(!!h.ok, 'Servidor' + (this.ms != null ? ` ${this.ms} ms` : '')) + pill(h.gist !== false, 'Banco de dados') + pill(!!h.ia?.configurada, 'IA') : pill(false, 'Servidor')}${pill(!this.dadosErro && !!this.dadosEm, this.dadosEm ? `${sinc} (${this.quando(this.dadosEm)})` : 'Sincronização')}</div>
+      <div class="st-acts"><button class="btn sm" onclick="Status.detalhes()">Detalhes</button><button class="btn sm" onclick="Status.checar(true)" ${verificando || this.busy ? 'disabled' : ''}>${ic('refresh', 14)} Verificar agora</button></div>`;
+    const m = $('#stDet'); if (m) m.innerHTML = this.tabela(ok);
+  },
+  tabela(L) {
+    return `<table class="tbl"><tbody>${L.map(([v, t, d, grave]) => `<tr><td style="width:34px"><span class="ci ${v ? 'ok' : grave ? 'bad' : ''}" style="${!v && !grave ? 'background:#eceae3;color:#5b6478' : ''}">${ic(v ? 'check' : grave ? 'x' : 'alert', 13)}</span></td><td style="width:34%"><b>${esc(t)}</b></td><td class="small" style="word-break:break-word">${esc(d)}</td></tr>`).join('')}
+      <tr><td></td><td><b>Endereço do servidor</b></td><td class="small" style="word-break:break-all"><code>${esc(Auth.api)}</code></td></tr>
+      <tr><td></td><td><b>Versão do site</b></td><td class="small">${esc(APP_VERSION)}</td></tr>
+      <tr><td></td><td><b>Última verificação</b></td><td class="small">${this.checadoEm ? esc(fmtDate(this.checadoEm)) + ' · ' + esc(this.hora(this.checadoEm)) : '—'}</td></tr></tbody></table>`;
+  },
+  detalhes() {
+    modal({ title: 'Saúde do sistema', wide: true, body: `<div id="stDet">${this.tabela(this.itens())}</div><p class="hint">A verificação roda sozinha a cada minuto enquanto esta tela está aberta, e também quando você volta para a aba ou a internet retorna.</p>`,
+      actions: [{ label: ic('refresh') + ' Verificar agora', onClick: async () => { await this.checar(true); return false; } }, { label: 'Fechar', cls: 'primary' }] });
+  },
+  iniciar() {
+    this.checar();
+    clearInterval(this.timer); this.timer = setInterval(() => { if (!document.hidden) this.checar(); }, 60000);
+    clearInterval(this.relogio); this.relogio = setInterval(() => { if (!document.hidden && !this.busy) this.pintar(); }, 15000);
+    window.addEventListener('focus', () => this.checar());
+    window.addEventListener('online', () => this.checar());
+    window.addEventListener('offline', () => this.pintar());
+  }
+};
 function viewGestao() {
   if (!Auth.admin) { location.hash = '#/painel'; return; }
   const tt = Gestao.TITULOS[Gestao.tab] || Gestao.TITULOS.professores;
   setMain(`<div class="page-head" id="gHead"><div><h2>${tt[0]}</h2><p class="muted">${tt[1]}</p></div><div class="actions"><a class="btn" href="apresentacao.html">${ic('sparkle')} Apresentação</a><button class="btn" onclick="Gestao.carregar()">${ic('refresh')} Atualizar</button>${Gestao.tab !== 'convites' ? `<button class="btn primary" onclick="Gestao.aba('convites')">${ic('send')} Convidar professor</button>` : ''}</div></div>
-  <div id="gKpi"></div><div id="gTabs"></div><div id="gBody"><div class="muted small">Carregando…</div></div>`, tt[0]);
+  <div id="gStatus" class="st-bar"></div><div id="gKpi"></div><div id="gTabs"></div><div id="gBody"><div class="muted small">Carregando…</div></div>`, tt[0]);
+  Status.pintar();
   if (Gestao.d) Gestao.draw();
   Gestao.carregar();
 }
@@ -3445,7 +3543,7 @@ async function boot() {
   window.addEventListener('hashchange', router);
   router();
   if (!student && !Auth.admin) { Sync.start(); setInterval(() => { if (!document.hidden) PlanoProf.sync(); }, 120000); window.addEventListener('focus', () => PlanoProf.sync()); }
-  if (!student && Auth.admin) { setInterval(() => { if (!document.hidden) Gestao.carregarSol(); }, 60000); window.addEventListener('focus', () => Gestao.carregarSol()); }
+  if (!student && Auth.admin) { Status.iniciar(); setInterval(() => { if (!document.hidden) Gestao.carregarSol(); }, 60000); window.addEventListener('focus', () => Gestao.carregarSol()); }
   if (!student && !Auth.admin && avisoDe(S.assin)) { const k = 'catedra_aviso_sessao'; let ja = false; try { ja = sessionStorage.getItem(k) === hojeISO(); sessionStorage.setItem(k, hojeISO()); } catch { } if (!ja) setTimeout(() => comoPagar(true), 600); }
 }
 boot();
