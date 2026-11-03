@@ -397,7 +397,7 @@ const LIBS = {
   tessLang: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/por@1.0.0/4.0.0_best_int',
   qrcode: 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js'
 };
-const APP_VERSION = '2026.11.3-6';
+const APP_VERSION = '2026.11.3-7';
 const sha16 = async t => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(t || ''))))].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
 const verNum = v => { const m = String(v || '').match(/^(\d+)\.(\d+)\.(\d+)-(\d+)$/); return m ? ((+m[1] * 100 + +m[2]) * 100 + +m[3]) * 1000 + +m[4] : 0; };
 const BC = (() => { try { return new BroadcastChannel('catedra'); } catch { return null; } })();
@@ -730,7 +730,7 @@ const Gestao = {
   },
   async carregar() { try { this.d = this.norm(await Auth.call('/admin/profs')); Status.dados(true); await this.carregarSol(true); this.draw(); } catch (e) { Status.dados(false, e.message); const b = $('#gBody'); if (b) b.innerHTML = `<div class="alert bad">${ic('alert')}<div>${esc(e.message)}</div></div>`; } },
   aba(t) { location.hash = '#/gestao/' + t; },
-  TITULOS: { professores: ['Professores', 'Cadastros, alunos, plano, vencimento e bloqueio de acesso'], solicitacoes: ['Solicitações de plano', 'Pedidos de mudança feitos pelos professores: aprove ou recuse'], pagamentos: ['Pagamentos', 'Controle de mensalidades recebidas'], relatorios: ['Relatórios de gestão', 'Receita, situação dos professores e vencimentos'], convites: ['Convidar professores', 'Envie o link e o código de convite pelo WhatsApp'], planos: ['Plano e cobrança', 'Valor mensal, tolerância, bloqueio automático e PIX'], backup: ['Backup global', 'Banco de dados, chaves, gestão e configurações em um arquivo criptografado'] },
+  TITULOS: { professores: ['Professores', 'Cadastros, alunos, plano, vencimento e bloqueio de acesso'], solicitacoes: ['Solicitações de plano', 'Pedidos de mudança feitos pelos professores: aprove ou recuse'], pagamentos: ['Pagamentos', 'Controle de mensalidades recebidas'], relatorios: ['Relatórios de gestão', 'Receita, situação dos professores e vencimentos'], convites: ['Convidar professores', 'Envie o link e o código de convite pelo WhatsApp'], planos: ['Plano e cobrança', 'Valor mensal, tolerância, bloqueio automático e PIX'], propostas: ['Propostas comerciais', 'Propostas para escolas e universidades, com planos e valores editáveis e PDF'], backup: ['Backup global', 'Banco de dados, chaves, gestão e configurações em um arquivo criptografado'] },
   /* controle de quem já foi avisado (só neste navegador) */
   avisados() { try { return JSON.parse(localStorage.getItem('catedra_avisados') || '{}'); } catch { return {}; } },
   marcarAviso(p) { const a = this.avisados(); a[p.id + '|' + p.venc] = hojeISO(); try { localStorage.setItem('catedra_avisados', JSON.stringify(a)); } catch { } },
@@ -751,7 +751,7 @@ const Gestao = {
     if (this.tab !== 'professores') $('#gKpi').innerHTML = '';
     $('#gTabs').innerHTML = '';
     const tt = this.TITULOS[this.tab] || this.TITULOS.professores, ph = $('#gHead'); if (ph) { ph.querySelector('h2').textContent = tt[0]; ph.querySelector('p').textContent = tt[1]; document.title = tt[0] + ' · Cátedra'; $('#pageTitle').textContent = tt[0]; }
-    const B = $('#gBody'); B.innerHTML = this[this.tab](); if (this.tab === 'planos') this.prevPix(); if (this.tab === 'convites') Admin.convite(); if (this.tab === 'professores') this.lista(); if (this.tab === 'backup') BackupAdm.status();
+    const B = $('#gBody'); B.innerHTML = this[this.tab](); if (this.tab === 'planos') this.prevPix(); if (this.tab === 'propostas') Proposta.depois(); if (this.tab === 'convites') Admin.convite(); if (this.tab === 'professores') this.lista(); if (this.tab === 'backup') BackupAdm.status();
   },
   /* ---- professores ---- */
   avisosVenc() {
@@ -866,6 +866,7 @@ const Gestao = {
     <div class="card"><h3>Vencimentos e atrasos</h3>${prox.length ? `<div style="display:grid;gap:8px;margin-top:10px">${prox.map(p => `<div style="display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap"><div><b>${esc(p.nome)}</b><div class="muted small">${dBR(p.venc)} · ${brl(p.valor)}</div></div><div style="display:flex;gap:8px;align-items:center">${chip(p.status)}<button class="btn sm" onclick="Gestao.avisar(${jq(p.id)})">Avisar</button></div></div>`).join('')}</div>` : '<p class="muted small">Nenhum vencimento nos próximos 7 dias e nenhum atraso.</p>'}</div></div>`;
   },
   backup() { return BackupAdm.html(); },
+  propostas() { return Proposta.html(); },
   convites() { return `<div class="card" id="admConvite"><div class="muted small">Carregando…</div></div>`; },
   /* ---- plano e cobrança ---- */
   planos() {
@@ -1026,6 +1027,293 @@ const Status = {
     window.addEventListener('focus', () => this.checar());
     window.addEventListener('online', () => this.checar());
     window.addEventListener('offline', () => this.pintar());
+  }
+};
+/* =========================================================
+   PROPOSTAS COMERCIAIS (somente painel de gestão do administrador)
+   Guardadas no banco local do administrador (IndexedDB, store "meta", id "propostas"),
+   que também entra no backup global. PDF gerado com jsPDF + autotable.
+   ========================================================= */
+const PROP_RECURSOS = [
+  ['Turmas e alunos', 'Importação da lista de alunos em segundos, quadro de notas por turma e ficha individual do aluno.'],
+  ['Trabalhos e provas', 'Modelos prontos (redação ENEM, artigo ABNT, resenha, estudo de caso, relatório) e provas com gabarito objetivo e discursivo.'],
+  ['Envio pelo aluno', 'Link ou QR code na sala, sem cadastro nem senha. Várias páginas por envio, em PDF, Word ou foto.'],
+  ['Correção automática', 'Correção gratuita por métricas do texto e leitura óptica, ou por inteligência artificial com análise de conceitos e leitura de manuscritos.'],
+  ['Revisão do professor', 'O professor tem a palavra final: ajusta a nota, comenta para o aluno e lança correções manuais.'],
+  ['Relatórios em PDF', 'Relatórios por entrega, aluno, atividade e turma, prontos para a coordenação e as reuniões pedagógicas.'],
+  ['Gestão institucional', 'Painel com todos os professores, planos, limites de uso da IA e acompanhamento centralizado.'],
+  ['Segurança e continuidade', 'Contas individuais, chaves protegidas no servidor e backup global criptografado.'],
+  ['Aplicativo', 'Funciona no navegador e se instala como aplicativo no celular e no computador, sem custo extra.']
+];
+const PROP_STATUS = { rascunho: ['Rascunho', '#5b6478', '#eceae3'], enviada: ['Enviada', '#2948d1', '#e9edfb'], negociacao: ['Em negociação', '#8a5a0a', '#fff2d6'], aceita: ['Aceita', '#1b8f62', '#e2f4ec'], recusada: ['Recusada', '#b3261e', '#fde8e6'] };
+const Proposta = {
+  lista: null, atual: null, _t: null,
+  uid: () => 'pr' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+  async carregar() { if (this.lista) return this.lista; try { this.lista = (await DB.get('meta', 'propostas'))?.itens || []; } catch { this.lista = []; } return this.lista; },
+  async gravar() { try { await DB.put('meta', { id: 'propostas', itens: this.lista, updatedAt: Date.now() }); } catch (e) { toast('Não foi possível salvar: ' + e.message, 'bad'); } },
+  salvarDepois() { clearTimeout(this._t); const el = $('#prSalvo'); if (el) el.textContent = 'Salvando…'; this._t = setTimeout(async () => { if (!this.atual) return; this.atual.atualizadoEm = Date.now(); const i = this.lista.findIndex(x => x.id === this.atual.id); if (i >= 0) this.lista[i] = this.atual; else this.lista.unshift(this.atual); await this.gravar(); const s = $('#prSalvo'); if (s) s.textContent = 'Salvo às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }, 500); },
+  numero() { const ano = new Date().getFullYear(); const n = (this.lista || []).filter(p => String(p.numero || '').includes('-' + ano + '-')).length + 1; return `PC-${ano}-${String(n).padStart(3, '0')}`; },
+  nova() {
+    const fin = Gestao.d?.fin || {}, pix = typeof Pix !== 'undefined' ? Pix.ler(fin.pix) : {};
+    const planosFin = (fin.planos || []).filter(x => x.nome);
+    const planos = planosFin.length ? planosFin.map((x, i) => ({ id: this.uid(), nome: x.nome, descricao: x.descricao || '', preco: +x.valor || 0, periodo: 'mês', unidade: 'por professor', qtd: 10, itens: '', destaque: i === Math.min(1, planosFin.length - 1), incluir: true })) : [
+      { id: this.uid(), nome: 'Essencial', descricao: 'Para escolas e cursos que estão começando a digitalizar a avaliação.', preco: 49.9, periodo: 'mês', unidade: 'por professor', qtd: 10, destaque: false, incluir: true, itens: 'Turmas, alunos e atividades ilimitados\nEnvio por link e QR code\nCorreção gratuita (métricas e leitura óptica)\nRelatórios em PDF\nSuporte por WhatsApp e e-mail' },
+      { id: this.uid(), nome: 'Institucional', descricao: 'Para faculdades e escolas com vários professores e coordenação.', preco: 39.9, periodo: 'mês', unidade: 'por professor', qtd: 30, destaque: true, incluir: true, itens: 'Tudo do plano Essencial\nCorreção por inteligência artificial\nPainel de gestão institucional\nTreinamento da equipe docente\nSuporte prioritário' },
+      { id: this.uid(), nome: 'Rede de ensino', descricao: 'Para redes e universidades com vários campi.', preco: 14900, periodo: 'ano', unidade: 'por instituição', qtd: 1, destaque: false, incluir: true, itens: 'Tudo do plano Institucional\nLimites de IA personalizados\nImplantação assistida em todos os campi\nGerente de conta dedicado' }
+    ];
+    return {
+      id: this.uid(), numero: this.numero(), status: 'rascunho', criadoEm: Date.now(), atualizadoEm: Date.now(),
+      data: hojeISO(), validade: 30, vigencia: 12, titulo: 'Plataforma Cátedra de gestão acadêmica e avaliação',
+      cliente: { instituicao: '', tipo: 'Universidade', responsavel: '', cargo: '', email: '', telefone: '', cidade: '', professores: '', alunos: '' },
+      emissor: { empresa: 'Cátedra', cnpj: pix.tipo === 'CNPJ' ? Pix.fmtChave(pix.chave, 'CNPJ') : '31.632.000/0001-38', responsavel: Auth.user?.nome || '', cargo: 'Consultor comercial', email: Auth.user?.email || '', telefone: fin.contato ? fmtTel(fin.contato) : '', site: String(S.cfg?.publicUrl || '').replace(/index\.html$/, '') },
+      apresentacao: 'A {instituicao} pode reunir todo o ciclo de avaliação, da publicação das atividades à devolutiva ao aluno, em uma única plataforma. O Cátedra organiza as turmas, recebe trabalhos e provas pelo celular do aluno (por link ou QR code), corrige automaticamente com os critérios definidos pelo professor e entrega relatórios prontos para a coordenação.\n\nEsta proposta apresenta a solução, os planos disponíveis, o investimento e as condições para a implantação.',
+      objetivos: 'Reduzir o tempo dos professores com correção e lançamento de notas\nPadronizar os critérios de avaliação entre turmas e professores\nAcompanhar entregas e desempenho das turmas em tempo real\nDar devolutiva rápida e detalhada aos alunos\nGerar relatórios para a coordenação e as reuniões pedagógicas',
+      recursos: PROP_RECURSOS.map(([titulo, desc]) => ({ titulo, desc, on: true })),
+      planos,
+      adicionais: [{ desc: 'Implantação e configuração da conta institucional', valor: 1500, qtd: 1 }, { desc: 'Treinamento dos professores (4 horas, on-line)', valor: 800, qtd: 1 }],
+      desconto: 0,
+      pagamento: 'Planos mensais: pagamento mensal via PIX ou boleto, com vencimento no dia 10. Planos anuais: à vista com 10% de desconto ou em até 12 parcelas. Serviços de implantação e treinamento: 50% na assinatura e 50% na conclusão.',
+      implantacao: 'Semana 1: configuração da conta institucional e cadastro dos professores\nSemana 2: treinamento dos professores e criação das primeiras turmas\nSemana 3: piloto com atividades reais e ajuste dos critérios de correção\nSemana 4: acompanhamento, relatórios e avaliação dos resultados',
+      suporte: 'Atendimento por WhatsApp e e-mail em dias úteis, das 8h às 18h, com primeira resposta em até 1 dia útil. Atualizações e novas funções do sistema incluídas, sem custo adicional.',
+      observacoes: 'Valores em reais (R$). Tributos retidos na fonte, quando aplicáveis, não estão incluídos. A correção por inteligência artificial respeita o limite mensal de uso por professor definido no plano contratado.'
+    };
+  },
+  /* cálculo do investimento */
+  calc(p) {
+    const meses = Math.max(1, +p.vigencia || 12);
+    const planos = (p.planos || []).filter(x => x.incluir !== false).map(x => {
+      const q = Math.max(0, +x.qtd || 0), v = Math.max(0, +x.preco || 0);
+      const mensal = x.periodo === 'mês' ? v * q : x.periodo === 'ano' ? v * q / 12 : 0;
+      const total = x.periodo === 'mês' ? v * q * meses : x.periodo === 'ano' ? v * q * Math.ceil(meses / 12) : v * q;
+      return { ...x, q, v, mensal, total };
+    });
+    const adic = (p.adicionais || []).filter(a => a.desc).map(a => ({ ...a, q: Math.max(0, +a.qtd || 0), v: Math.max(0, +a.valor || 0), total: Math.max(0, +a.valor || 0) * Math.max(0, +a.qtd || 0) }));
+    const tAdic = adic.reduce((s, a) => s + a.total, 0), rec = planos.find(x => x.destaque) || planos[0] || null;
+    const bruto = (rec?.total || 0) + tAdic, pct = Math.min(100, Math.max(0, +p.desconto || 0)), desc = bruto * pct / 100;
+    return { meses, planos, adic, tAdic, rec, bruto, pct, desc, total: bruto - desc };
+  },
+  validoAte(p) { const d = new Date((p.data || hojeISO()) + 'T12:00:00'); d.setDate(d.getDate() + (+p.validade || 30)); return d.toISOString().slice(0, 10); },
+  unidade(x) { return x.periodo === 'único' ? `${x.unidade} · pagamento único` : `${x.unidade} / ${x.periodo}`; },
+  qtdTxt(x) { const n = +x.qtd || 0, u = String(x.unidade || ''); const nome = /professor/.test(u) ? (n === 1 ? 'professor' : 'professores') : /aluno/.test(u) ? (n === 1 ? 'aluno' : 'alunos') : /turma/.test(u) ? (n === 1 ? 'turma' : 'turmas') : /campus/.test(u) ? (n === 1 ? 'campus' : 'campi') : (n === 1 ? 'instituição' : 'instituições'); return `${n} ${nome}`; },
+  texto(p, s) { return String(s || '').split('{instituicao}').join(p.cliente.instituicao || 'instituição'); },
+  get(o, path) { return path.split('.').reduce((a, k) => a == null ? a : a[k], o); },
+  set(o, path, v) { const ks = path.split('.'); const last = ks.pop(); const alvo = ks.reduce((a, k) => a[k], o); alvo[last] = v; },
+
+  /* ---------- telas ---------- */
+  html() {
+    if (!this.lista) { this.carregar().then(() => Gestao.draw()); return '<div class="muted small">Carregando…</div>'; }
+    return this.atual ? this.editor() : this.listaHTML();
+  },
+  listaHTML() {
+    const L = [...this.lista].sort((a, b) => (b.atualizadoEm || 0) - (a.atualizadoEm || 0));
+    const chipS = s => { const c = PROP_STATUS[s] || PROP_STATUS.rascunho; return `<span style="background:${c[2]};color:${c[1]};padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700;white-space:nowrap">${c[0]}</span>`; };
+    return `<div class="card"><div class="card-head"><div><h3 style="margin:0">Propostas comerciais</h3><p class="muted small" style="margin:4px 0 0">Monte propostas para escolas e universidades, com planos e valores editáveis, e baixe em PDF.</p></div><button class="btn primary" onclick="Proposta.abrir()">${ic('plus')} Nova proposta</button></div>
+      ${L.length ? `<div style="overflow-x:auto"><table class="gt"><thead><tr><th>Nº</th><th>Instituição</th><th class="hide-sm">Data</th><th>Situação</th><th class="num">Investimento</th><th></th></tr></thead><tbody>${L.map(p => { const c = this.calc(p); return `<tr><td><b>${esc(p.numero)}</b></td><td>${esc(p.cliente.instituicao || '(sem nome)')}<div class="muted small">${esc(p.cliente.cidade || p.cliente.tipo || '')}</div></td><td class="hide-sm">${dBR(p.data)}<div class="muted small">válida até ${dBR(this.validoAte(p))}</div></td><td>${chipS(p.status)}</td><td class="num"><b>${brl(c.total)}</b><div class="muted small">${c.rec ? esc(c.rec.nome) : ''}</div></td><td style="white-space:nowrap;text-align:right"><button class="btn sm primary" onclick="Proposta.abrir(${jq(p.id)})">${ic('edit', 14)} Editar</button> <button class="btn sm" onclick="Proposta.pdf(${jq(p.id)})">${ic('download', 14)} PDF</button> <button class="btn sm" onclick="Proposta.duplicar(${jq(p.id)})" title="Duplicar">${ic('copy', 14)}</button> <button class="btn sm danger" onclick="Proposta.excluir(${jq(p.id)})" title="Excluir">${ic('trash', 14)}</button></td></tr>`; }).join('')}</tbody></table></div>`
+      : `<div class="empty" style="padding:30px 10px"><div class="ei">${ic('file', 28)}</div><h3>Nenhuma proposta ainda</h3><p>Crie a primeira proposta: os planos e valores vêm preenchidos com sugestões e podem ser editados.</p><button class="btn primary" onclick="Proposta.abrir()">${ic('plus')} Nova proposta</button></div>`}</div>`;
+  },
+  abrir(id) { this.atual = id ? JSON.parse(JSON.stringify(this.lista.find(x => x.id === id))) : this.nova(); if (!id) this.salvarDepois(); Gestao.draw(); window.scrollTo(0, 0); },
+  fechar() { clearTimeout(this._t); if (this.atual) { const i = this.lista.findIndex(x => x.id === this.atual.id); if (i >= 0) this.lista[i] = this.atual; this.gravar(); } this.atual = null; Gestao.draw(); },
+  async duplicar(id) { const o = JSON.parse(JSON.stringify(this.lista.find(x => x.id === id))); o.id = this.uid(); o.numero = this.numero(); o.status = 'rascunho'; o.data = hojeISO(); o.criadoEm = o.atualizadoEm = Date.now(); o.planos.forEach(x => x.id = this.uid()); this.lista.unshift(o); await this.gravar(); toast('Proposta duplicada: ' + o.numero, 'ok'); Gestao.draw(); },
+  async excluir(id) { const p = this.lista.find(x => x.id === id); if (!await confirmDlg(`Excluir a proposta <b>${esc(p.numero)}</b>${p.cliente.instituicao ? ' para ' + esc(p.cliente.instituicao) : ''}?`, 'Excluir')) return; this.lista = this.lista.filter(x => x.id !== id); await this.gravar(); Gestao.draw(); },
+  editor() {
+    const p = this.atual, I = (path, label, o = {}) => `<div class="field"${o.span ? ' style="grid-column:1/-1"' : ''}><label for="pr_${path}">${label}</label><input id="pr_${path}" data-p="${path}" type="${o.type || 'text'}" ${o.type === 'number' ? `step="${o.step || 'any'}" min="0"` : ''} value="${esc(this.get(p, path) ?? '')}" placeholder="${esc(o.ph || '')}"></div>`;
+    const A = (path, label, rows = 4, hint = '') => `<div class="field"><label for="pr_${path}">${label}</label><textarea id="pr_${path}" data-p="${path}" rows="${rows}">${esc(this.get(p, path) || '')}</textarea>${hint ? `<div class="hint">${hint}</div>` : ''}</div>`;
+    const Sel = (path, label, ops) => `<div class="field"><label for="pr_${path}">${label}</label><select id="pr_${path}" data-p="${path}">${ops.map(o => { const [v, t] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(v)}" ${this.get(p, path) === v ? 'selected' : ''}>${esc(t)}</option>`; }).join('')}</select></div>`;
+    const sec = (n, t, body, extra = '') => `<div class="card pr-sec"><div class="card-head"><h3 style="margin:0"><span class="pr-n">${n}</span> ${t}</h3>${extra}</div>${body}</div>`;
+    const planos = p.planos.map((x, i) => `<div class="pr-plano ${x.destaque ? 'dest' : ''} ${x.incluir === false ? 'off' : ''}">
+        <div class="pr-plano-top"><label class="check" style="margin:0"><input type="checkbox" data-p="planos.${i}.incluir" ${x.incluir !== false ? 'checked' : ''}> <span>Incluir na proposta</span></label>
+          <label class="check" style="margin:0"><input type="radio" name="prDest" data-dest="${i}" ${x.destaque ? 'checked' : ''}> <span>Recomendado</span></label>
+          <span style="margin-left:auto;display:flex;gap:4px"><button type="button" class="icon-btn" onclick="Proposta.moverPlano(${i},-1)" ${i ? '' : 'disabled'} title="Mover para a esquerda">←</button><button type="button" class="icon-btn" onclick="Proposta.moverPlano(${i},1)" ${i < p.planos.length - 1 ? '' : 'disabled'} title="Mover para a direita">→</button><button type="button" class="icon-btn" onclick="Proposta.remPlano(${i})" title="Remover plano">${ic('trash', 16)}</button></span></div>
+        <div class="row">${I(`planos.${i}.nome`, 'Nome do plano')}${I(`planos.${i}.preco`, 'Preço unitário (R$)', { type: 'number', step: '0.01' })}</div>
+        <div class="row">${Sel(`planos.${i}.periodo`, 'Cobrança', [['mês', 'Mensal'], ['ano', 'Anual'], ['único', 'Pagamento único']])}${Sel(`planos.${i}.unidade`, 'Unidade', ['por professor', 'por aluno', 'por turma', 'por campus', 'por instituição'])}${I(`planos.${i}.qtd`, 'Quantidade', { type: 'number', step: '1' })}</div>
+        ${I(`planos.${i}.descricao`, 'Descrição curta', { span: true })}
+        ${A(`planos.${i}.itens`, 'O que está incluído (um item por linha)', 4)}
+        <div class="pr-plano-tot" data-tot="${i}"></div></div>`).join('');
+    const adic = p.adicionais.map((a, i) => `<div class="pr-adic"><div class="field" style="flex:3;min-width:200px"><label>Serviço</label><input data-p="adicionais.${i}.desc" value="${esc(a.desc)}"></div><div class="field" style="flex:1;min-width:110px"><label>Valor (R$)</label><input type="number" step="0.01" min="0" data-p="adicionais.${i}.valor" value="${esc(a.valor)}"></div><div class="field" style="width:84px"><label>Qtd.</label><input type="number" step="1" min="0" data-p="adicionais.${i}.qtd" value="${esc(a.qtd)}"></div><button type="button" class="icon-btn" style="margin-bottom:14px" onclick="Proposta.remAdic(${i})" title="Remover">${ic('trash', 16)}</button></div>`).join('');
+    const recursos = p.recursos.map((r, i) => `<div class="pr-rec"><input type="checkbox" data-p="recursos.${i}.on" ${r.on !== false ? 'checked' : ''} aria-label="Incluir recurso"><div style="flex:1;display:grid;gap:6px"><input data-p="recursos.${i}.titulo" value="${esc(r.titulo)}" style="font-weight:600"><textarea data-p="recursos.${i}.desc" rows="2">${esc(r.desc)}</textarea></div><button type="button" class="icon-btn" onclick="Proposta.remRec(${i})" title="Remover">${ic('x', 16)}</button></div>`).join('');
+    return `<div class="pr-bar"><button class="btn" onclick="Proposta.fechar()">${ic('back')} Propostas</button><div style="flex:1;min-width:160px"><b>${esc(p.numero)}</b> <span class="muted small" id="prSalvo">Salvo automaticamente</span></div>
+        <button class="btn" onclick="Proposta.pdf(null,true)">${ic('eye')} Visualizar PDF</button><button class="btn primary" onclick="Proposta.pdf()">${ic('download')} Baixar PDF</button></div>
+      <div class="pr-grid"><div id="propEd" class="pr-ed">
+      ${sec(1, 'Dados da proposta', `<div class="row">${I('numero', 'Número')}${I('data', 'Data', { type: 'date' })}${I('validade', 'Validade (dias)', { type: 'number', step: '1' })}${I('vigencia', 'Vigência do contrato (meses)', { type: 'number', step: '1' })}</div><div class="row">${I('titulo', 'Título da proposta', { span: true })}${Sel('status', 'Situação', Object.entries(PROP_STATUS).map(([k, v]) => [k, v[0]]))}</div>`)}
+      ${sec(2, 'Cliente', `<div class="row">${I('cliente.instituicao', 'Instituição', { ph: 'Ex.: Centro Universitário…' })}${Sel('cliente.tipo', 'Tipo', ['Universidade', 'Centro universitário', 'Faculdade', 'Escola', 'Colégio', 'Rede de ensino', 'Curso técnico', 'Curso livre'])}${I('cliente.cidade', 'Cidade / UF')}</div>
+        <div class="row">${I('cliente.responsavel', 'Responsável')}${I('cliente.cargo', 'Cargo', { ph: 'Ex.: Coordenadora pedagógica' })}${I('cliente.email', 'E-mail', { type: 'email' })}${I('cliente.telefone', 'Telefone')}</div>
+        <div class="row">${I('cliente.professores', 'Nº de professores', { type: 'number', step: '1' })}${I('cliente.alunos', 'Nº de alunos', { type: 'number', step: '1' })}</div>`)}
+      ${sec(3, 'Apresentação e objetivos', `${A('apresentacao', 'Apresentação', 6, 'Use {instituicao} para inserir o nome do cliente.')}${A('objetivos', 'Objetivos para o cliente (um por linha)', 5)}`)}
+      ${sec(4, 'Recursos incluídos', `<div class="pr-recs">${recursos}</div><button type="button" class="btn sm" onclick="Proposta.addRec()">${ic('plus', 14)} Adicionar recurso</button>`)}
+      ${sec(5, 'Planos e valores', `<p class="muted small" style="margin-top:0">Os planos aparecem lado a lado no PDF, como opções. O plano <b>recomendado</b> ganha destaque e é usado no resumo do investimento.</p><div class="pr-planos">${planos}</div><button type="button" class="btn sm" onclick="Proposta.addPlano()">${ic('plus', 14)} Adicionar plano</button>`)}
+      ${sec(6, 'Serviços adicionais', `<p class="muted small" style="margin-top:0">Cobrados uma única vez (implantação, treinamento, migração…).</p>${adic}<button type="button" class="btn sm" onclick="Proposta.addAdic()">${ic('plus', 14)} Adicionar serviço</button>`)}
+      ${sec(7, 'Condições comerciais', `<div class="row">${I('desconto', 'Desconto (%)', { type: 'number', step: '0.5' })}</div>${A('pagamento', 'Forma de pagamento', 3)}${A('implantacao', 'Cronograma de implantação (uma etapa por linha, ex.: "Semana 1: …")', 4)}${A('suporte', 'Suporte e atendimento', 3)}${A('observacoes', 'Observações', 3)}`)}
+      ${sec(8, 'Proponente', `<div class="row">${I('emissor.empresa', 'Empresa')}${I('emissor.cnpj', 'CNPJ')}${I('emissor.site', 'Site')}</div><div class="row">${I('emissor.responsavel', 'Responsável')}${I('emissor.cargo', 'Cargo')}${I('emissor.email', 'E-mail', { type: 'email' })}${I('emissor.telefone', 'Telefone')}</div>`)}
+      </div><aside class="pr-side"><div class="card" id="prResumo"></div></aside></div>`;
+  },
+  depois() { // liga os campos do editor (chamado após cada desenho)
+    const ed = $('#propEd'); if (!ed) return;
+    const on = e => {
+      const el = e.target; if (!this.atual) return;
+      if (el.dataset.dest !== undefined) { this.atual.planos.forEach((x, i) => x.destaque = i === +el.dataset.dest); $$('.pr-plano', ed).forEach((c, i) => c.classList.toggle('dest', i === +el.dataset.dest)); }
+      else if (el.dataset.p) { const v = el.type === 'checkbox' ? el.checked : el.type === 'number' ? (el.value === '' ? '' : parseFloat(el.value)) : el.value; this.set(this.atual, el.dataset.p, v); if (/planos\.\d+\.incluir/.test(el.dataset.p)) el.closest('.pr-plano')?.classList.toggle('off', !el.checked); }
+      this.resumo(); this.salvarDepois();
+    };
+    ed.addEventListener('input', on); ed.addEventListener('change', on); this.resumo();
+  },
+  resumo() {
+    const box = $('#prResumo'); if (!box || !this.atual) return; const p = this.atual, c = this.calc(p);
+    c.planos.forEach(x => { const el = $(`[data-tot="${p.planos.findIndex(y => y.id === x.id)}"]`); if (el) el.innerHTML = `${this.qtdTxt(x)} × ${brl(x.v)} = <b>${brl(x.periodo === 'único' ? x.total : x.v * x.q)}</b>${x.periodo === 'único' ? '' : `/${x.periodo}`} · <b>${brl(x.total)}</b> em ${c.meses} meses`; });
+    $$('.pr-plano.off [data-tot]').forEach(el => el.innerHTML = '<span class="muted">Não incluído</span>');
+    box.innerHTML = `<h3 style="margin-top:0">Resumo do investimento</h3><p class="muted small" style="margin-top:-6px">${esc(p.cliente.instituicao || 'Cliente não informado')} · vigência de ${c.meses} meses</p>
+      ${c.planos.map(x => `<div class="pr-lin ${x === c.rec ? 'rec' : ''}"><span>${esc(x.nome || 'Plano')}${x === c.rec ? ' <em>recomendado</em>' : ''}</span><b>${brl(x.total)}</b></div>`).join('') || '<p class="muted small">Nenhum plano incluído.</p>'}
+      <hr style="border:0;border-top:1px solid var(--line);margin:12px 0">
+      ${c.rec ? `<div class="pr-lin"><span>Plano ${esc(c.rec.nome)}</span><span>${brl(c.rec.total)}</span></div>` : ''}
+      <div class="pr-lin"><span>Serviços adicionais</span><span>${brl(c.tAdic)}</span></div>
+      ${c.pct ? `<div class="pr-lin" style="color:#1b8f62"><span>Desconto (${fmtN(c.pct)}%)</span><span>− ${brl(c.desc)}</span></div>` : ''}
+      <div class="pr-total"><span>Total</span><b>${brl(c.total)}</b></div>
+      ${c.rec && c.rec.periodo !== 'único' ? `<p class="muted small" style="margin:8px 0 0">Equivale a ${brl(c.rec.mensal)}/mês no plano ${esc(c.rec.nome)}.</p>` : ''}
+      <p class="muted small" style="margin:8px 0 0">Válida até ${dBR(this.validoAte(p))}.</p>
+      <div class="actions" style="margin-top:14px"><button class="btn primary" style="flex:1;justify-content:center" onclick="Proposta.pdf()">${ic('download')} Baixar PDF</button></div>`;
+  },
+  addPlano() { this.atual.planos.push({ id: this.uid(), nome: 'Novo plano', descricao: '', preco: 0, periodo: 'mês', unidade: 'por professor', qtd: 1, itens: '', destaque: !this.atual.planos.length, incluir: true }); this.salvarDepois(); Gestao.draw(); },
+  remPlano(i) { const r = this.atual.planos.splice(i, 1)[0]; if (r?.destaque && this.atual.planos[0]) this.atual.planos[0].destaque = true; this.salvarDepois(); Gestao.draw(); },
+  moverPlano(i, d) { const L = this.atual.planos, j = i + d; if (j < 0 || j >= L.length) return; [L[i], L[j]] = [L[j], L[i]]; this.salvarDepois(); Gestao.draw(); },
+  addAdic() { this.atual.adicionais.push({ desc: '', valor: 0, qtd: 1 }); Gestao.draw(); },
+  remAdic(i) { this.atual.adicionais.splice(i, 1); this.salvarDepois(); Gestao.draw(); },
+  addRec() { this.atual.recursos.push({ titulo: 'Novo recurso', desc: '', on: true }); this.salvarDepois(); Gestao.draw(); },
+  remRec(i) { this.atual.recursos.splice(i, 1); this.salvarDepois(); Gestao.draw(); },
+
+  /* ---------- PDF ---------- */
+  async pdf(id, ver) {
+    const p = id ? this.lista.find(x => x.id === id) : this.atual; if (!p) return;
+    if (!p.cliente.instituicao && !await confirmDlg('A proposta está sem o nome da instituição cliente. Gerar o PDF assim mesmo?', 'Gerar', false)) return;
+    try {
+      toast('Gerando o PDF…', 'info', 2500);
+      const doc = await pdfNew(); this.desenhar(doc, p);
+      const nome = `Proposta ${p.numero} - ${p.cliente.instituicao || 'cliente'}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w .-]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 90) + '.pdf';
+      if (ver) { const u = doc.output('bloburl'); const w = window.open(u, '_blank'); if (!w) doc.save(nome); } else { doc.save(nome); toast('PDF baixado', 'ok'); }
+    } catch (e) { toast('Não foi possível gerar o PDF: ' + e.message, 'bad', 7000); }
+  },
+  desenhar(doc, p) {
+    const W = 210, H = 297, X = 18, CW = W - 2 * X, NAVY = [17, 26, 51], AMB = [232, 163, 61], AZ = [41, 72, 209], INK = [22, 33, 58], MUT = [104, 112, 131], LIN = [228, 224, 214], PAP = [246, 244, 238];
+    const c = this.calc(p), cli = p.cliente, em = p.emissor; let y = 0;
+    const font = (sz, st = 'normal', cor = INK) => { doc.setFont('helvetica', st); doc.setFontSize(sz); doc.setTextColor(...cor); };
+    const wrap = (t, w, sz) => { doc.setFontSize(sz); return doc.splitTextToSize(T(t), w); };
+    const novaPag = () => { doc.addPage(); y = 30; };
+    const ens = h => { if (y + h > H - 22) novaPag(); };
+    const par = (t, sz = 10, cor = INK, w = CW, x = X, lh = 1.45) => { font(sz, 'normal', cor); for (const ln of wrap(t, w, sz)) { ens(sz * .36 * lh + 1); doc.text(ln, x, y); y += sz * .353 * lh; } };
+    let nSec = 0;
+    const sec = (t, sub) => { ens(30); nSec++; y += 4; doc.setFillColor(...AMB); doc.circle(X + 4, y - 1.6, 4, 'F'); font(9.5, 'bold', NAVY); doc.text(String(nSec), X + 4, y - .1, { align: 'center' }); font(16, 'bold', NAVY); doc.text(T(t), X + 11.5, y); y += 3.5; doc.setDrawColor(...LIN); doc.setLineWidth(.3); doc.line(X, y, X + CW, y); y += 7; if (sub) { par(sub, 9.5, MUT); y += 2; } };
+    const bullets = (linhas, sz = 10, w = CW, x = X) => { linhas.filter(Boolean).forEach(l => { const ls = wrap(l, w - 7, sz); ens(ls.length * sz * .51 + 2); doc.setFillColor(...AMB); doc.circle(x + 1.6, y - 1.2, 1, 'F'); font(sz, 'normal', INK); ls.forEach(t => { doc.text(t, x + 6, y); y += sz * .51; }); y += 1.2; }); };
+    const linhas = s => String(s || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+
+    /* ---- capa ---- */
+    doc.setFillColor(...NAVY); doc.rect(0, 0, W, 178, 'F');
+    doc.setFillColor(36, 51, 107); doc.circle(W + 10, 18, 70, 'F'); doc.setFillColor(...NAVY); doc.circle(W + 18, 26, 54, 'F');
+    doc.setFillColor(...AMB); doc.rect(0, 178, W, 2.2, 'F');
+    doc.setFillColor(...AMB); doc.roundedRect(X, 26, 15, 15, 3.5, 3.5, 'F'); font(17, 'bold', NAVY); doc.text('C', X + 7.5, 36.4, { align: 'center' });
+    font(13, 'bold', [255, 255, 255]); doc.text(T(em.empresa || 'Cátedra'), X + 20, 32.5); font(8.5, 'normal', [185, 194, 218]); doc.text(T('Gestão acadêmica e avaliação com IA'), X + 20, 38);
+    font(10, 'bold', AMB); doc.text(T('PROPOSTA COMERCIAL'), X, 82, { charSpace: 1.2 });
+    let ty = 96; wrap(p.titulo || 'Proposta comercial', CW - 10, 27).slice(0, 3).forEach(l => { font(27, 'bold', [255, 255, 255]); doc.text(l, X, ty); ty += 11.5; });
+    if (cli.instituicao) { font(14, 'normal', [201, 209, 230]); wrap('para ' + cli.instituicao, CW, 14).slice(0, 2).forEach(l => { doc.text(l, X, ty + 2); ty += 7; }); }
+    // dados da capa
+    const caixas = [['Proposta nº', p.numero], ['Data', dBR(p.data)], ['Válida até', dBR(this.validoAte(p))]];
+    const bw = (CW - 8) / 3; caixas.forEach(([k, v], i) => { const bx = X + i * (bw + 4); doc.setFillColor(255, 255, 255); doc.setDrawColor(...LIN); doc.roundedRect(bx, 192, bw, 20, 2.5, 2.5, 'FD'); font(7.5, 'bold', MUT); doc.text(T(k.toUpperCase()), bx + 5, 199, { charSpace: .4 }); font(12, 'bold', NAVY); doc.text(T(v), bx + 5, 207.5); });
+    const bloco = (tit, linhasB, bx, by, w) => { font(7.5, 'bold', AMB); doc.text(T(tit), bx, by, { charSpace: .6 }); let yy = by + 6.5; linhasB.filter(Boolean).forEach((l, i) => { font(i ? 9.5 : 11.5, i ? 'normal' : 'bold', i ? MUT : INK); wrap(l, w, i ? 9.5 : 11.5).slice(0, 2).forEach(t => { doc.text(t, bx, yy); yy += i ? 4.6 : 5.6; }); }); };
+    bloco('PREPARADA PARA', [cli.instituicao || 'Instituição', [cli.responsavel, cli.cargo].filter(Boolean).join(' · '), cli.email, cli.telefone, cli.cidade], X, 228, CW / 2 - 6);
+    bloco('APRESENTADA POR', [em.empresa, [em.responsavel, em.cargo].filter(Boolean).join(' · '), em.email, em.telefone, em.cnpj ? 'CNPJ ' + em.cnpj : ''], X + CW / 2 + 4, 228, CW / 2 - 6);
+    font(7.5, 'normal', MUT); doc.text(T('Documento confidencial, destinado exclusivamente à instituição indicada.'), X, H - 12);
+
+    /* ---- 1. apresentação ---- */
+    novaPag();
+    sec('Apresentação'); par(this.texto(p, p.apresentacao)); y += 3;
+    const obj = linhas(p.objetivos); if (obj.length) { ens(16); font(11.5, 'bold', NAVY); doc.text(T('Objetivos para a ' + (cli.instituicao || 'instituição')).slice(0, 95), X, y); y += 7; bullets(obj); }
+    if (cli.professores || cli.alunos) { y += 2; ens(22); const kv = [cli.professores && [String(cli.professores), 'professores'], cli.alunos && [Number(cli.alunos).toLocaleString('pt-BR'), 'alunos'], [String(c.meses), 'meses de vigência']].filter(Boolean); const w = (CW - (kv.length - 1) * 4) / kv.length; kv.forEach(([n, t], i) => { const bx = X + i * (w + 4); doc.setFillColor(...PAP); doc.roundedRect(bx, y, w, 19, 2.5, 2.5, 'F'); font(17, 'bold', AZ); doc.text(T(n), bx + 5, y + 10); font(8.5, 'normal', MUT); doc.text(T(t), bx + 5, y + 15.5); }); y += 26; }
+
+    /* ---- 2. solução e recursos ---- */
+    const recs = p.recursos.filter(r => r.on !== false && r.titulo);
+    if (recs.length) {
+      sec('Solução e recursos', 'O Cátedra cobre todo o ciclo de avaliação, do planejamento da atividade ao relatório final da turma.');
+      const gw = (CW - 5) / 2;
+      for (let i = 0; i < recs.length; i += 2) {
+        const par2 = recs.slice(i, i + 2), alts = par2.map(r => 12 + wrap(r.desc || '', gw - 12, 8.8).length * 4.1);
+        const h = Math.max(...alts); ens(h + 4);
+        par2.forEach((r, k) => { const bx = X + k * (gw + 5); doc.setFillColor(...PAP); doc.roundedRect(bx, y, gw, h, 2.5, 2.5, 'F'); doc.setFillColor(...(k ? AMB : AZ)); doc.roundedRect(bx + 4, y + 4.6, 1.3, h - 9.2, .6, .6, 'F'); font(10.5, 'bold', NAVY); doc.text(T(r.titulo).slice(0, 60), bx + 8.5, y + 8.2); font(8.8, 'normal', [60, 70, 92]); let yy = y + 13.4; wrap(r.desc || '', gw - 12, 8.8).forEach(t => { doc.text(t, bx + 8.5, yy); yy += 4.1; }); });
+        y += h + 4;
+      }
+    }
+
+    /* ---- 3. planos ---- */
+    if (c.planos.length) {
+      sec('Planos e valores', c.planos.length > 1 ? 'Opções de contratação. O plano recomendado atende melhor ao porte e aos objetivos da instituição.' : '');
+      const porLinha = Math.min(3, c.planos.length), gap = 4.5, cw = (CW - gap * (porLinha - 1)) / porLinha;
+      for (let i = 0; i < c.planos.length; i += porLinha) {
+        const grupo = c.planos.slice(i, i + porLinha);
+        const medir = x => { const d = wrap(x.descricao || '', cw - 10, 8.5), it = linhas(x.itens).map(l => wrap(l, cw - 15, 8.6)); return { d, it, h: 46 + d.length * 3.9 + it.reduce((s, l) => s + l.length * 3.9 + 1.6, 0) + (it.length ? 5 : 0) }; };
+        const ms = grupo.map(medir), h = Math.max(...ms.map(m => m.h)); ens(h + 10);
+        const y0 = y + (grupo.some(x => x.destaque) ? 5 : 0);
+        grupo.forEach((x, k) => {
+          const m = ms[k], bx = X + k * (cw + gap), rec = x === c.rec && c.planos.length > 1;
+          if (rec) { doc.setFillColor(...NAVY); doc.roundedRect(bx, y0, cw, h, 3, 3, 'F'); } else { doc.setFillColor(255, 255, 255); doc.setDrawColor(...LIN); doc.setLineWidth(.35); doc.roundedRect(bx, y0, cw, h, 3, 3, 'FD'); }
+          if (rec) { font(7.2, 'bold', NAVY); const cs = .5, txt = 'RECOMENDADO', larg = doc.getTextWidth(txt) + cs * (txt.length - 1), tw = larg + 10; doc.setFillColor(...AMB); doc.roundedRect(bx + cw / 2 - tw / 2, y0 - 3.6, tw, 7.2, 3.6, 3.6, 'F'); doc.text(txt, bx + cw / 2 - larg / 2, y0 + 1, { charSpace: cs }); }
+          const cT = rec ? [255, 255, 255] : NAVY, cM = rec ? [190, 199, 224] : MUT, cI = rec ? [226, 231, 243] : [60, 70, 92];
+          font(13, 'bold', cT); doc.text(T(x.nome || 'Plano').slice(0, 30), bx + 5, y0 + 11);
+          font(x.v >= 10000 ? 17 : 20, 'bold', rec ? AMB : AZ); doc.text(T(brl(x.v)), bx + 5, y0 + 23);
+          font(8.3, 'normal', cM); doc.text(T(this.unidade(x)), bx + 5, y0 + 28.5);
+          font(8.3, 'bold', cT); doc.text(T(`${this.qtdTxt(x)} · ${x.periodo === 'único' ? brl(x.total) : brl(x.v * x.q) + '/' + x.periodo}`), bx + 5, y0 + 34);
+          let yy = y0 + 40; font(8.5, 'normal', cM); m.d.forEach(t => { doc.text(t, bx + 5, yy); yy += 3.9; });
+          if (m.it.length) { yy += 2; doc.setDrawColor(...(rec ? [58, 72, 120] : LIN)); doc.setLineWidth(.25); doc.line(bx + 5, yy - 2.5, bx + cw - 5, yy - 2.5); yy += 2.2; }
+          m.it.forEach(ls => { doc.setDrawColor(...(rec ? AMB : [27, 143, 98])); doc.setLineWidth(.6); doc.line(bx + 5.2, yy - 1.3, bx + 6.4, yy - .2); doc.line(bx + 6.4, yy - .2, bx + 8.6, yy - 2.8); font(8.6, 'normal', cI); ls.forEach(t => { doc.text(t, bx + 10.5, yy); yy += 3.9; }); yy += 1.6; });
+        });
+        y = y0 + h + 7;
+      }
+    }
+
+    /* ---- 4. investimento ---- */
+    sec('Investimento', `Valores para a vigência de ${c.meses} ${c.meses === 1 ? 'mês' : 'meses'}.`);
+    const tab = (head, body, foot, cols) => { doc.autoTable({ startY: y, head: [head.map(T)], body: body.map(r => r.map(v => typeof v === 'object' && v ? { ...v, content: T(v.content) } : T(v))), foot: foot ? [foot.map(v => typeof v === 'object' && v ? { ...v, content: T(v.content) } : T(v))] : undefined, margin: { left: X, right: X, top: 30, bottom: 24 }, theme: 'plain', styles: { fontSize: 9, cellPadding: { top: 2.6, bottom: 2.6, left: 3, right: 3 }, textColor: INK, lineColor: LIN, lineWidth: { bottom: .25 } }, headStyles: { fillColor: NAVY, textColor: 255, fontStyle: 'bold', lineWidth: 0 }, footStyles: { fillColor: PAP, textColor: NAVY, fontStyle: 'bold' }, columnStyles: cols, showFoot: 'lastPage' }); y = doc.lastAutoTable.finalY + 7; };
+    if (c.planos.length) tab(['Plano', 'Quantidade', 'Valor unitário', 'Mensal', `Total (${c.meses} meses)`], c.planos.map(x => [{ content: x.nome + (x === c.rec && c.planos.length > 1 ? '  (recomendado)' : ''), styles: { fontStyle: x === c.rec ? 'bold' : 'normal' } }, this.qtdTxt(x), brl(x.v) + (x.periodo === 'único' ? '' : '/' + x.periodo), x.periodo === 'único' ? '-' : brl(x.mensal), { content: brl(x.total), styles: { fontStyle: 'bold' } }]), null, { 1: { halign: 'center' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } });
+    if (c.adic.length) tab(['Serviço adicional (pagamento único)', 'Qtd.', 'Valor', 'Total'], c.adic.map(a => [a.desc, String(a.q), brl(a.v), { content: brl(a.total), styles: { fontStyle: 'bold' } }]), ['Subtotal dos serviços', '', '', brl(c.tAdic)], { 1: { halign: 'center', cellWidth: 18 }, 2: { halign: 'right', cellWidth: 32 }, 3: { halign: 'right', cellWidth: 34 } });
+    // caixa do total
+    const lin = [c.rec ? [`Plano ${c.rec.nome} (${c.meses} meses)`, brl(c.rec.total)] : null, c.adic.length ? ['Serviços adicionais', brl(c.tAdic)] : null, c.pct ? [`Desconto de ${fmtN(c.pct)}%`, '- ' + brl(c.desc)] : null].filter(Boolean);
+    const hb = 22 + lin.length * 6.5; ens(hb + 4);
+    doc.setFillColor(...PAP); doc.roundedRect(X, y, CW, hb, 3, 3, 'F'); let yy = y + 8;
+    lin.forEach(([k, v]) => { font(9.5, 'normal', INK); doc.text(T(k), X + 6, yy); doc.text(T(v), X + CW - 6, yy, { align: 'right' }); yy += 6.5; });
+    doc.setFillColor(...NAVY); doc.roundedRect(X + 3, yy - 3, CW - 6, 14, 2.5, 2.5, 'F'); font(10, 'bold', [255, 255, 255]); doc.text(T(c.rec && c.planos.length > 1 ? `Investimento total com o plano recomendado` : 'Investimento total'), X + 8, yy + 5.6); font(15, 'bold', AMB); doc.text(T(brl(c.total)), X + CW - 8, yy + 6.2, { align: 'right' });
+    y += hb + 4; if (c.rec && c.rec.periodo !== 'único') { par(`Equivalente a ${brl(c.rec.mensal)} por mês no plano ${c.rec.nome}${c.tAdic ? ', além dos serviços adicionais' : ''}.`, 8.8, MUT); }
+
+    /* ---- 5. condições ---- */
+    const cond = [['Vigência', `${c.meses} meses a partir da assinatura`], ['Validade da proposta', `${p.validade || 30} dias (até ${dBR(this.validoAte(p))})`], p.pagamento && ['Pagamento', p.pagamento], c.pct && ['Desconto', `${fmtN(c.pct)}% sobre o investimento total`], p.suporte && ['Suporte', p.suporte], p.observacoes && ['Observações', p.observacoes]].filter(Boolean);
+    sec('Condições comerciais');
+    doc.autoTable({ startY: y, body: cond.map(([k, v]) => [T(k), T(v)]), margin: { left: X, right: X, top: 30, bottom: 24 }, theme: 'plain', styles: { fontSize: 9.3, cellPadding: { top: 2.8, bottom: 2.8, left: 0, right: 3 }, textColor: INK, lineColor: LIN, lineWidth: { bottom: .25 }, valign: 'top' }, columnStyles: { 0: { fontStyle: 'bold', cellWidth: 42, textColor: NAVY } } }); y = doc.lastAutoTable.finalY + 6;
+
+    /* ---- 6. implantação ---- */
+    const et = linhas(p.implantacao);
+    if (et.length) {
+      const altE = et.reduce((s, l) => s + Math.max(10, wrap(l.replace(/^[^:]{1,30}:\s*/, ''), CW - 46, 9.5).length * 4.6 + 4) + 1, 0) + 32;
+      if (altE < H - 52 && y + altE > H - 22) novaPag(); // mantém o cronograma inteiro na mesma página
+      sec('Implantação', 'Etapas previstas a partir da assinatura do contrato.');
+      et.forEach((l, i) => { const m = l.match(/^([^:]{1,30}):\s*(.+)$/), tit = m ? m[1] : `Etapa ${i + 1}`, txt = m ? m[2] : l; const ls = wrap(txt, CW - 46, 9.5); const h = Math.max(10, ls.length * 4.6 + 4); ens(h + 2);
+        doc.setFillColor(...(i === et.length - 1 ? AMB : AZ)); doc.circle(X + 3, y + 1.2, 2.2, 'F'); if (i < et.length - 1) { doc.setDrawColor(...LIN); doc.setLineWidth(.6); doc.line(X + 3, y + 3.6, X + 3, y + h + 1); }
+        font(9.5, 'bold', NAVY); doc.text(T(tit), X + 9, y + 2.6); font(9.5, 'normal', INK); let ly = y + 2.6; ls.forEach(t => { doc.text(t, X + 44, ly); ly += 4.6; }); y += h + 1; });
+      y += 4;
+    }
+
+    /* ---- 7. aceite ---- */
+    ens(78); sec('Aceite da proposta');
+    par(`Declaramos estar de acordo com as condições desta proposta nº ${p.numero}, que passa a valer como base para a contratação dos serviços.`, 9.8); y += 16;
+    const ass = (bx, nome, sub) => { doc.setDrawColor(...INK); doc.setLineWidth(.3); doc.line(bx, y, bx + CW / 2 - 8, y); font(9.5, 'bold', NAVY); doc.text(T(nome || ' '), bx, y + 5.5); font(8.5, 'normal', MUT); wrap(sub, CW / 2 - 8, 8.5).slice(0, 2).forEach((t, i) => doc.text(t, bx, y + 10 + i * 4)); };
+    ass(X, cli.responsavel || 'Responsável pela instituição', [cli.cargo, cli.instituicao].filter(Boolean).join(' · ')); ass(X + CW / 2 + 8, em.responsavel || em.empresa, [em.cargo, em.empresa, em.cnpj && 'CNPJ ' + em.cnpj].filter(Boolean).join(' · '));
+    y += 24; font(9.5, 'normal', INK); doc.text(T('Local e data: ______________________________________, ____ / ____ / ________'), X, y);
+
+    /* ---- cabeçalho e rodapé das páginas internas ---- */
+    const n = doc.getNumberOfPages();
+    for (let i = 2; i <= n; i++) {
+      doc.setPage(i);
+      doc.setFillColor(...NAVY); doc.rect(0, 0, W, 16, 'F'); doc.setFillColor(...AMB); doc.rect(0, 16, W, .9, 'F');
+      doc.setFillColor(...AMB); doc.roundedRect(X, 4.5, 7, 7, 1.6, 1.6, 'F'); font(8.5, 'bold', NAVY); doc.text('C', X + 3.5, 9.6, { align: 'center' });
+      font(9, 'bold', [255, 255, 255]); doc.text(T(em.empresa || 'Cátedra'), X + 10, 9.6);
+      font(8.5, 'normal', [190, 199, 224]); doc.text(T(`Proposta ${p.numero}${cli.instituicao ? ' · ' + cli.instituicao : ''}`).slice(0, 90), W - X, 9.6, { align: 'right' });
+      doc.setDrawColor(...LIN); doc.setLineWidth(.3); doc.line(X, H - 15, W - X, H - 15);
+      font(7.8, 'normal', MUT); doc.text(T([em.empresa, em.cnpj && 'CNPJ ' + em.cnpj, em.email, em.telefone].filter(Boolean).join('  ·  ')).slice(0, 120), X, H - 9.5);
+      doc.text(`${i} / ${n}`, W - X, H - 9.5, { align: 'right' });
+    }
   }
 };
 function viewGestao() {
@@ -1199,6 +1487,22 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') vencFechar()
 .vc-grid div{background:#f6f4ee;border-radius:12px;padding:10px 12px}.vc-grid span{display:block;font-size:11.5px;color:var(--muted)}.vc-grid b{font-size:14px}
 .vc-bad .vc-sit{color:var(--bad)}.vc-warn .vc-sit{color:var(--warn)}
 .vc-sec{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:12px}
+.pr-bar{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--bg);padding:10px 0 12px;margin-bottom:6px}
+.pr-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:start}
+.pr-ed{display:flex;flex-direction:column;gap:16px}.pr-sec .card-head{margin-bottom:10px}
+.pr-side{position:sticky;top:64px}
+.pr-n{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:99px;background:var(--side);color:var(--accent);font:700 13px Inter,sans-serif;margin-right:6px;vertical-align:2px}
+.pr-planos{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-bottom:12px}
+.pr-plano{border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:#fff}.pr-plano.dest{border:2px solid var(--accent);background:#fffbf3}.pr-plano.off{opacity:.55}
+.pr-plano-top{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;margin-bottom:10px;font-size:13px}
+.pr-plano-tot{font-size:13px;color:var(--muted);background:#f6f4ee;border-radius:9px;padding:8px 10px}
+.pr-adic{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
+.pr-recs{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px;margin-bottom:10px}
+.pr-rec{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:12px;padding:10px;background:#fff}.pr-rec input[type=checkbox]{margin-top:10px}
+.pr-rec input[data-p$=titulo],.pr-rec textarea{width:100%}
+.pr-lin{display:flex;justify-content:space-between;gap:10px;font-size:14px;padding:4px 0}.pr-lin.rec{font-weight:600}.pr-lin em{font-style:normal;font-size:11px;font-weight:700;color:#8a5a0a;background:#fff2d6;border-radius:99px;padding:2px 7px;margin-left:4px}
+.pr-total{display:flex;justify-content:space-between;align-items:baseline;background:var(--side);color:#fff;border-radius:12px;padding:12px 14px;margin-top:10px}.pr-total b{font:700 22px Fraunces,Georgia,serif;color:var(--accent)}
+@media(max-width:1100px){.pr-grid{grid-template-columns:1fr}.pr-side{position:static;order:-1}}
 .pix-box{display:flex;gap:16px;align-items:center;background:#f4fbf8;border:1px solid #cdeadb;border-radius:14px;padding:12px;margin-bottom:10px}
 .pix-qr{flex:none;width:168px;height:168px;display:grid;place-items:center;background:#fff;border-radius:10px;border:1px solid #e1efe7}.pix-qr svg{width:100%;height:100%}
 .pix-info{flex:1;min-width:0}.pix-tit{display:flex;align-items:center;gap:6px;font-weight:700;color:#1b8f62;margin-bottom:4px}
@@ -1324,9 +1628,9 @@ function setMain(html, title) {
 async function copyText(t) { try { await navigator.clipboard.writeText(t); toast('Copiado para a área de transferência', 'ok'); } catch { prompt('Copie o texto:', t); } }
 
 /* ---------- Navegação ---------- */
-const GTABS = ['professores', 'solicitacoes', 'pagamentos', 'relatorios', 'convites', 'planos', 'backup'];
+const GTABS = ['professores', 'solicitacoes', 'pagamentos', 'relatorios', 'propostas', 'convites', 'planos', 'backup'];
 const NAV = Auth.admin
-  ? [['gestao/professores', 'users', 'Professores'], ['gestao/solicitacoes', 'clipboard', 'Solicitações'], ['gestao/pagamentos', 'check', 'Pagamentos'], ['gestao/relatorios', 'list', 'Relatórios'], ['gestao/convites', 'send', 'Convites'], ['gestao/planos', 'settings', 'Plano'], ['gestao/backup', 'shield', 'Backup']]
+  ? [['gestao/professores', 'users', 'Professores'], ['gestao/solicitacoes', 'clipboard', 'Solicitações'], ['gestao/pagamentos', 'check', 'Pagamentos'], ['gestao/relatorios', 'list', 'Relatórios'], ['gestao/propostas', 'file', 'Propostas'], ['gestao/convites', 'send', 'Convites'], ['gestao/planos', 'settings', 'Plano'], ['gestao/backup', 'shield', 'Backup']]
   : [['painel', 'home', 'Painel'], ['turmas', 'users', 'Turmas'], ['config', 'settings', 'Meu perfil']];
 function renderNav(active) {
   const map = { turma: 'turmas', atividade: 'turmas', 'atividade-form': 'turmas', entrega: 'turmas', aluno: 'turmas' };
