@@ -211,6 +211,12 @@ details.raw pre{white-space:pre-wrap;font-size:13px;background:#f7f6f2;padding:1
 .btn.ghost-w{background:rgba(255,255,255,.1);border-color:transparent;color:#fff}
 .upl-list{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin-top:12px}
 .upl-item{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:12px;padding:8px;background:#fff}
+.upl-head{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;align-items:baseline;padding:2px 2px 4px}.upl-head .upl-bar{grid-column:1/-1;height:6px;border-radius:99px;background:#eceae3;overflow:hidden;margin-top:6px}.upl-head .upl-bar i{display:block;height:100%;background:var(--primary);border-radius:99px}
+.upl-n{flex:none;width:26px;height:26px;border-radius:99px;background:var(--side,#111a33);color:var(--accent);display:grid;place-items:center;font-weight:700;font-size:13px}
+.upl-th{all:unset;cursor:pointer;flex:none;border-radius:8px}.upl-th:focus-visible{outline:2px solid var(--primary)}
+.upl-item .upl-th img{width:52px;height:68px}
+.upl-acts{display:flex;gap:4px;align-items:center;flex:none}.upl-acts .icon-btn[disabled]{opacity:.3;pointer-events:none}
+.upl-mais{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}.upl-mais .btn{flex:1;justify-content:center;min-width:180px}.btn.disabled{opacity:.5;pointer-events:none}
 .upl-item img,.upl-item .fi{width:52px;height:52px;border-radius:8px;object-fit:cover;background:#f1efe9;display:grid;place-items:center;color:var(--muted);flex:none}
 .upl-item .meta{flex:1;min-width:0}
 .upl-item .meta b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
@@ -391,7 +397,7 @@ const LIBS = {
   tessLang: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/por@1.0.0/4.0.0_best_int',
   qrcode: 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js'
 };
-const APP_VERSION = '2026.11.3-4';
+const APP_VERSION = '2026.11.3-5';
 const sha16 = async t => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(t || ''))))].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
 const verNum = v => { const m = String(v || '').match(/^(\d+)\.(\d+)\.(\d+)-(\d+)$/); return m ? ((+m[1] * 100 + +m[2]) * 100 + +m[3]) * 1000 + +m[4] : 0; };
 const BC = (() => { try { return new BroadcastChannel('catedra'); } catch { return null; } })();
@@ -2018,6 +2024,7 @@ const Scanner = {
     Upl.render();
   },
   async open() {
+    if (!Upl.single && !Upl.cabe()) return;
     this.count = 0; this.replaceIndex = null;
     if (!navigator.mediaDevices?.getUserMedia || !window.isSecureContext) return this.fallbackView('Este navegador não permite usar a câmera ao vivo aqui.');
     try { this.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 2560 }, height: { ideal: 1440 } }, audio: false }); }
@@ -2032,7 +2039,7 @@ const Scanner = {
   },
   camView() {
     const r = this.ensureRoot(); this.fromCam = true;
-    r.innerHTML = `<div class="scan-top"><button class="scan-ib" onclick="Scanner.close()" title="Fechar">${ic('x', 22)}</button><b>${this.count ? this.count + ' página(s)' : 'Scanner'}</b><span></span></div>
+    r.innerHTML = `<div class="scan-top"><button class="scan-ib" onclick="Scanner.close()" title="Fechar">${ic('x', 22)}</button><b>${!Upl.single && Upl.paginas() ? Upl.paginas() + ' de ' + MAX_PAGINAS + ' páginas' : 'Scanner'}</b><span></span></div>
       <div class="scan-stage"><video playsinline muted autoplay></video><canvas class="scan-ov"></canvas></div>
       <div class="scan-hint" id="scanHint">Enquadre a folha inteira, de preferência sobre uma superfície escura</div>
       <div class="scan-bot"><label class="scan-side">${ic('image', 22)}<span>Galeria</span><input type="file" accept="image/*" hidden onchange="Scanner.fromFile(this.files[0])"></label>
@@ -2106,9 +2113,9 @@ const Scanner = {
   async usar(mais) {
     const file = await canvasToFile(this.final || this.warped, `pagina-${Date.now().toString(36)}.jpg`);
     if (this.replaceIndex != null) { Upl.files[this.replaceIndex] = file; this.replaceIndex = null; return this.close(); }
-    if (Upl.single) Upl.files = [file]; else Upl.files.push(file);
-    this.count++;
-    if (mais && this.stream) { toast(`Página ${this.count} adicionada`, 'ok', 1800); return this.camView(); }
+    if (Upl.single) Upl.files = [file]; else { if (!Upl.cabe()) return this.close(); Upl.files.push(file); }
+    this.count++; Upl.salvar();
+    if (mais && this.stream) { if (!Upl.single && Upl.paginas() >= MAX_PAGINAS) { toast(`Limite de ${MAX_PAGINAS} páginas atingido.`, 'info', 4000); return this.close(); } toast(`Página ${Upl.paginas()} adicionada`, 'ok', 1800); return this.camView(); }
     this.close();
   }
 };
@@ -2162,7 +2169,7 @@ async function extractFiles(files, pasted, maxImg = 1600) {
     else if (n.endsWith('.doc')) throw new Error('Arquivos .doc antigos não são suportados. Salve como .docx ou PDF e envie novamente.');
     else throw new Error('Formato não suportado: ' + f.name);
   }
-  if (images.length > 12) throw new Error('Envie no máximo 12 páginas/imagens.');
+  if (images.length > MAX_PAGINAS) throw new Error(`O envio tem ${images.length} páginas e o limite é ${MAX_PAGINAS}. Remova algumas páginas ou envie o trabalho como PDF com texto (digital).`);
   if (!text.trim() && !images.length) throw new Error('Nenhum conteúdo encontrado. Selecione um arquivo ou cole o texto.');
   return { text: text.trim(), images, nomes };
 }
@@ -2195,39 +2202,92 @@ async function processSubmission(cfg, atv, files, pasted, step, abertas = {}) {
   return { ...r, textoExtraido: text.slice(0, 6000), arquivos: nomes, paginas: images.length };
 }
 
-/* ---------- Componente de upload ---------- */
+/* ---------- Componente de upload (várias páginas, ordem, rascunho) ---------- */
+const MAX_PAGINAS = 12;
+/* Rascunho do envio do aluno: as páginas ficam guardadas neste aparelho até o envio.
+   Protege contra o navegador recarregar a página ao trocar para a câmera ou a galeria. */
+const Rascunho = {
+  db: null,
+  async abrir() {
+    if (this.db) return this.db;
+    this.db = await new Promise((res, rej) => { const r = indexedDB.open('catedra_rascunhos', 1); r.onupgradeneeded = () => r.result.createObjectStore('r', { keyPath: 'id' }); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    return this.db;
+  },
+  async op(mode, fn) { const db = await this.abrir(); return new Promise((res, rej) => { const q = fn(db.transaction('r', mode).objectStore('r')); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); },
+  async ler(id) { try { const d = await this.op('readonly', o => o.get(id)); if (d && Date.now() - d.at > 7 * 86400000) { await this.apagar(id); return null; } return d || null; } catch { return null; } },
+  async gravar(d) { try { await this.op('readwrite', o => o.put({ ...d, at: Date.now() })); } catch { } },
+  async apagar(id) { try { await this.op('readwrite', o => o.delete(id)); } catch { } }
+};
 const Upl = {
   files: [],
-  single: false,
+  single: false, chave: null, _urls: new WeakMap(), _t: null,
   html(atv, cfg = S.cfg) {
     const prova = atv.tipo === 'prova'; const local = modoDe(atv, cfg) === 'local'; const folha = prova && local; this.single = folha;
     const temObj = (atv.gabarito || []).some(q => q.tipo === 'objetiva'); const ab = folha ? (atv.gabarito || []).filter(q => q.tipo === 'aberta') : [];
     const showImgs = !folha || temObj;
     const hint = folha ? 'Escaneie a <b>folha de respostas inteira</b>, com os <b>4 quadrados pretos</b> visíveis. O scanner recorta e endireita a imagem.'
-      : prova ? 'Escaneie cada página da prova, na ordem. O scanner detecta as bordas, endireita e melhora a imagem.'
-      : local ? 'Envie o arquivo digital ou escaneie as páginas <b>digitadas ou impressas</b>. Na correção gratuita, textos manuscritos não são lidos.'
-      : 'Envie o arquivo digital ou escaneie as páginas (também manuscritas).';
+      : prova ? `Escaneie <b>todas as páginas</b> da prova, uma de cada vez (até ${MAX_PAGINAS}). Depois confira a ordem e toque em <b>Enviar para correção</b>.`
+      : local ? `Envie o arquivo digital ou escaneie as páginas <b>digitadas ou impressas</b> (até ${MAX_PAGINAS}). Na correção gratuita, textos manuscritos não são lidos.`
+      : `Envie o arquivo digital ou escaneie as páginas, também manuscritas (até ${MAX_PAGINAS}). Pode juntar várias fotos e arquivos antes de enviar.`;
     return `<div class="upl" data-drop>${showImgs ? `${folha ? '<div class="lbl">Folha de respostas</div>' : ''}<div class="upl-btns">
         <button type="button" class="btn primary big" onclick="Scanner.open()">${ic('camera')} ${folha ? 'Escanear a folha' : 'Câmera (scanner)'}</button>
         <label class="btn big">${ic('image')} Galeria<input type="file" accept="image/*" ${folha ? 'data-single' : 'multiple'} hidden data-upl></label>
         ${!prova ? `<label class="btn big">${ic('file')} Arquivo<input type="file" accept=".pdf,.docx,.txt,.md" multiple hidden data-upl></label>` : !local ? `<label class="btn big">${ic('file')} PDF<input type="file" accept="application/pdf" multiple hidden data-upl></label>` : ''}
-      </div><p class="hint">${hint}</p><div class="upl-list" id="uplList"></div>` : ''}
+      </div><p class="hint">${hint}</p><div id="uplAviso"></div><div class="upl-list" id="uplList"></div>` : ''}
       ${!prova ? `<details class="paste"><summary>Ou cole o texto diretamente</summary><textarea id="uplText" rows="9" placeholder="Cole aqui o texto completo do trabalho…"></textarea></details>` : ''}
       ${ab.length ? `<div class="lbl" style="margin-top:16px">Questões abertas — digite exatamente o que você respondeu na prova</div>${ab.map(q => `<div class="field"><label>Questão ${esc(q.numero)}</label><textarea data-aberta="${esc(q.numero)}" rows="4" placeholder="Sua resposta…"></textarea></div>`).join('')}` : ''}</div>`;
   },
-  bind(root) {
-    this.files = [];
+  bind(root, chave = null) {
+    this.files = []; this.chave = chave;
     $$('[data-upl]', root).forEach(inp => inp.addEventListener('change', () => { if (inp.dataset.single !== undefined) this.files = []; this.add([...inp.files].slice(0, inp.dataset.single !== undefined ? 1 : 99)); inp.value = ''; }));
     const d = $('[data-drop]', root);
     if (d && $('#uplList', root)) { d.addEventListener('dragover', e => { e.preventDefault(); d.classList.add('over'); }); d.addEventListener('dragleave', () => d.classList.remove('over')); d.addEventListener('drop', e => { e.preventDefault(); d.classList.remove('over'); this.add([...e.dataTransfer.files]); }); }
+    $$('#uplText, [data-aberta]', root).forEach(t => t.addEventListener('input', () => this.salvar()));
+    this.render(false);
+  },
+  ehImg: f => f.type.startsWith('image/') || /\.(jpe?g|png|webp|heic|heif)$/i.test(f.name),
+  paginas() { return this.files.filter(this.ehImg).length; },
+  cabe(n = 1) { if (this.single) return true; if (this.paginas() + n <= MAX_PAGINAS) return true; toast(`Limite de ${MAX_PAGINAS} páginas por envio. Remova alguma página ou junte as páginas em um PDF.`, 'bad', 6000); return false; },
+  add(fs) {
+    if (this.single) this.files = fs.filter(f => f.type.startsWith('image/')).slice(0, 1);
+    else { const livres = MAX_PAGINAS - this.paginas(); let img = 0; const ok = fs.filter(f => !this.ehImg(f) || ++img <= livres); if (img > livres) this.cabe(img); this.files.push(...ok); }
     this.render();
   },
-  add(fs) { if (this.single) this.files = fs.filter(f => f.type.startsWith('image/')).slice(0, 1); else this.files.push(...fs); this.render(); },
   remove(i) { this.files.splice(i, 1); this.render(); },
-  render() {
-    const el = $('#uplList'); if (!el) return;
-    el.innerHTML = this.files.map((f, i) => `<div class="upl-item">${f.type.startsWith('image/') ? `<img src="${URL.createObjectURL(f)}" alt="">` : `<div class="fi">${ic('file', 22)}</div>`}<div class="meta"><b>${this.files.length > 1 ? (i + 1) + '. ' : ''}${esc(f.name)}</b><span>${(f.size / 1024).toFixed(0)} KB</span></div>${f.type.startsWith('image/') ? `<button type="button" class="btn sm" onclick="Scanner.adjust(${i})" title="Recortar e melhorar">${ic("edit", 14)} Ajustar</button>` : ''}<button type="button" class="icon-btn" onclick="Upl.remove(${i})" title="Remover">${ic('x')}</button></div>`).join('');
+  mover(i, d) { const j = i + d; if (j < 0 || j >= this.files.length) return; [this.files[i], this.files[j]] = [this.files[j], this.files[i]]; this.render(); },
+  url(f) { let u = this._urls.get(f); if (!u) { u = URL.createObjectURL(f); this._urls.set(f, u); } return u; },
+  ver(i) {
+    const f = this.files[i]; if (!f || !this.ehImg(f)) return;
+    modal({ title: `Página ${i + 1} de ${this.files.length}`, wide: true, body: `<img src="${this.url(f)}" alt="Página ${i + 1}" style="width:100%;border-radius:10px;border:1px solid var(--line)">`,
+      actions: [{ label: ic('edit') + ' Ajustar', onClick: () => { Scanner.adjust(i); } }, { label: 'Fechar', cls: 'primary' }] });
   },
+  render(salvar = true) {
+    const el = $('#uplList'); if (!el) return;
+    const n = this.files.length, pg = this.paginas();
+    el.innerHTML = (n && !this.single ? `<div class="upl-head"><b>${pg ? `${pg} página${pg > 1 ? 's' : ''}` : ''}${pg && n > pg ? ' + ' : ''}${n > pg ? `${n - pg} arquivo${n - pg > 1 ? 's' : ''}` : ''}</b><span class="muted small">${pg ? `${pg} de ${MAX_PAGINAS} páginas · ` : ''}confira a ordem antes de enviar</span><div class="upl-bar"><i style="width:${Math.min(100, pg / MAX_PAGINAS * 100)}%"></i></div></div>` : '')
+      + this.files.map((f, i) => `<div class="upl-item">${n > 1 ? `<span class="upl-n">${i + 1}</span>` : ''}${this.ehImg(f) ? `<button type="button" class="upl-th" onclick="Upl.ver(${i})" title="Ver página"><img src="${this.url(f)}" alt="Página ${i + 1}"></button>` : `<div class="fi">${ic('file', 22)}</div>`}
+        <div class="meta"><b>${this.ehImg(f) && !this.single ? `Página ${this.files.slice(0, i + 1).filter(this.ehImg).length}` : esc(this.ehImg(f) ? 'Folha de respostas' : f.name)}</b><span>${this.ehImg(f) ? (/^pagina-/.test(f.name) ? 'escaneada · ' : esc(f.name) + ' · ') : ''}${(f.size / 1024).toFixed(0)} KB</span></div>
+        <div class="upl-acts">${n > 1 && !this.single ? `<button type="button" class="icon-btn" onclick="Upl.mover(${i},-1)" ${i ? '' : 'disabled'} title="Subir" aria-label="Subir página">↑</button><button type="button" class="icon-btn" onclick="Upl.mover(${i},1)" ${i < n - 1 ? '' : 'disabled'} title="Descer" aria-label="Descer página">↓</button>` : ''}${this.ehImg(f) ? `<button type="button" class="btn sm" onclick="Scanner.adjust(${i})" title="Recortar, girar e melhorar">${ic('edit', 14)}<span class="hide-sm"> Ajustar</span></button>` : ''}<button type="button" class="icon-btn" onclick="Upl.remove(${i})" title="Remover" aria-label="Remover">${ic('x')}</button></div></div>`).join('')
+      + (n && !this.single && $('[data-upl]') ? `<div class="upl-mais"><button type="button" class="btn" onclick="Scanner.open()" ${pg >= MAX_PAGINAS ? 'disabled' : ''}>${ic('plus')} Escanear mais páginas</button><label class="btn ${pg >= MAX_PAGINAS ? 'disabled' : ''}">${ic('image')} Adicionar da galeria<input type="file" accept="image/*" multiple hidden onchange="Upl.add([...this.files]);this.value=''" ${pg >= MAX_PAGINAS ? 'disabled' : ''}></label></div>` : '');
+    if (salvar) this.salvar();
+  },
+  salvar() {
+    if (!this.chave) return; clearTimeout(this._t);
+    this._t = setTimeout(() => {
+      if (!this.files.length && !this.text() && !Object.values(this.abertas()).some(Boolean)) return Rascunho.apagar(this.chave);
+      Rascunho.gravar({ id: this.chave, files: this.files.map(f => ({ name: f.name, type: f.type, blob: f })), texto: this.text(), abertas: this.abertas() });
+    }, 300);
+  },
+  async restaurar() {
+    if (!this.chave) return; const d = await Rascunho.ler(this.chave); const av = $('#uplAviso');
+    if (!d || (!d.files?.length && !d.texto && !Object.values(d.abertas || {}).some(Boolean))) return;
+    this.files = (d.files || []).map(x => new File([x.blob], x.name, { type: x.type || x.blob.type }));
+    if (d.texto && $('#uplText')) { $('#uplText').value = d.texto; $('#uplText').closest('details')?.setAttribute('open', ''); }
+    Object.entries(d.abertas || {}).forEach(([k, v]) => { const t = $$('[data-aberta]').find(x => x.dataset.aberta === k); if (t) t.value = v; });
+    this.render(false);
+    if (av) av.innerHTML = `<div class="alert info" style="margin:10px 0 0">${ic('refresh')}<div style="flex:1">Recuperamos o que você já tinha adicionado em ${esc(fmtDate(d.at))}${this.files.length ? `: <b>${this.files.length} item(ns)</b>` : ''}. Continue de onde parou.</div><button type="button" class="btn sm" onclick="Upl.descartar()">Começar de novo</button></div>`;
+  },
+  async descartar() { this.files = []; if ($('#uplText')) $('#uplText').value = ''; $$('[data-aberta]').forEach(t => t.value = ''); if (this.chave) await Rascunho.apagar(this.chave); const av = $('#uplAviso'); if (av) av.innerHTML = ''; this.render(false); },
   text() { return ($('#uplText')?.value || '').trim(); },
   abertas() { const o = {}; $$('[data-aberta]').forEach(t => o[t.dataset.aberta] = t.value.trim()); return o; },
   temAbertas() { return $$('[data-aberta]').some(t => t.value.trim()); }
@@ -3480,7 +3540,7 @@ function sUploadStep() {
     ${Upl.html(atv, ST.cfg)}
     <button class="btn primary big" style="width:100%;margin-top:16px" onclick="sSubmit()">${ic('sparkle')} Enviar para correção</button>
     <p class="hint" style="text-align:center">Ao enviar, seu trabalho será lido e corrigido automaticamente conforme os parâmetros do professor.</p></div>`;
-  Upl.bind($('#sUp'));
+  Upl.bind($('#sUp'), `${atv.id}|${aluno.id}`); Upl.restaurar();
 }
 async function sSubmit() {
   const files = [...Upl.files], txt = Upl.text(), abertas = Upl.abertas(); const atv = ST.atv;
@@ -3489,6 +3549,11 @@ async function sSubmit() {
   if (localProva && temObj && !files.length) return toast('Escaneie a folha de respostas', 'bad');
   if (!localProva && !files.length && !txt) return toast(atv.tipo === 'prova' ? 'Adicione as páginas da prova' : 'Selecione o arquivo ou cole o texto', 'bad');
   if (localProva && Object.values(abertas).some(v => !v) && !confirm('Há questões abertas em branco. Enviar assim mesmo?')) return;
+  if (files.length) {
+    const pg = Upl.paginas(), arq = files.length - pg, partes = [pg ? `<b>${pg}</b> página${pg > 1 ? 's' : ''}` : '', arq ? `<b>${arq}</b> arquivo${arq > 1 ? 's' : ''}` : ''].filter(Boolean).join(' e ');
+    const thumbs = files.filter(f => Upl.ehImg(f)).map((f, i) => `<figure style="margin:0;text-align:center"><img src="${Upl.url(f)}" alt="" style="width:64px;height:86px;object-fit:cover;border-radius:6px;border:1px solid var(--line)"><figcaption class="small muted">${i + 1}</figcaption></figure>`).join('');
+    if (!await confirmDlg(`Enviar ${partes} para correção?${thumbs ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin:12px 0">${thumbs}</div>` : '<br>'}<span class="small muted">Confira se ${pg > 1 ? 'todas as páginas estão aqui e na ordem certa' : 'está tudo certo'}. Depois de enviar, conta como uma tentativa.</span>`, 'Enviar agora', false)) return;
+  }
   const box = $('#sUp'); box.innerHTML = `<h3>Corrigindo…</h3><p class="muted">Não feche esta página. Isso pode levar até um minuto.</p>${stepsHTML(0)}`;
   const setStep = i => { const st = $('.steps', box); if (st) st.outerHTML = stepsHTML(i); };
   try {
@@ -3504,7 +3569,7 @@ async function sSubmit() {
     }
     setStep(1);
     const r = await api('/enviar', body);
-    setStep(3); ST.restantes = r.restantes; ST.anteriores = [r.entrega, ...ST.anteriores];
+    setStep(3); ST.restantes = r.restantes; ST.anteriores = [r.entrega, ...ST.anteriores]; if (Upl.chave) Rascunho.apagar(Upl.chave);
     box.outerHTML = `<div class="alert ok">${ic('check')}<div><b>Envio registrado com sucesso!</b> Seu professor já recebeu ${atv.tipo === 'prova' ? 'sua prova' : 'seu trabalho'}. Protocolo: <b>${esc(String(r.entrega.id).toUpperCase())}</b></div></div><div id="sRes"></div>`;
     sRenderResult(r.entrega, r.restantes); window.scrollTo({ top: 0, behavior: 'smooth' });
   } catch (err) {
