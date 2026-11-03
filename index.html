@@ -397,7 +397,7 @@ const LIBS = {
   tessLang: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/por@1.0.0/4.0.0_best_int',
   qrcode: 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js'
 };
-const APP_VERSION = '2026.11.3-5';
+const APP_VERSION = '2026.11.3-6';
 const sha16 = async t => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(t || ''))))].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
 const verNum = v => { const m = String(v || '').match(/^(\d+)\.(\d+)\.(\d+)-(\d+)$/); return m ? ((+m[1] * 100 + +m[2]) * 100 + +m[3]) * 1000 + +m[4] : 0; };
 const BC = (() => { try { return new BroadcastChannel('catedra'); } catch { return null; } })();
@@ -751,7 +751,7 @@ const Gestao = {
     if (this.tab !== 'professores') $('#gKpi').innerHTML = '';
     $('#gTabs').innerHTML = '';
     const tt = this.TITULOS[this.tab] || this.TITULOS.professores, ph = $('#gHead'); if (ph) { ph.querySelector('h2').textContent = tt[0]; ph.querySelector('p').textContent = tt[1]; document.title = tt[0] + ' · Cátedra'; $('#pageTitle').textContent = tt[0]; }
-    const B = $('#gBody'); B.innerHTML = this[this.tab](); if (this.tab === 'convites') Admin.convite(); if (this.tab === 'professores') this.lista(); if (this.tab === 'backup') BackupAdm.status();
+    const B = $('#gBody'); B.innerHTML = this[this.tab](); if (this.tab === 'planos') this.prevPix(); if (this.tab === 'convites') Admin.convite(); if (this.tab === 'professores') this.lista(); if (this.tab === 'backup') BackupAdm.status();
   },
   /* ---- professores ---- */
   avisosVenc() {
@@ -876,13 +876,20 @@ const Gestao = {
       <div class="field"><label>Teste gratuito para novos cadastros (dias)</label><input name="teste" type="number" min="0" max="90" value="${f.teste}"></div>
       <div class="field"><label>Tolerância após o vencimento (dias)</label><input name="tolerancia" type="number" min="0" max="60" value="${f.tolerancia}"></div>
       <label class="check"><input type="checkbox" name="bloqueioAuto" ${f.bloqueioAuto ? 'checked' : ''}> <span><b>Suspender automaticamente</b> o professor que passar da tolerância sem pagar. Ao registrar o pagamento, o acesso volta na hora.</span></label>
-      <div class="field" style="margin-top:12px"><label>Chave PIX e instruções de pagamento</label><textarea name="pix" rows="4" placeholder="PIX (e-mail): seu@email.com&#10;Nome: …&#10;Envie o comprovante pelo WhatsApp.">${esc(f.pix)}</textarea><div class="hint">Aparece para o professor em “Como pagar” e nas mensagens de cobrança.</div></div>
+      <div class="field" style="margin-top:12px"><label>Chave PIX e instruções de pagamento</label><textarea name="pix" rows="4" oninput="Gestao.prevPix()" placeholder="PIX (e-mail): seu@email.com&#10;Nome: …&#10;Envie o comprovante pelo WhatsApp.">${esc(f.pix)}</textarea><div class="hint">Aparece para o professor em “Como pagar” e nas mensagens de cobrança. Para o QR code, informe a chave (ex.: o CNPJ).</div></div>
+      <div class="row"><div class="field"><label>Nome do recebedor (PIX)</label><input name="pixNome" maxlength="60" value="${esc(Pix.ler(f.pix).nome)}" placeholder="Como está no banco" oninput="Gestao.prevPix()"></div><div class="field"><label>Cidade do recebedor</label><input name="pixCidade" maxlength="40" value="${esc(Pix.ler(f.pix).cidade)}" placeholder="Ex.: Maceió" oninput="Gestao.prevPix()"></div></div>
+      <div class="field"><label>Prévia do QR code PIX (como o professor verá)</label><div id="finPix"></div></div>
       <div class="field"><label>Seu WhatsApp para contato (com DDD)</label><input name="contato" type="tel" value="${esc(f.contato)}" placeholder="(82) 99999-9999"><div class="hint">O professor usa para enviar o comprovante.</div></div>
       <div class="field"><label>Planos disponíveis para troca (o professor escolhe um ao solicitar alteração)</label><div id="plRows">${(f.planos || []).map(x => `<div class="pl-row"><input class="plN" placeholder="Nome (ex.: Anual)" value="${esc(x.nome)}"><input class="plV" type="number" step="0.01" min="0" placeholder="R$/mês" value="${esc(String(x.valor ?? ''))}"><input class="plD" placeholder="Descrição curta" value="${esc(x.descricao || '')}"><button type="button" class="btn sm danger" onclick="this.parentNode.remove()" aria-label="Remover">${ic('x', 14)}</button></div>`).join('')}</div><button type="button" class="btn sm" onclick="Gestao.addPlano()">${ic('plus', 14)} Adicionar plano</button><div class="hint">Sem planos cadastrados, o professor descreve o plano desejado em texto livre.</div></div>
       <div class="alert info" style="margin-bottom:12px">${ic('clock')}<div><b>Aviso automático:</b> o professor vê a mensagem de vencimento <b>1 dia antes</b>, no <b>dia</b> e enquanto estiver <b>em atraso</b> (faixa no topo do sistema e janela ao entrar). Professores sem vencimento definido não são cobrados.</div></div>
       <button class="btn primary" onclick="Gestao.salvarFin()">${ic('check')} Salvar</button></form></div>`;
   },
-  async salvarFin() { const d = formData($('#fFin')); d.bloqueioAuto = !!d.bloqueioAuto; d.planos = [...document.querySelectorAll('#plRows .pl-row')].map(r => ({ nome: r.querySelector('.plN').value.trim(), valor: parseFloat(r.querySelector('.plV').value) || 0, descricao: r.querySelector('.plD').value.trim() })).filter(x => x.nome); try { const r = await Auth.call('/admin/fin', d); this.d.fin = this.norm({ fin: r.fin }).fin; if (d.planos.length && !(r.fin.planos || []).length) toast('Regras salvas, mas o servidor não guardou a lista de planos. Atualize o Worker (worker.js).', 'bad', 12000); else toast('Regras salvas', 'ok'); this.carregar(); } catch (e) { toast(e.message, 'bad'); } }
+  prevPix() {
+    const box = $('#finPix'); if (!box) return; const d = formData($('#fFin')); const txt = Pix.compor(d.pix, d.pixNome, d.pixCidade), info = Pix.ler(txt);
+    if (!info.chave) { box.innerHTML = `<div class="alert warn" style="margin:0">${ic('alert')}<div class="small">Nenhuma chave PIX válida no texto acima. Use o CNPJ com os dígitos corretos (ex.: 00.000.000/0001-00), CPF, e-mail, celular ou chave aleatória.</div></div>`; return; }
+    box.innerHTML = Pix.bloco(txt, parseFloat(d.valor) || 0, 'CATEDRA', 'admPixQr') + (!info.nome || !info.cidade ? `<p class="hint" style="color:#8a5a0a">Preencha o nome e a cidade do recebedor: fazem parte do padrão PIX.</p>` : '');
+  },
+  async salvarFin() { const d = formData($('#fFin')); d.pix = Pix.compor(d.pix, d.pixNome, d.pixCidade); delete d.pixNome; delete d.pixCidade; d.bloqueioAuto = !!d.bloqueioAuto; d.planos = [...document.querySelectorAll('#plRows .pl-row')].map(r => ({ nome: r.querySelector('.plN').value.trim(), valor: parseFloat(r.querySelector('.plV').value) || 0, descricao: r.querySelector('.plD').value.trim() })).filter(x => x.nome); try { const r = await Auth.call('/admin/fin', d); this.d.fin = this.norm({ fin: r.fin }).fin; if (d.planos.length && !(r.fin.planos || []).length) toast('Regras salvas, mas o servidor não guardou a lista de planos. Atualize o Worker (worker.js).', 'bad', 12000); else toast('Regras salvas', 'ok'); this.carregar(); } catch (e) { toast(e.message, 'bad'); } }
 };
 /* ---------- Solicitações de mudança de plano ---------- */
 const dtc = v => v ? new Date(v).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
@@ -1087,12 +1094,75 @@ const PlanoProf = {
       this.redraw(); } catch { }
   }
 };
+/* =========================================================
+   PIX — QR code estático no padrão BR Code (Banco Central / EMV QRCPS)
+   A chave, o nome e a cidade do recebedor vêm do texto "Chave PIX e instruções de pagamento"
+   definido pelo administrador (linhas "Nome:" e "Cidade:"), que o servidor já repassa ao professor.
+   ========================================================= */
+const Pix = {
+  ascii: s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9 $%*+\-./:]/g, ' ').replace(/\s+/g, ' ').trim(),
+  /* CNPJ numérico ou alfanumérico (Receita Federal, a partir de 2026): 12 posições + 2 dígitos verificadores */
+  cnpjOk(c) {
+    c = String(c || '').toUpperCase().replace(/[.\/\-\s]/g, '');
+    if (!/^[A-Z0-9]{12}\d{2}$/.test(c) || /^(\d)\1{13}$/.test(c)) return false;
+    const v = ch => ch.charCodeAt(0) - 48, dv = n => { const p = n === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]; const s = p.reduce((a, w, i) => a + v(c[i]) * w, 0) % 11; return s < 2 ? 0 : 11 - s; };
+    return dv(12) === +c[12] && dv(13) === +c[13];
+  },
+  cpfOk(c) {
+    c = String(c || '').replace(/\D/g, ''); if (c.length !== 11 || /^(\d)\1{10}$/.test(c)) return false;
+    const dv = n => { let s = 0; for (let i = 0; i < n; i++) s += +c[i] * (n + 1 - i); const r = (s * 10) % 11; return r === 10 ? 0 : r; };
+    return dv(9) === +c[9] && dv(10) === +c[10];
+  },
+  /* lê a chave e os dados do recebedor do texto livre do administrador */
+  ler(texto) {
+    const t = String(texto || ''), linha = re => (t.match(re) || [])[1]?.trim() || '';
+    const nome = linha(/^\s*(?:nome|favorecido|recebedor|benefici[áa]rio|titular)\s*[:\-]\s*(.+)$/im);
+    const cidade = linha(/^\s*cidade\s*[:\-]\s*(.+)$/im);
+    let chave = '', tipo = '';
+    for (const m of t.toUpperCase().matchAll(/\b[A-Z0-9]{2}\.?[A-Z0-9]{3}\.?[A-Z0-9]{3}\/?[A-Z0-9]{4}-?\d{2}\b/g)) { if (this.cnpjOk(m[0])) { chave = m[0].replace(/[.\/\-]/g, ''); tipo = 'CNPJ'; break; } }
+    if (!chave) for (const m of t.matchAll(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g)) { if (this.cpfOk(m[0])) { chave = m[0].replace(/\D/g, ''); tipo = 'CPF'; break; } }
+    if (!chave) { const m = t.match(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i); if (m) { chave = m[0].toLowerCase(); tipo = 'Chave aleatória'; } }
+    if (!chave) { const m = t.match(/[\w.+-]+@[\w-]+\.[\w.-]+/); if (m) { chave = m[0].toLowerCase(); tipo = 'E-mail'; } }
+    if (!chave) { const m = t.match(/(?:pix|chave)[^\n]*?(\+?55)?\s*\(?(\d{2})\)?\s*9?\s*(\d{4,5})[-\s]?(\d{4})/i); if (m) { chave = '+55' + m[2] + (m[3].length === 4 ? '9' + m[3] : m[3]) + m[4]; tipo = 'Celular'; } }
+    return { chave, tipo, nome, cidade };
+  },
+  emv: (id, v) => id + String(v.length).padStart(2, '0') + v,
+  crc16(s) { let c = 0xFFFF; for (let i = 0; i < s.length; i++) { c ^= s.charCodeAt(i) << 8; for (let j = 0; j < 8; j++) c = c & 0x8000 ? ((c << 1) ^ 0x1021) & 0xFFFF : (c << 1) & 0xFFFF; } return c.toString(16).toUpperCase().padStart(4, '0'); },
+  payload({ chave, nome, cidade, valor, txid }) {
+    const E = this.emv, n = (this.ascii(nome) || 'RECEBEDOR').toUpperCase().slice(0, 25), cd = (this.ascii(cidade) || 'BRASIL').toUpperCase().slice(0, 15);
+    const tx = (String(txid || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 25)) || '***';
+    let p = E('00', '01') + E('26', E('00', 'br.gov.bcb.pix') + E('01', chave)) + E('52', '0000') + E('53', '986')
+      + (+valor > 0 ? E('54', (+valor).toFixed(2)) : '') + E('58', 'BR') + E('59', n) + E('60', cd) + E('62', E('05', tx)) + '6304';
+    return p + this.crc16(p);
+  },
+  async svg(texto, px = 200) {
+    await loadLib('qrcode'); const q = window.qrcode(0, 'M'); q.addData(texto); q.make();
+    const n = q.getModuleCount(), m = 2, t = n + m * 2; let d = '';
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) d += `M${c + m} ${r + m}h1v1h-1z`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${t} ${t}" width="${px}" height="${px}" shape-rendering="crispEdges" role="img" aria-label="QR code PIX"><rect width="${t}" height="${t}" fill="#fff"/><path d="${d}" fill="#111a33"/></svg>`;
+  },
+  compor(texto, nome, cidade) { const L = String(texto || '').split(/\r?\n/).filter(l => !/^\s*(nome|favorecido|recebedor|benefici[áa]rio|titular|cidade)\s*[:\-]/i.test(l)); while (L.length && !L[L.length - 1].trim()) L.pop(); if (String(nome || '').trim()) L.push('Nome: ' + nome.trim()); if (String(cidade || '').trim()) L.push('Cidade: ' + cidade.trim()); return L.join('\n'); },
+  fmtChave(k, tipo) { return tipo === 'CNPJ' ? k.replace(/^(..)(...)(...)(....)(..)$/, '$1.$2.$3/$4-$5') : tipo === 'CPF' ? k.replace(/^(...)(...)(...)(..)$/, '$1.$2.$3-$4') : k; },
+  /* HTML do bloco PIX (o QR é preenchido depois, de forma assíncrona) */
+  bloco(texto, valor, txid, id = 'pixQr') {
+    const d = this.ler(texto); if (!d.chave) return '';
+    const code = this.payload({ ...d, valor, txid }); window._pixCode = window._pixCode || {}; window._pixCode[id] = code; window._pixKey = window._pixKey || {}; window._pixKey[id] = d.chave;
+    setTimeout(async () => { const el = document.getElementById(id); if (!el) return; try { el.innerHTML = await this.svg(code); } catch { el.innerHTML = '<p class="muted small">Não foi possível desenhar o QR code. Use o Pix copia e cola.</p>'; } }, 0);
+    return `<div class="pix-box"><div class="pix-qr" id="${id}"><div class="spinner"></div></div>
+      <div class="pix-info"><div class="pix-tit">${ic('grid', 16)} Pague com PIX</div>
+        <p class="small" style="margin:0 0 8px">Abra o app do seu banco, escolha <b>Pix → Ler QR code</b> e aponte a câmera.${+valor > 0 ? ` O valor de <b>${brl(valor)}</b> já vem preenchido.` : ''}</p>
+        <div class="pix-dados"><span>${esc(d.tipo)}</span><b${/CNPJ|CPF|Celular/.test(d.tipo) ? ' style="white-space:nowrap;word-break:normal"' : ''}>${esc(this.fmtChave(d.chave, d.tipo))}</b>${d.nome ? `<span>Recebedor</span><b>${esc(d.nome)}</b>` : ''}</div>
+        <div class="pix-acts"><button class="btn primary sm" onclick="copyText(window._pixCode['${id}'])">${ic('copy', 14)} Pix copia e cola</button><button class="btn sm" onclick="copyText(window._pixKey['${id}'])">${ic('key', 14)} Copiar chave</button></div></div></div>`;
+  }
+};
 function comoPagar(aviso) {
-  const a = S?.assin || {}, av = avisoDe(a), nome = (Auth.user?.nome || '').split(' ')[0] || 'professor(a)';
+  const a = S?.assin || {}, nome = (Auth.user?.nome || '').split(' ')[0] || 'professor(a)';
+  const dReal = a.venc ? Math.round((Date.parse(a.venc + 'T00:00:00Z') - Date.parse(hojeISO() + 'T00:00:00Z')) / 86400000) : null;
+  const av = dReal == null ? avisoDe(a) : dReal < 0 ? 'atraso' : dReal === 0 ? 'hoje' : dReal === 1 ? 'amanha' : avisoDe(a);
   const atraso = av === 'atraso', hoje = av === 'hoje', amanha = av === 'amanha';
   const tom = atraso ? 'bad' : (amanha || hoje) ? 'warn' : 'info';
   const titulo = atraso ? 'Seu plano está vencido' : hoje ? 'Seu plano vence hoje' : amanha ? 'Seu plano vence amanhã' : 'Renovar o plano';
-  const dias = a.diasRestantes;
+  const dias = dReal ?? a.diasRestantes;
   const sit = atraso ? `Vencido${a.venc ? ' há ' + Math.max(1, Math.abs(dias ?? 1)) + ' dia(s)' : ''}` : hoje ? 'Vence hoje' : amanha ? 'Vence em 1 dia' : (dias != null ? `Vence em ${dias} dia(s)` : 'Em dia');
   const msg = atraso ? `Olá, <b>${esc(nome)}</b>! O pagamento do seu plano <b>${esc(a.plano || '')}</b> venceu em <b>${dBR(a.venc)}</b>. Regularize agora para não perder o acesso ao sistema. Seus dados continuam guardados.`
     : `Olá, <b>${esc(nome)}</b>! Seu plano <b>${esc(a.plano || '')}</b> ${hoje ? 'vence <b>hoje</b>' : amanha ? 'vence <b>amanhã</b>' : 'vence em <b>' + dBR(a.venc) + '</b>'} (${dBR(a.venc)}). Faça o pagamento de <b>${brl(a.valor)}</b> para continuar usando o sistema sem interrupção.`;
@@ -1105,7 +1175,7 @@ function comoPagar(aviso) {
       <p class="vc-msg">${msg}</p>
       <div class="vc-grid"><div><span>Plano</span><b>${esc(a.plano || '—')}</b></div><div><span>Valor</span><b>${brl(a.valor)}</b></div><div><span>Situação</span><b class="vc-sit">${sit}</b></div></div>
       <div class="vc-sec"><div class="vc-lbl">${ic('key', 15)} Dados para pagamento</div>
-        ${a.pix ? `<div class="vc-pix" id="vcPix">${esc(a.pix)}</div><button class="btn sm" onclick="copyText(document.getElementById('vcPix').innerText)">${ic('copy', 14)} Copiar dados</button>` : '<p class="muted small" style="margin:0">Fale com o gestor para combinar a forma de pagamento.</p>'}</div>
+        ${a.pix ? `${Pix.bloco(a.pix, a.valor, 'CAT' + (Auth.user?.id || ''), 'vcPixQr')}<div class="vc-pix" id="vcPix">${esc(a.pix)}</div><button class="btn sm" onclick="copyText(document.getElementById('vcPix').innerText)">${ic('copy', 14)} Copiar dados</button>` : '<p class="muted small" style="margin:0">Fale com o gestor para combinar a forma de pagamento.</p>'}</div>
       <div class="vc-sec"><div class="vc-lbl">${ic('user', 15)} Contato do gestor</div>
         ${a.contato ? `<div class="vc-ct"><div><b>${esc(fmtTel(a.contato))}</b><span>WhatsApp · envie o comprovante</span></div><a class="btn primary sm" target="_blank" rel="noopener" href="${esc(waLink(a.contato, `Olá! Sou ${Auth.user?.nome || 'professor(a)'} e estou enviando o comprovante do plano do Cátedra (vencimento ${dBR(a.venc)}).`))}">${ic('send', 14)} Chamar no WhatsApp</a></div>` : '<p class="muted small" style="margin:0">Contato do gestor ainda não informado.</p>'}</div>
       <p class="vc-hint">Depois de pagar, envie o comprovante. O acesso é atualizado assim que o pagamento for registrado.</p>
@@ -1129,6 +1199,12 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') vencFechar()
 .vc-grid div{background:#f6f4ee;border-radius:12px;padding:10px 12px}.vc-grid span{display:block;font-size:11.5px;color:var(--muted)}.vc-grid b{font-size:14px}
 .vc-bad .vc-sit{color:var(--bad)}.vc-warn .vc-sit{color:var(--warn)}
 .vc-sec{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:12px}
+.pix-box{display:flex;gap:16px;align-items:center;background:#f4fbf8;border:1px solid #cdeadb;border-radius:14px;padding:12px;margin-bottom:10px}
+.pix-qr{flex:none;width:168px;height:168px;display:grid;place-items:center;background:#fff;border-radius:10px;border:1px solid #e1efe7}.pix-qr svg{width:100%;height:100%}
+.pix-info{flex:1;min-width:0}.pix-tit{display:flex;align-items:center;gap:6px;font-weight:700;color:#1b8f62;margin-bottom:4px}
+.pix-dados{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:13px;margin-bottom:10px}.pix-dados span{color:var(--muted)}.pix-dados b{word-break:break-all}
+.pix-acts{display:flex;flex-wrap:wrap;gap:6px}
+@media(max-width:520px){.pix-box{flex-direction:column;align-items:stretch;text-align:left}.pix-qr{align-self:center;width:200px;height:200px}}
 .vc-lbl{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
 .vc-pix{background:#faf8f3;border-radius:10px;padding:10px 12px;margin-bottom:8px;white-space:pre-wrap;word-break:break-word;font-size:14px}
 .vc-ct{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.vc-ct b{display:block;font-size:16px}.vc-ct span{font-size:12.5px;color:var(--muted)}
@@ -1141,7 +1217,7 @@ function telaSuspensa(a) {
   document.body.classList.add('student'); const bl = a.status === 'bloqueado';
   $('#main').innerHTML = `<div class="card" style="max-width:480px;margin:8vh auto;text-align:center"><div style="font-size:42px">🔒</div><h2 style="margin:6px 0 8px">${bl ? 'Acesso bloqueado' : 'Assinatura vencida'}</h2>
   <p class="muted" style="margin-top:0">${bl ? 'O administrador bloqueou o seu acesso. Fale com ele para regularizar.' : `O seu plano venceu em <b>${dBR(a.venc)}</b>. Regularize o pagamento para voltar a usar o sistema.`}</p>
-  ${a.pix && !bl ? `<div style="background:#faf8f3;border:1px solid var(--line);border-radius:12px;padding:12px 14px;white-space:pre-wrap;word-break:break-word;text-align:left">${esc(a.pix)}</div>` : ''}
+  ${a.pix && !bl ? `<div style="text-align:left;margin-bottom:10px">${Pix.bloco(a.pix, a.valor, 'CAT' + (Auth.user?.id || ''), 'susPixQr')}</div><div style="background:#faf8f3;border:1px solid var(--line);border-radius:12px;padding:12px 14px;white-space:pre-wrap;word-break:break-word;text-align:left">${esc(a.pix)}</div>` : ''}
   <div class="actions" style="justify-content:center;margin-top:16px"><a class="btn primary big" target="_blank" rel="noopener noreferrer" href="${esc(waLink(a.contato || GESTOR_WHATSAPP, bl ? 'Olá! Sou ' + (Auth.user?.nome || 'professor(a)') + ' e o meu acesso ao Cátedra está bloqueado. Gostaria de regularizar a situação.' : 'Olá! Sou ' + (Auth.user?.nome || 'professor(a)') + ' e o meu plano do Cátedra venceu' + (a.venc ? ' em ' + dBR(a.venc) : '') + '. Gostaria de regularizar o pagamento.'))}">${ic('send', 16)} Falar com o gestor no WhatsApp</a><button class="btn" onclick="Auth.logout()">Sair</button></div>
   <p class="hint" style="margin-top:14px">Seus dados continuam guardados e voltam assim que o acesso for regularizado.</p></div>`;
 }
