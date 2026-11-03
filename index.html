@@ -391,7 +391,7 @@ const LIBS = {
   tessLang: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/por@1.0.0/4.0.0_best_int',
   qrcode: 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js'
 };
-const APP_VERSION = '2026.11.3-2';
+const APP_VERSION = '2026.11.3-3';
 const sha16 = async t => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(t || ''))))].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
 const verNum = v => { const m = String(v || '').match(/^(\d+)\.(\d+)\.(\d+)-(\d+)$/); return m ? ((+m[1] * 100 + +m[2]) * 100 + +m[3]) * 1000 + +m[4] : 0; };
 const BC = (() => { try { return new BroadcastChannel('catedra'); } catch { return null; } })();
@@ -947,14 +947,18 @@ const Status = {
     if (!navigator.onLine) return [[false, 'Internet deste aparelho', 'Sem conexão. Verifique o Wi-Fi ou os dados móveis.', true]];
     if (!this.h) return [[false, 'Servidor', this.erro ? 'Não respondeu: ' + this.erro : 'Ainda não verificado', true]];
     L.push([!!h.ok, 'Servidor', h.ok ? `Online · versão ${h.versao || '?'} · resposta em ${this.ms} ms` : 'Respondeu com erro', true]);
-    L.push([h.gist !== false, 'Banco de dados', h.gist === false ? 'O servidor não acessa o banco: ' + (h.gistErro || 'confira GITHUB_TOKEN e GIST_ID') : 'Acessível pelo servidor', true]);
+    // banco: o Worker pode usar Gist (informa h.gist) ou KV/D1 (não informa): nesse caso vale a carga real dos dados
+    const bancoOk = h.gist === false ? false : h.gist === true ? true : !this.dadosErro;
+    L.push([bancoOk, 'Banco de dados', h.gist === false ? 'O servidor não acessa o banco: ' + (h.gistErro || 'confira GITHUB_TOKEN e GIST_ID') : h.gist === true ? 'Acessível pelo servidor' : this.dadosErro ? 'O servidor não entregou os dados: ' + this.dadosErro : this.dadosEm ? 'Respondendo: os dados da gestão chegaram do servidor' : 'Aguardando a primeira carga de dados', true]);
     L.push([!this.dadosErro && !!this.dadosEm, 'Sincronização da gestão', this.dadosErro ? 'Falhou: ' + this.dadosErro : this.dadosEm ? `Dados recebidos do servidor às ${this.hora(this.dadosEm)} (${this.quando(this.dadosEm)})` : 'Aguardando a primeira carga', true]);
     L.push([verNum(h.versao) >= verNum(APP_VERSION), 'Versão do servidor', `Servidor ${h.versao || '?'} · site ${APP_VERSION}${verNum(h.versao) >= verNum(APP_VERSION) ? '' : ' (o site é mais novo; atualize o worker.js só se alguma função nova pedir)'}`, false]);
     if (h.vars) { // se o banco responde, o acesso a ele está configurado (o Worker pode usar outros nomes ou outro tipo de banco)
-      const f = (h.gist === true ? ['SESSION_SECRET'] : ['GITHUB_TOKEN', 'GIST_ID', 'SESSION_SECRET']).filter(k => !V[k] && !(k === 'SESSION_SECRET' && h.sessao));
+      const f = (h.gist === false ? ['GITHUB_TOKEN', 'GIST_ID', 'SESSION_SECRET'] : ['SESSION_SECRET']).filter(k => !V[k] && !(k === 'SESSION_SECRET' && h.sessao));
       L.push([!f.length, 'Variáveis do servidor', f.length ? 'Faltando: ' + f.join(', ') : 'Todas as obrigatórias estão configuradas', true]); }
     else if (h.sessao === false) L.push([false, 'Sessões', 'Defina SESSION_SECRET no servidor', true]);
-    L.push([!!h.ia?.configurada, 'Correção por IA', h.ia?.configurada ? `Ativa · ${PROVIDERS[h.ia.provider] || h.ia.provider || ''}${h.ia.model ? ' · ' + h.ia.model : ''}` : 'Sem AI_KEY: professores usam a correção gratuita', false]);
+    const par = Array.isArray(h.parecidos) ? h.parecidos : [];
+    if (par.length) L.push([false, 'Nomes parecidos no servidor', `O servidor achou variáveis com nome quase igual ao esperado: ${par.join(', ')}. Apague e crie de novo com o nome exato (ex.: AI_KEY, AI_PROVIDER, SESSION_SECRET).`, true]);
+    L.push([!!h.ia?.configurada, 'Correção por IA', h.ia?.configurada ? `Ativa · ${PROVIDERS[h.ia.provider] || h.ia.provider || ''}${h.ia.model ? ' · ' + h.ia.model : ''}` : `Sem AI_KEY: professores usam a correção gratuita.${h.vars && h.vars.AI_KEY === false ? ' O servidor não encontrou uma variável chamada exatamente AI_KEY.' : ''}`, false]);
     return L;
   },
   nivel() {
@@ -987,7 +991,7 @@ const Status = {
     const h = this.h || {};
     g.className = 'st-bar ' + nv;
     g.innerHTML = `<div class="st-main"><span class="dot ${dot}"></span><div><b>${esc(txt)}</b><div class="muted small">${this.checadoEm ? `Verificado às ${this.hora(this.checadoEm)} · próxima verificação automática em 1 min` : 'Primeira verificação em andamento'}</div></div></div>
-      <div class="st-pills">${this.h ? pill(!!h.ok, 'Servidor' + (this.ms != null ? ` ${this.ms} ms` : '')) + pill(h.gist !== false, 'Banco de dados') + pill(!!h.ia?.configurada, 'IA') : pill(false, 'Servidor')}${pill(!this.dadosErro && !!this.dadosEm, this.dadosEm ? `${sinc} (${this.quando(this.dadosEm)})` : 'Sincronização')}</div>
+      <div class="st-pills">${this.h ? pill(!!h.ok, 'Servidor' + (this.ms != null ? ` ${this.ms} ms` : '')) + pill(h.gist === true || (h.gist !== false && !this.dadosErro), 'Banco de dados') + pill(!!h.ia?.configurada, 'IA') : pill(false, 'Servidor')}${pill(!this.dadosErro && !!this.dadosEm, this.dadosEm ? `${sinc} (${this.quando(this.dadosEm)})` : 'Sincronização')}</div>
       <div class="st-acts"><button class="btn sm" onclick="Status.detalhes()">Detalhes</button><button class="btn sm" onclick="Status.checar(true)" ${verificando || this.busy ? 'disabled' : ''}>${ic('refresh', 14)} Verificar agora</button></div>`;
     const m = $('#stDet'); if (m) m.innerHTML = this.tabela(ok);
   },
@@ -999,7 +1003,7 @@ const Status = {
   },
   detalhes() {
     modal({ title: 'Saúde do sistema', wide: true, body: `<div id="stDet">${this.tabela(this.itens())}</div><p class="hint">A verificação roda sozinha a cada minuto enquanto esta tela está aberta, e também quando você volta para a aba ou a internet retorna.</p>`,
-      actions: [{ label: ic('refresh') + ' Verificar agora', onClick: async () => { await this.checar(true); return false; } }, { label: 'Fechar', cls: 'primary' }] });
+      actions: [{ label: ic('copy') + ' Copiar resposta do servidor', onClick: () => { copyText(JSON.stringify({ site: APP_VERSION, verificadoEm: new Date(this.checadoEm).toISOString(), erro: this.erro || undefined, health: this.h }, null, 2)); return false; } }, { label: ic('refresh') + ' Verificar agora', onClick: async () => { await this.checar(true); return false; } }, { label: 'Fechar', cls: 'primary' }] });
   },
   iniciar() {
     this.checar();
