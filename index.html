@@ -330,6 +330,28 @@ input[type=date],input[type=tel]{width:100%;border:1px solid #dcd8ce;border-radi
 body.admin-mode #syncBox,body.admin-mode #syncDot2{display:none!important}
 #admStatus,#admDot{display:none}body.admin-mode #admStatus{display:block;background:rgba(255,255,255,.05);border-radius:12px;padding:12px;font-size:13px;line-height:1.35}body.admin-mode #admDot{display:block}
 .dot.warn{background:var(--accent)}
+.st-chip{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 15px 0 13px;border-radius:99px;border:1px solid #cfe9dc;background:#f1faf5;color:#14684a;font:600 13.5px Inter,sans-serif;cursor:pointer;transition:box-shadow .15s,border-color .15s;white-space:nowrap}
+.st-chip:hover{box-shadow:0 4px 14px -6px rgba(27,143,98,.45)}.st-chip:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.st-chip .st-s{font-weight:500;font-size:12.5px;opacity:.75}.st-chip .st-s::before{content:"·";margin-right:6px}
+.st-chip.warn{border-color:#f0d9a8;background:#fffaf0;color:#8a5a0a}.st-chip.err{border-color:#f3c4c4;background:#fff5f5;color:#b3261e}.st-chip.busy{border-color:var(--line);background:#fff;color:var(--muted)}
+.st-dot{position:relative;width:9px;height:9px;border-radius:50%;background:#7c859c;flex:none}
+.st-dot.ok{background:#22b36f}.st-dot.ok::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:2px solid #22b36f;opacity:0;animation:stPulse 2.4s ease-out infinite}
+.st-dot.warn{background:var(--accent)}.st-dot.err{background:#e5484d}.st-dot.busy{background:var(--accent);animation:pulse 1s infinite}
+@keyframes stPulse{0%{transform:scale(.6);opacity:.55}80%,100%{transform:scale(1.5);opacity:0}}
+@media (prefers-reduced-motion:reduce){.st-dot.ok::after,.st-dot.busy{animation:none}}
+.st-alert{display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px;border-radius:14px;padding:12px 16px;margin:0 0 18px;border:1px solid}
+.st-alert.warn{background:#fffaf0;border-color:#f0d9a8;color:#6b4708}.st-alert.err{background:#fff5f5;border-color:#f3c4c4;color:#8f1d17}
+.st-alert-t{flex:1;min-width:220px;display:flex;flex-direction:column;gap:2px}.st-alert-t span{font-size:13px;opacity:.9}.st-alert-a{display:flex;gap:6px}
+.st-side{all:unset;box-sizing:border-box;width:100%;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;cursor:pointer;color:#fff;line-height:1.3}
+.st-side:hover{background:rgba(255,255,255,.06)}.st-side:focus-visible{outline:2px solid var(--accent)}.st-side b{display:block;font-size:13px;font-weight:600}.st-side small{display:block;font-size:11.5px;color:#8f9bbd}
+body.admin-mode #admStatus{background:rgba(255,255,255,.05)!important;padding:2px!important}
+.st-hero{display:flex;align-items:center;gap:14px;border-radius:14px;padding:14px 16px;margin-bottom:14px}.st-hero b{display:block;font-size:16px}.st-hero span{font-size:13px;opacity:.8}
+.st-hero.ok{background:#f1faf5;color:#14684a}.st-hero.warn{background:#fffaf0;color:#6b4708}.st-hero.err{background:#fff5f5;color:#8f1d17}.st-hero.busy{background:#f6f4ee;color:var(--muted)}
+.st-hico{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:#fff;flex:none;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.st-list{display:flex;flex-direction:column}.st-row{display:grid;grid-template-columns:30px 1fr;gap:10px;padding:10px 2px;border-top:1px solid var(--line)}.st-row:first-child{border-top:0}
+.st-row b{display:block;font-size:14px}.st-row span{font-size:13px;color:var(--muted);word-break:break-word}
+.st-ri{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;margin-top:1px}.st-ri.ok{background:#e2f4ec;color:#1b8f62}.st-ri.bad{background:#fde8e6;color:#b3261e}.st-ri.info{background:#eceae3;color:#5b6478}
+.st-tec{margin-top:10px;border-top:1px solid var(--line);padding-top:10px}.st-tec summary{cursor:pointer;font-size:13px;color:var(--muted);font-weight:600}
 .st-bar{display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px;background:#fff;border:1px solid var(--line);border-left:4px solid #7c859c;border-radius:14px;padding:12px 16px;margin:0 0 18px}
 .st-bar.ok{border-left-color:#35c88a}.st-bar.warn{border-left-color:var(--accent);background:#fffaf0}.st-bar.err{border-left-color:#ef5a5a;background:#fff7f7}.st-bar.busy{border-left-color:var(--accent)}
 .st-main{display:flex;align-items:center;gap:12px;min-width:220px}.st-main b{font-size:15px}
@@ -402,7 +424,7 @@ const LIBS = {
   tessLang: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/por@1.0.0/4.0.0_best_int',
   qrcode: 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js'
 };
-const APP_VERSION = '2026.11.4-1';
+const APP_VERSION = '2026.11.4-2';
 /* Marca da desenvolvedora (Mercatto Labs) */
 const MLABS = { nome: 'Mercatto Labs', icone: 'data:image/png;base64,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',
   ano: () => Math.max(2026, new Date().getFullYear()),
@@ -742,7 +764,7 @@ const Gestao = {
   },
   async carregar() { try { this.d = this.norm(await Auth.call('/admin/profs')); Status.dados(true); await this.carregarSol(true); this.draw(); } catch (e) { Status.dados(false, e.message); const b = $('#gBody'); if (b) b.innerHTML = `<div class="alert bad">${ic('alert')}<div>${esc(e.message)}</div></div>`; } },
   aba(t) { location.hash = '#/gestao/' + t; },
-  TITULOS: { professores: ['Professores', 'Cadastros, alunos, plano, vencimento e bloqueio de acesso'], solicitacoes: ['Solicitações de plano', 'Pedidos de mudança feitos pelos professores: aprove ou recuse'], pagamentos: ['Pagamentos', 'Controle de mensalidades recebidas'], relatorios: ['Relatórios de gestão', 'Receita, situação dos professores e vencimentos'], convites: ['Convidar professores', 'Envie o link e o código de convite pelo WhatsApp'], planos: ['Plano e cobrança', 'Valor mensal, tolerância, bloqueio automático e PIX'], propostas: ['Propostas comerciais', 'Propostas para escolas e universidades, com planos e valores editáveis e PDF'], backup: ['Backup global', 'Banco de dados, chaves, gestão e configurações em um arquivo criptografado'] },
+  TITULOS: { professores: ['Professores', 'Cadastros, alunos, plano, vencimento e bloqueio de acesso'], solicitacoes: ['Solicitações de plano', 'Pedidos de mudança feitos pelos professores: aprove ou recuse'], pagamentos: ['Pagamentos', 'Controle de mensalidades recebidas'], relatorios: ['Relatórios de gestão', 'Receita, situação dos professores e vencimentos'], convites: ['Convidar professores', 'Envie o link e o código de convite pelo WhatsApp'], planos: ['Plano e cobrança', 'Valor mensal, tolerância, bloqueio automático e PIX'], apresentacao: ['Apresentação', 'Edite os slides, adicione imagens, vídeos do YouTube e os clientes que já usam o sistema'], propostas: ['Propostas comerciais', 'Propostas para escolas e universidades, com planos e valores editáveis e PDF'], backup: ['Backup global', 'Banco de dados, chaves, gestão e configurações em um arquivo criptografado'] },
   /* controle de quem já foi avisado (só neste navegador) */
   avisados() { try { return JSON.parse(localStorage.getItem('catedra_avisados') || '{}'); } catch { return {}; } },
   marcarAviso(p) { const a = this.avisados(); a[p.id + '|' + p.venc] = hojeISO(); try { localStorage.setItem('catedra_avisados', JSON.stringify(a)); } catch { } },
@@ -763,7 +785,7 @@ const Gestao = {
     if (this.tab !== 'professores') $('#gKpi').innerHTML = '';
     $('#gTabs').innerHTML = '';
     const tt = this.TITULOS[this.tab] || this.TITULOS.professores, ph = $('#gHead'); if (ph) { ph.querySelector('h2').textContent = tt[0]; ph.querySelector('p').textContent = tt[1]; document.title = tt[0] + ' · Cátedra'; $('#pageTitle').textContent = tt[0]; }
-    const B = $('#gBody'); B.innerHTML = this[this.tab](); if (this.tab === 'planos') this.prevPix(); if (this.tab === 'propostas') Proposta.depois(); if (this.tab === 'convites') Admin.convite(); if (this.tab === 'professores') this.lista(); if (this.tab === 'backup') BackupAdm.status();
+    const B = $('#gBody'); B.innerHTML = this[this.tab](); if (this.tab === 'planos') this.prevPix(); if (this.tab === 'propostas') Proposta.depois(); if (this.tab === 'apresentacao') ApEd.depois(); if (this.tab === 'convites') Admin.convite(); if (this.tab === 'professores') this.lista(); if (this.tab === 'backup') BackupAdm.status();
   },
   /* ---- professores ---- */
   avisosVenc() {
@@ -879,6 +901,7 @@ const Gestao = {
   },
   backup() { return BackupAdm.html(); },
   propostas() { return Proposta.html(); },
+  apresentacao() { return ApEd.html(); },
   convites() { return `<div class="card" id="admConvite"><div class="muted small">Carregando…</div></div>`; },
   /* ---- plano e cobrança ---- */
   planos() {
@@ -1009,29 +1032,29 @@ const Status = {
     if (manual) toast(this.nivel()[0] === 'ok' ? 'Tudo funcionando' : this.nivel()[1], this.nivel()[0] === 'ok' ? 'ok' : 'bad');
   },
   pintar(verificando) {
-    const [nv, txt] = verificando ? ['busy', 'Verificando…'] : this.nivel(), dot = nv === 'warn' ? 'busy' : nv;
-    const sinc = this.dadosEm ? `Sincronizado às ${this.hora(this.dadosEm).slice(0, 5)}` : 'Aguardando sincronização';
+    const [nv, txt] = verificando ? ['busy', 'Verificando…'] : this.nivel(), dot = nv;
+    const sub = nv === 'ok' ? (this.dadosEm ? 'atualizado ' + this.quando(this.dadosEm) : '') : nv === 'busy' ? '' : 'ver detalhes';
+    // indicador no cabeçalho da Gestão (sempre visível, discreto)
+    const g = $('#gStatus');
+    if (g) { g.className = 'st-chip ' + nv; g.title = 'Saúde do sistema · clique para ver os detalhes'; g.innerHTML = `<span class="st-dot ${dot}"></span><span class="st-t">${esc(nv === 'ok' ? 'Sistema online' : txt)}</span>${sub ? `<span class="st-s">${esc(sub)}</span>` : ''}`; }
+    // aviso em destaque só quando há problema
+    const a = $('#gAlerta');
+    if (a) { const ruins = this.itens().filter(x => !x[0] && x[3]); a.innerHTML = nv === 'ok' || nv === 'busy' ? '' : `<div class="st-alert ${nv}">${ic('alert', 20)}<div class="st-alert-t"><b>${esc(txt)}</b><span>${esc(ruins.map(x => x[1] + ': ' + x[2]).join(' · ') || this.erro || '')}</span></div><div class="st-alert-a"><button class="btn sm" onclick="Status.detalhes()">Detalhes</button><button class="btn sm primary" onclick="Status.checar(true)" ${this.busy ? 'disabled' : ''}>${ic('refresh', 14)} Verificar agora</button></div></div>`; }
+    // menu lateral
     const side = $('#admStatus');
-    if (side) side.innerHTML = `<div class="sync"><span class="dot ${dot}"></span><span><b style="font-weight:600">${esc(txt)}</b><br><span style="opacity:.7">${esc(sinc)} · ${esc(this.quando(this.dadosEm))}</span></span></div><button onclick="Status.checar(true)">${ic('refresh', 15)} Verificar agora</button>`;
-    const d2 = $('#admDot'); if (d2) { d2.className = 'dot ' + dot; d2.title = txt; }
-    const g = $('#gStatus'); if (!g) return;
-    const ok = this.itens(), pill = (v, t) => `<span class="st-pill ${v ? 'ok' : 'bad'}">${ic(v ? 'check' : 'x', 12)} ${esc(t)}</span>`;
-    const h = this.h || {};
-    g.className = 'st-bar ' + nv;
-    g.innerHTML = `<div class="st-main"><span class="dot ${dot}"></span><div><b>${esc(txt)}</b><div class="muted small">${this.checadoEm ? `Verificado às ${this.hora(this.checadoEm)} · próxima verificação automática em 1 min` : 'Primeira verificação em andamento'}</div></div></div>
-      <div class="st-pills">${this.h ? pill(!!h.ok, 'Servidor' + (this.ms != null ? ` ${this.ms} ms` : '')) + pill(h.gist === true || (h.gist !== false && !this.dadosErro), 'Banco de dados') + (this.iaAtiva() ? pill(true, 'IA ativa') : `<span class="st-pill off" title="Opcional: sem chave de IA, os professores usam a correção gratuita">${ic('alert', 12)} IA desligada</span>`) : pill(false, 'Servidor')}${pill(!this.dadosErro && !!this.dadosEm, this.dadosEm ? `${sinc} (${this.quando(this.dadosEm)})` : 'Sincronização')}</div>
-      <div class="st-acts"><button class="btn sm" onclick="Status.detalhes()">Detalhes</button><button class="btn sm" onclick="Status.checar(true)" ${verificando || this.busy ? 'disabled' : ''}>${ic('refresh', 14)} Verificar agora</button></div>`;
-    const m = $('#stDet'); if (m) m.innerHTML = this.tabela(ok);
+    if (side) side.innerHTML = `<button class="st-side" onclick="Status.detalhes()" title="Saúde do sistema"><span class="st-dot ${dot}"></span><span><b>${esc(nv === 'ok' ? 'Sistema online' : txt)}</b><small>${this.dadosEm ? 'Sincronizado às ' + this.hora(this.dadosEm).slice(0, 5) : 'Aguardando sincronização'}</small></span></button>`;
+    const d2 = $('#admDot'); if (d2) { d2.className = 'dot ' + (dot === 'warn' ? 'busy' : dot); d2.title = txt; }
+    const m = $('#stDet'); if (m) m.innerHTML = this.tabela(this.itens(), verificando);
   },
-  tabela(L) {
-    return `<table class="tbl"><tbody>${L.map(([v, t, d, grave]) => `<tr><td style="width:34px"><span class="ci ${v ? 'ok' : grave ? 'bad' : ''}" style="${!v && !grave ? 'background:#eceae3;color:#5b6478' : ''}">${ic(v ? 'check' : grave ? 'x' : 'alert', 13)}</span></td><td style="width:34%"><b>${esc(t)}</b></td><td class="small" style="word-break:break-word">${esc(d)}</td></tr>`).join('')}
-      <tr><td></td><td><b>Endereço do servidor</b></td><td class="small" style="word-break:break-all"><code>${esc(Auth.api)}</code></td></tr>
-      <tr><td></td><td><b>Versão do site</b></td><td class="small">${esc(APP_VERSION)}</td></tr>
-      <tr><td></td><td><b>Última verificação</b></td><td class="small">${this.checadoEm ? esc(fmtDate(this.checadoEm)) + ' · ' + esc(this.hora(this.checadoEm)) : '—'}</td></tr></tbody></table>`;
+  tabela(L, verificando) {
+    const [nv, txt] = verificando ? ['busy', 'Verificando…'] : this.nivel();
+    return `<div class="st-hero ${nv}"><span class="st-hico">${ic(nv === 'ok' ? 'check' : nv === 'busy' ? 'refresh' : 'alert', 22)}</span><div><b>${esc(nv === 'ok' ? 'Tudo funcionando' : txt)}</b><span>${this.checadoEm ? `Verificado às ${this.hora(this.checadoEm)}${this.ms != null ? ` · resposta do servidor em ${this.ms} ms` : ''} · nova verificação automática a cada minuto` : 'Primeira verificação em andamento'}</span></div></div>
+      <div class="st-list">${L.map(([v, t, d, grave]) => `<div class="st-row"><span class="st-ri ${v ? 'ok' : grave ? 'bad' : 'info'}">${ic(v ? 'check' : grave ? 'x' : 'alert', 13)}</span><div><b>${esc(t)}</b><span>${esc(d)}</span></div></div>`).join('')}</div>
+      <details class="st-tec"><summary>Informações técnicas</summary><div class="st-row"><span></span><div><b>Endereço do servidor</b><span><code>${esc(Auth.api)}</code></span></div></div><div class="st-row"><span></span><div><b>Versão do site</b><span>${esc(APP_VERSION)}</span></div></div></details>`;
   },
   detalhes() {
-    modal({ title: 'Saúde do sistema', wide: true, body: `<div id="stDet">${this.tabela(this.itens())}</div><p class="hint">A verificação roda sozinha a cada minuto enquanto esta tela está aberta, e também quando você volta para a aba ou a internet retorna.</p>`,
-      actions: [{ label: ic('copy') + ' Copiar resposta do servidor', onClick: () => { copyText(JSON.stringify({ site: APP_VERSION, verificadoEm: new Date(this.checadoEm).toISOString(), erro: this.erro || undefined, health: this.h }, null, 2)); return false; } }, { label: ic('refresh') + ' Verificar agora', onClick: async () => { await this.checar(true); return false; } }, { label: 'Fechar', cls: 'primary' }] });
+    modal({ title: 'Saúde do sistema', wide: true, body: `<div id="stDet">${this.tabela(this.itens())}</div>`,
+      actions: [{ label: ic('copy') + ' Copiar diagnóstico', onClick: () => { copyText(JSON.stringify({ site: APP_VERSION, verificadoEm: new Date(this.checadoEm).toISOString(), erro: this.erro || undefined, health: this.h }, null, 2)); return false; } }, { label: ic('refresh') + ' Verificar agora', onClick: async () => { await this.checar(true); return false; } }, { label: 'Fechar', cls: 'primary' }] });
   },
   iniciar() {
     this.checar();
@@ -1330,11 +1353,140 @@ const Proposta = {
     }
   }
 };
+/* =========================================================
+   EDITOR DA APRESENTAÇÃO (somente painel de gestão)
+   O conteúdo fica no servidor (rota /admin/apresentacao) e aparece para todos em apresentacao.html.
+   ========================================================= */
+const AP_BASE = [['inicio', 'Capa'], ['problema', 'O ponto de partida'], ['sistema', 'O sistema'], ['arquitetura', 'Como funciona por dentro'], ['como-usar', 'Parte 1 · Como usar'], ['jornada', 'A jornada do professor'], ['turmas', 'Turmas e alunos'], ['atividades', 'Atividades'], ['provas', 'Provas com gabarito'], ['divulgar', 'Link e QR code'], ['aluno', 'A experiência do aluno'], ['correcao', 'Dois modos de correção'], ['relatorios', 'Revisar e reportar'], ['gestao', 'Parte 2 · Gestão'], ['administracao', 'Painel gerencial'], ['seguranca', 'Segurança e continuidade'], ['evoluir', 'Parte 3 · Evoluir'], ['maturidade', 'Modelo de maturidade'], ['implantacao', 'Plano de implantação'], ['boas-praticas', 'Boas práticas'], ['demonstracao', 'Demonstração ao vivo'], ['perguntas', 'Encerramento']];
+const ytId = u => (String(u || '').match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([\w-]{11})/) || [])[1] || '';
+const ApEd = {
+  d: null, erro: '', sujo: false, salvoEm: 0, thumbs: {},
+  vazio() { return { capa: { palestrante: Auth.user?.nome && Auth.user.nome !== 'Administrador' ? Auth.user.nome : '', cargo: '', evento: '', data: '' }, slides: [], clientes: [], clientesTitulo: 'Instituições que já usam o Cátedra', clientesTexto: '', ordem: [], ocultos: [] }; },
+  async carregar() {
+    try { const r = await Auth.call('/apresentacao'); this.d = r.vazio ? this.vazio() : { ...this.vazio(), ...r }; this.salvoEm = r.atualizadoEm || 0; this.erro = ''; }
+    catch (e) { this.d = this.vazio(); this.erro = e.status === 404 ? 'servidor' : e.message; }
+    Gestao.draw();
+  },
+  get(path) { return path.split('.').reduce((a, k) => a == null ? a : a[k], this.d); },
+  set(path, v) { const ks = path.split('.'), last = ks.pop(); ks.reduce((a, k) => a[k], this.d)[last] = v; },
+  mexeu() { this.sujo = true; const s = $('#apSalvo'); if (s) { s.textContent = 'Alterações não publicadas'; s.className = 'ap-st pend'; } },
+  /* ordem efetiva dos slides (a mesma regra da página da apresentação) */
+  ordem() {
+    const d = this.d, padrao = AP_BASE.map(x => x[0]), pos = padrao.indexOf('perguntas');
+    const extras = [...d.slides.map(s => s.id), ...(d.clientes.length ? ['clientes'] : [])];
+    padrao.splice(pos, 0, ...extras);
+    const ord = d.ordem.filter(id => padrao.includes(id));
+    return [...ord, ...padrao.filter(id => !ord.includes(id))];
+  },
+  titulo(id) { if (id === 'clientes') return this.d.clientesTitulo || 'Clientes'; const c = this.d.slides.find(s => s.id === id); if (c) return c.titulo || c.olho || 'Slide sem título'; return (AP_BASE.find(x => x[0] === id) || [, id])[1]; },
+  /* miniaturas: baixa a imagem do servidor e mostra como blob (respeita a política de segurança do site) */
+  thumb(id) {
+    if (!id) return '';
+    if (this.thumbs[id]) return this.thumbs[id];
+    if (this.thumbs[id] !== null) { this.thumbs[id] = null; fetch(Auth.api + '/apresentacao/img/' + id).then(r => r.ok ? r.blob() : null).then(b => { if (!b) return; this.thumbs[id] = URL.createObjectURL(b); $$(`img[data-ap="${id}"]`).forEach(i => i.src = this.thumbs[id]); }).catch(() => { }); }
+    return 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+  },
+  html() {
+    if (!this.d) { this.carregar(); return '<div class="muted small">Carregando…</div>'; }
+    const d = this.d, I = (path, label, ph = '', tipo = 'text') => `<div class="field"><label for="ap_${path}">${label}</label><input id="ap_${path}" data-ap-p="${path}" type="${tipo}" value="${esc(this.get(path) ?? '')}" placeholder="${esc(ph)}"></div>`;
+    const ord = this.ordem(), ocultos = new Set(d.ocultos);
+    const cli = d.clientes.map((c, i) => `<div class="ap-cli">
+        <label class="ap-logo" title="Enviar logomarca">${c.logo ? `<img data-ap="${c.logo}" src="${this.thumb(c.logo)}" alt="">` : `<span>${ic('image', 22)}<small>Logomarca</small></span>`}<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden onchange="ApEd.logo(${i}, this.files[0]);this.value=''"></label>
+        <div class="ap-cli-f"><input data-ap-p="clientes.${i}.nome" value="${esc(c.nome)}" placeholder="Nome da instituição" aria-label="Nome"><div class="row" style="gap:6px"><input data-ap-p="clientes.${i}.cidade" value="${esc(c.cidade || '')}" placeholder="Cidade / UF" aria-label="Cidade"><input data-ap-p="clientes.${i}.site" value="${esc(c.site || '')}" placeholder="https://site (opcional)" aria-label="Site"></div></div>
+        <div class="ap-cli-a"><button type="button" class="icon-btn" onclick="ApEd.moverCli(${i},-1)" ${i ? '' : 'disabled'} title="Subir">↑</button><button type="button" class="icon-btn" onclick="ApEd.moverCli(${i},1)" ${i < d.clientes.length - 1 ? '' : 'disabled'} title="Descer">↓</button><button type="button" class="icon-btn" onclick="ApEd.remCli(${i})" title="Remover">${ic('trash', 16)}</button></div></div>`).join('');
+    const lin = ord.map((id, i) => { const cus = d.slides.find(s => s.id === id), oc = ocultos.has(id); return `<div class="ap-sl ${oc ? 'oc' : ''}"><span class="ap-n">${i + 1}</span>
+        ${cus && (cus.img || cus.video) ? `<span class="ap-mid">${cus.img ? `<img data-ap="${cus.img}" src="${this.thumb(cus.img)}" alt="">` : ''}${cus.video ? `<em title="Vídeo do YouTube">▶</em>` : ''}</span>` : ''}
+        <div class="ap-sl-t"><b>${esc(this.titulo(id))}</b><small>${cus ? 'Slide personalizado' + (cus.video ? ' · vídeo' : '') + (cus.img ? ' · imagem' : '') : id === 'clientes' ? `Clientes · ${d.clientes.length} instituição(ões)` : 'Slide padrão'}${oc ? ' · oculto' : ''}</small></div>
+        <div class="ap-sl-a">${cus ? `<button type="button" class="btn sm" onclick="ApEd.editar(${jq(id)})">${ic('edit', 14)} Editar</button>` : ''}<button type="button" class="icon-btn" onclick="ApEd.ocultar(${jq(id)})" title="${oc ? 'Mostrar na apresentação' : 'Ocultar da apresentação'}" aria-pressed="${oc}">${ic(oc ? 'x' : 'eye', 16)}</button><button type="button" class="icon-btn" onclick="ApEd.mover(${jq(id)},-1)" ${i ? '' : 'disabled'} title="Subir">↑</button><button type="button" class="icon-btn" onclick="ApEd.mover(${jq(id)},1)" ${i < ord.length - 1 ? '' : 'disabled'} title="Descer">↓</button>${cus ? `<button type="button" class="icon-btn" onclick="ApEd.remSlide(${jq(id)})" title="Excluir slide">${ic('trash', 16)}</button>` : ''}</div></div>`; }).join('');
+    return `${this.erro === 'servidor' ? `<div class="alert warn" style="margin-bottom:14px">${ic('alert')}<div><b>Atualize o servidor para salvar a apresentação.</b> Cole o novo <code>worker.js</code> na Cloudflare (catedra-api → Editar código → Implantar).</div></div>` : this.erro ? `<div class="alert bad" style="margin-bottom:14px">${ic('alert')}<div>${esc(this.erro)}</div></div>` : ''}
+    <div class="ap-bar"><div style="flex:1;min-width:200px"><b>Apresentação do sistema</b><div id="apSalvo" class="ap-st ${this.sujo ? 'pend' : ''}">${this.sujo ? 'Alterações não publicadas' : this.salvoEm ? 'Publicada em ' + fmtDate(this.salvoEm) : 'Usando a versão padrão'}</div></div>
+      <a class="btn" href="apresentacao.html" target="_blank" rel="noopener">${ic('eye')} Ver apresentação</a><button class="btn primary" onclick="ApEd.salvar()">${ic('check')} Salvar e publicar</button></div>
+    <div class="ap-grid"><div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+      <div class="card"><div class="card-head"><h3 style="margin:0">${ic('layers')} Slides</h3><button class="btn primary sm" onclick="ApEd.editar()">${ic('plus', 14)} Novo slide</button></div>
+        <p class="muted small" style="margin-top:0">Adicione slides com imagem ou vídeo do YouTube, mude a ordem com as setas e oculte os que não quiser apresentar.</p><div class="ap-sls">${lin}</div></div>
+      <div class="card"><div class="card-head"><h3 style="margin:0">${ic('award')} Clientes que já usam</h3><button class="btn sm" onclick="ApEd.addCli()">${ic('plus', 14)} Adicionar cliente</button></div>
+        <div class="row">${I('clientesTitulo', 'Título do slide', 'Instituições que já usam o Cátedra')}</div>${I('clientesTexto', 'Frase de apoio (opcional)', 'Ex.: Mais de 3 mil alunos avaliados em 2026')}
+        ${d.clientes.length ? `<div class="ap-clis">${cli}</div>` : '<p class="muted small">Nenhum cliente ainda. O slide de clientes aparece na apresentação assim que você adicionar o primeiro.</p>'}
+        <p class="hint">Logomarca em PNG com fundo transparente fica melhor. JPG, WebP e SVG também funcionam.</p></div>
+    </div>
+    <aside style="display:flex;flex-direction:column;gap:16px;min-width:0">
+      <div class="card"><h3 style="margin-top:0">${ic('user')} Capa</h3><p class="muted small" style="margin-top:-6px">Aparece abaixo do título, na capa da apresentação.</p>
+        ${I('capa.palestrante', 'Palestrante')}${I('capa.cargo', 'Cargo', 'Ex.: Fundador da Mercatto Labs')}${I('capa.evento', 'Evento', 'Ex.: Semana Pedagógica 2026')}${I('capa.data', 'Data', 'Ex.: 12 de novembro de 2026')}</div>
+      <div class="card ap-dica">${ic('sparkle')}<div class="small"><b>Dica:</b> depois de publicar, abra a apresentação e use <b>F</b> para tela cheia e <b>N</b> para as notas do palestrante.</div></div>
+    </aside></div>`;
+  },
+  depois() {
+    const root = $('#gBody'); if (!root || !this.d || root.dataset.apOk) return; root.dataset.apOk = '1';
+    root.addEventListener('input', e => { const p = e.target.dataset?.apP; if (p) { this.set(p, e.target.value); this.mexeu(); } });
+  },
+  /* ---- imagens ---- */
+  async preparar(file, tipo) {
+    if (!file) return null; if (file.size > 15 * 1024 * 1024) throw new Error('Arquivo muito grande (máximo 15 MB).');
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('Não foi possível ler a imagem.')); i.src = url; });
+      const max = tipo === 'logo' ? 480 : 1800, w0 = img.naturalWidth || 600, h0 = img.naturalHeight || 400, k = Math.min(1, max / Math.max(w0, h0));
+      const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w0 * k)); c.height = Math.max(1, Math.round(h0 * k));
+      const g = c.getContext('2d'); const png = tipo === 'logo' || file.type === 'image/png' || file.type === 'image/svg+xml';
+      if (!png) { g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); }
+      g.drawImage(img, 0, 0, c.width, c.height);
+      let mime = png ? 'image/png' : 'image/jpeg', data = c.toDataURL(mime, 0.86);
+      if (data.length > 1.9e6) { mime = 'image/jpeg'; g.globalCompositeOperation = 'destination-over'; g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); data = c.toDataURL(mime, 0.82); }
+      return { mime, b64: data.split(',')[1] };
+    } finally { URL.revokeObjectURL(url); }
+  },
+  async enviarImg(file, tipo) {
+    toast('Enviando imagem…', 'info', 2000);
+    const p = await this.preparar(file, tipo);
+    try { return (await Auth.call('/admin/apresentacao/img', p)).id; }
+    catch (e) { throw new Error(e.status === 404 ? 'Atualize o servidor (worker.js) para enviar imagens.' : e.message); }
+  },
+  async logo(i, file) { if (!file) return; try { this.d.clientes[i].logo = await this.enviarImg(file, 'logo'); this.mexeu(); Gestao.draw(); } catch (e) { toast(e.message, 'bad', 6000); } },
+  /* ---- clientes ---- */
+  addCli() { this.d.clientes.push({ nome: '', cidade: '', site: '', logo: '' }); this.mexeu(); Gestao.draw(); setTimeout(() => { const l = $$('.ap-cli input[data-ap-p$=".nome"]'); l[l.length - 1]?.focus(); }, 50); },
+  remCli(i) { this.d.clientes.splice(i, 1); this.mexeu(); Gestao.draw(); },
+  moverCli(i, k) { const L = this.d.clientes, j = i + k; if (j < 0 || j >= L.length) return; [L[i], L[j]] = [L[j], L[i]]; this.mexeu(); Gestao.draw(); },
+  /* ---- slides ---- */
+  mover(id, k) { const o = this.ordem(), i = o.indexOf(id), j = i + k; if (i < 0 || j < 0 || j >= o.length) return; [o[i], o[j]] = [o[j], o[i]]; this.d.ordem = o; this.mexeu(); Gestao.draw(); },
+  ocultar(id) { const s = new Set(this.d.ocultos); s.has(id) ? s.delete(id) : s.add(id); this.d.ocultos = [...s]; this.mexeu(); Gestao.draw(); },
+  async remSlide(id) { if (!await confirmDlg(`Excluir o slide <b>${esc(this.titulo(id))}</b>?`, 'Excluir')) return; this.d.slides = this.d.slides.filter(s => s.id !== id); this.d.ordem = this.d.ordem.filter(x => x !== id); this.mexeu(); Gestao.draw(); },
+  editar(id) {
+    const novo = !id, s = novo ? { id: 'c-' + Date.now().toString(36), olho: '', titulo: '', texto: '', img: '', video: '', tema: 'claro', midia: 'direita', notas: '' } : { ...this.d.slides.find(x => x.id === id) };
+    const prev = () => { const box = $('#apPrev'); if (!box) return; const y = ytId(s.video); box.innerHTML = `${s.img ? `<div class="ap-prev-img"><img data-ap="${s.img}" src="${this.thumb(s.img)}" alt=""><button type="button" class="btn sm" onclick="ApEd._remImg()">${ic('x', 14)} Remover imagem</button></div>` : ''}${s.video ? (y ? `<div class="alert ok" style="margin:0">${ic('check')}<div class="small">Vídeo do YouTube reconhecido (<code>${esc(y)}</code>). Ele toca dentro do slide.</div></div>` : `<div class="alert bad" style="margin:0">${ic('alert')}<div class="small">Este link não parece ser de um vídeo do YouTube. Copie o endereço do vídeo (ex.: https://youtu.be/…).</div></div>`) : ''}`; };
+    this._remImg = () => { s.img = ''; prev(); };
+    const m = modal({ title: novo ? 'Novo slide' : 'Editar slide', wide: true, body: `<form id="fApS" onsubmit="return false">
+      <div class="row"><div class="field"><label for="apS_olho">Chamada pequena (opcional)</label><input id="apS_olho" name="olho" maxlength="60" value="${esc(s.olho)}" placeholder="Ex.: Caso de sucesso"></div><div class="field" style="flex:2"><label for="apS_titulo">Título</label><input id="apS_titulo" name="titulo" maxlength="160" value="${esc(s.titulo)}" placeholder="Ex.: Como a escola X reduziu o tempo de correção"></div></div>
+      <div class="field"><label for="apS_texto">Texto</label><textarea id="apS_texto" name="texto" rows="4" maxlength="3000" placeholder="Pode deixar em branco para um slide só com imagem ou vídeo.">${esc(s.texto)}</textarea></div>
+      <div class="row"><div class="field" style="flex:2"><label for="apS_video">Vídeo do YouTube (link)</label><input id="apS_video" name="video" value="${esc(s.video)}" placeholder="https://www.youtube.com/watch?v=…"></div>
+        <div class="field"><label>Imagem</label><label class="btn" style="width:100%;justify-content:center">${ic('image')} ${s.img ? 'Trocar imagem' : 'Escolher imagem'}<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden id="apS_img"></label></div></div>
+      <div id="apPrev" class="ap-prev"></div>
+      <div class="row"><div class="field"><label for="apS_midia">Posição da imagem/vídeo</label><select id="apS_midia" name="midia"><option value="direita">À direita do texto</option><option value="esquerda">À esquerda do texto</option><option value="abaixo">Abaixo do texto</option></select></div>
+        <div class="field"><label for="apS_tema">Fundo</label><select id="apS_tema" name="tema"><option value="claro">Claro</option><option value="escuro">Escuro (azul-noite)</option></select></div></div>
+      <div class="field"><label for="apS_notas">Notas do palestrante (opcional)</label><textarea id="apS_notas" name="notas" rows="2" maxlength="1500" placeholder="Aparecem só para você, ao apertar N durante a apresentação.">${esc(s.notas)}</textarea></div></form>`,
+      actions: [{ label: 'Cancelar' }, { label: ic('check') + (novo ? ' Adicionar slide' : ' Salvar slide'), cls: 'primary', onClick: el => {
+        Object.assign(s, formData(el)); s.video = String(s.video || '').trim();
+        if (s.video && !ytId(s.video)) throw new Error('O link do vídeo não é do YouTube.');
+        if (!s.titulo && !s.texto && !s.img && !s.video) throw new Error('Preencha um título, um texto, uma imagem ou um vídeo.');
+        if (novo) this.d.slides.push(s); else this.d.slides = this.d.slides.map(x => x.id === s.id ? s : x);
+        this.mexeu(); Gestao.draw(); toast(novo ? 'Slide adicionado. Clique em "Salvar e publicar".' : 'Slide atualizado. Clique em "Salvar e publicar".', 'ok', 4500);
+      } }] });
+    m.el.querySelector('#apS_midia').value = s.midia; m.el.querySelector('#apS_tema').value = s.tema;
+    m.el.querySelector('#apS_video').addEventListener('input', e => { s.video = e.target.value.trim(); prev(); });
+    m.el.querySelector('#apS_img').addEventListener('change', async e => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; try { s.img = await this.enviarImg(f, 'slide'); prev(); } catch (err) { toast(err.message, 'bad', 6000); } });
+    prev();
+  },
+  async salvar() {
+    const sem = this.d.clientes.filter(c => !c.nome && !c.logo).length; if (sem) this.d.clientes = this.d.clientes.filter(c => c.nome || c.logo);
+    const bad = this.d.clientes.find(c => c.site && !/^https:\/\//.test(c.site)); if (bad) return toast(`O site de "${bad.nome || 'cliente'}" precisa começar com https://`, 'bad', 6000);
+    try { const r = await Auth.call('/admin/apresentacao', this.d); this.d = { ...this.vazio(), ...r.apresentacao }; this.salvoEm = r.apresentacao.atualizadoEm; this.sujo = false; this.erro = ''; Gestao.draw(); toast('Apresentação publicada', 'ok'); }
+    catch (e) { toast(e.status === 404 ? 'Atualize o servidor (worker.js) na Cloudflare para salvar a apresentação.' : e.message, 'bad', 7000); }
+  }
+};
 function viewGestao() {
   if (!Auth.admin) { location.hash = '#/painel'; return; }
   const tt = Gestao.TITULOS[Gestao.tab] || Gestao.TITULOS.professores;
-  setMain(`<div class="page-head" id="gHead"><div><h2>${tt[0]}</h2><p class="muted">${tt[1]}</p></div><div class="actions"><a class="btn" href="apresentacao.html">${ic('sparkle')} Apresentação</a><button class="btn" onclick="Gestao.carregar()">${ic('refresh')} Atualizar</button>${Gestao.tab !== 'convites' ? `<button class="btn primary" onclick="Gestao.aba('convites')">${ic('send')} Convidar professor</button>` : ''}</div></div>
-  <div id="gStatus" class="st-bar"></div><div id="gKpi"></div><div id="gTabs"></div><div id="gBody"><div class="muted small">Carregando…</div></div>`, tt[0]);
+  setMain(`<div class="page-head" id="gHead"><div><h2>${tt[0]}</h2><p class="muted">${tt[1]}</p></div><div class="actions"><button id="gStatus" class="st-chip busy" onclick="Status.detalhes()"></button><button class="btn" onclick="Gestao.carregar()" title="Atualizar os dados">${ic('refresh')}<span class="hide-sm"> Atualizar</span></button>${Gestao.tab !== 'convites' ? `<button class="btn primary" onclick="Gestao.aba('convites')">${ic('send')} Convidar professor</button>` : ''}</div></div>
+  <div id="gAlerta"></div><div id="gKpi"></div><div id="gTabs"></div><div id="gBody"><div class="muted small">Carregando…</div></div>`, tt[0]);
   Status.pintar();
   if (Gestao.d) Gestao.draw();
   Gestao.carregar();
@@ -1508,6 +1660,25 @@ body.student .mlabs-foot{max-width:820px}
 @media (max-width:900px){main{padding-bottom:24px!important}.mlabs-foot{padding-bottom:calc(86px + env(safe-area-inset-bottom))}body.student .mlabs-foot{padding-bottom:24px}}
 @media (max-width:520px){.mlabs-sep{display:none}.mlabs-in{flex-direction:column;gap:3px}}
 @media print{.mlabs-foot{display:none!important}}
+.mais-g{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.mais-i{display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 10px;border:1px solid var(--line);border-radius:14px;color:var(--ink);text-decoration:none;font-weight:600;font-size:14px}.mais-i:active{background:#f6f4ee}
+.ap-bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 16px;margin-bottom:16px;position:sticky;top:0;z-index:5}
+.ap-st{font-size:12.5px;color:var(--muted)}.ap-st.pend{color:#8a5a0a;font-weight:600}
+.ap-grid{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:16px;align-items:start}
+@media(max-width:1050px){.ap-grid{grid-template-columns:1fr}}
+.ap-sls{display:flex;flex-direction:column;gap:6px}
+.ap-sl{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:12px;padding:8px 10px;background:#fff}.ap-sl.oc{opacity:.5;background:#f6f4ee}
+.ap-n{width:26px;height:26px;border-radius:99px;background:#f1efe9;display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--muted);flex:none}
+.ap-mid{position:relative;width:52px;height:34px;border-radius:6px;overflow:hidden;background:#111a33;flex:none;display:grid;place-items:center}.ap-mid img{width:100%;height:100%;object-fit:cover}.ap-mid em{position:absolute;font-style:normal;color:#fff;font-size:12px;background:rgba(0,0,0,.45);border-radius:99px;width:20px;height:20px;display:grid;place-items:center}
+.ap-sl-t{flex:1;min-width:0}.ap-sl-t b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ap-sl-t small{font-size:12px;color:var(--muted)}
+.ap-sl-a{display:flex;align-items:center;gap:2px;flex:none}.ap-sl-a .icon-btn[disabled]{opacity:.3}
+.ap-clis{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+.ap-cli{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:12px;padding:10px;background:#fff}
+.ap-logo{width:84px;height:64px;flex:none;border:1.5px dashed #d8d3c6;border-radius:10px;display:grid;place-items:center;cursor:pointer;background:#faf9f5;overflow:hidden}.ap-logo:hover{border-color:var(--primary)}
+.ap-logo img{max-width:100%;max-height:100%;object-fit:contain}.ap-logo span{display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--muted)}.ap-logo small{font-size:10.5px}
+.ap-cli-f{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}.ap-cli-f input{width:100%}.ap-cli-a{display:flex;gap:2px;flex:none}
+.ap-prev{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}.ap-prev-img{display:flex;align-items:center;gap:12px}.ap-prev-img img{max-width:220px;max-height:130px;border-radius:10px;border:1px solid var(--line);object-fit:contain;background:#fff}
+.ap-dica{display:flex;gap:10px;align-items:flex-start;background:#fffaf0;border-color:#f0d9a8}
+@media(max-width:600px){.ap-cli{flex-wrap:wrap}.ap-cli-f{flex-basis:100%;order:3}.ap-sl{flex-wrap:wrap}.ap-sl-a{width:100%;justify-content:flex-end}}
 .pr-bar{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--bg);padding:10px 0 12px;margin-bottom:6px}
 .pr-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:start}
 .pr-ed{display:flex;flex-direction:column;gap:16px}.pr-sec .card-head{margin-bottom:10px}
@@ -1649,18 +1820,25 @@ function setMain(html, title) {
 async function copyText(t) { try { await navigator.clipboard.writeText(t); toast('Copiado para a área de transferência', 'ok'); } catch { prompt('Copie o texto:', t); } }
 
 /* ---------- Navegação ---------- */
-const GTABS = ['professores', 'solicitacoes', 'pagamentos', 'relatorios', 'propostas', 'convites', 'planos', 'backup'];
+const GTABS = ['professores', 'solicitacoes', 'pagamentos', 'relatorios', 'propostas', 'apresentacao', 'convites', 'planos', 'backup'];
 const NAV = Auth.admin
-  ? [['gestao/professores', 'users', 'Professores'], ['gestao/solicitacoes', 'clipboard', 'Solicitações'], ['gestao/pagamentos', 'check', 'Pagamentos'], ['gestao/relatorios', 'list', 'Relatórios'], ['gestao/propostas', 'file', 'Propostas'], ['gestao/convites', 'send', 'Convites'], ['gestao/planos', 'settings', 'Plano'], ['gestao/backup', 'shield', 'Backup']]
+  ? [['gestao/professores', 'users', 'Professores'], ['gestao/solicitacoes', 'clipboard', 'Solicitações'], ['gestao/pagamentos', 'check', 'Pagamentos'], ['gestao/relatorios', 'list', 'Relatórios'], ['gestao/propostas', 'file', 'Propostas'], ['gestao/apresentacao', 'sparkle', 'Apresentação'], ['gestao/convites', 'send', 'Convites'], ['gestao/planos', 'settings', 'Plano'], ['gestao/backup', 'shield', 'Backup']]
   : [['painel', 'home', 'Painel'], ['turmas', 'users', 'Turmas'], ['config', 'settings', 'Meu perfil']];
+function menuMais() { // celular do administrador: as demais áreas da gestão
+  const m = modal({ title: 'Gestão', body: `<div class="mais-g">${NAV.slice(4).map(([k, i, l]) => `<a href="#/${k}" class="mais-i">${ic(i, 22)}<span>${l}</span></a>`).join('')}</div>` });
+  m.el.querySelectorAll('a').forEach(x => x.addEventListener('click', () => m.close()));
+}
 function renderNav(active) {
   const map = { turma: 'turmas', atividade: 'turmas', 'atividade-form': 'turmas', entrega: 'turmas', aluno: 'turmas' };
   const a = map[active] || active;
   if (Auth.admin) { const bs = document.querySelector('.brand small'); if (bs) bs.textContent = 'Painel gerencial'; }
   const nb = k => (Auth.admin && k === 'gestao/solicitacoes' && Gestao.pend()) ? `<em class="nb">${Gestao.pend()}</em>` : '';
   const apres = s => `<a href="${APRESENTACAO}" title="Apresentação do sistema (palestra)">${ic('sparkle', s)}${s ? `<span>Apresentação</span>` : ' Apresentação'}</a>`;
-  $('#sideNav').innerHTML = NAV.map(([k, i, l]) => `<a href="#/${k}" class="${a === k ? 'active' : ''}">${ic(i)} ${l}${nb(k)}</a>`).join('') + apres(); pintaUsuario();
-  $('#bottomNav').innerHTML = NAV.map(([k, i, l]) => `<a href="#/${k}" class="${a === k ? 'active' : ''}">${ic(i, 21)}<span>${l.replace('Configurações', 'Ajustes').replace('Solicitações', 'Pedidos')}</span>${nb(k)}</a>`).join('') + (Auth.admin ? '' : apres(21));
+  $('#sideNav').innerHTML = NAV.map(([k, i, l]) => `<a href="#/${k}" class="${a === k ? 'active' : ''}">${ic(i)} ${l}${nb(k)}</a>`).join('') + (Auth.admin ? '' : apres()); pintaUsuario();
+  const item = ([k, i, l]) => `<a href="#/${k}" class="${a === k ? 'active' : ''}">${ic(i, 21)}<span>${l.replace('Configurações', 'Ajustes').replace('Solicitações', 'Pedidos')}</span>${nb(k)}</a>`;
+  $('#bottomNav').innerHTML = Auth.admin
+    ? NAV.slice(0, 4).map(item).join('') + `<a href="#" class="${NAV.slice(4).some(x => x[0] === a) ? 'active' : ''}" onclick="menuMais();return false">${ic('grid', 21)}<span>Mais</span></a>`
+    : NAV.map(item).join('') + apres(21);
 }
 const APRESENTACAO = 'apresentacao.html';
 document.addEventListener('click', e => { const l = e.target.closest && e.target.closest('a[href="apresentacao.html"]'); if (l) { try { sessionStorage.setItem('catedra_volta', location.hash || ''); } catch { } } }); // lembra a tela para o "Voltar ao sistema"
