@@ -1,12 +1,14 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111a33">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Cátedra">
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" type="image/png" href="icon-192.png"><link rel="apple-touch-icon" href="apple-touch-icon.png">
+
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net blob:; worker-src 'self' blob: https://cdn.jsdelivr.net; connect-src 'self' https://api.github.com https://gist.githubusercontent.com https://*.workers.dev https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://cdn.jsdelivr.net data: blob:; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net blob:; worker-src 'self' blob: https://cdn.jsdelivr.net; connect-src 'self' https://*.workers.dev https://cdn.jsdelivr.net data: blob:; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Cátedra · Turmas, avaliações e correção inteligente</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -149,16 +151,6 @@ legend{font:700 15px Fraunces,serif;padding:0 8px}
 /* Link box */
 .linkbox{display:flex;gap:8px;align-items:center;background:#f7f6f2;border:1px dashed #d6d1c4;border-radius:12px;padding:8px 8px 8px 14px}
 .linkbox code{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:#3d4560}
-.tempo{position:relative;overflow:hidden;background:var(--side);color:#f4f3ef;border:0;padding:28px 28px 24px;margin-bottom:18px}
-.tempo h3{font-size:24px;line-height:1.2;margin:0 0 8px;color:#fff;max-width:640px}
-.tempo p{color:#c9cfdd;margin:0 0 14px;max-width:680px;font-size:15px;line-height:1.55}
-.tempo .tnums{display:flex;gap:28px;flex-wrap:wrap;margin:16px 0 6px}
-.tempo .tnums b{display:block;font-size:30px;color:var(--accent);line-height:1.1}
-.tempo .tnums span{font-size:13px;color:#c9cfdd}
-.tempo .tfoot{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:12.5px;color:#9aa3b8;margin-top:10px}
-.tempo .tfoot .btn{background:transparent;color:#fff;border-color:rgba(255,255,255,.28)}
-.tempo .tx{position:absolute;top:12px;right:12px;background:transparent;border:0;color:#9aa3b8;cursor:pointer;padding:8px;border-radius:8px}
-.tempo .tx:hover{color:#fff;background:rgba(255,255,255,.08)}
 .alert{border-radius:12px;padding:12px 14px;font-size:14px;display:flex;gap:10px;align-items:flex-start;margin-bottom:14px}
 .alert svg{flex:none;margin-top:2px}
 .alert.warn{background:var(--warn-soft);color:#7a4c0e}
@@ -251,6 +243,21 @@ details.paste textarea{margin-top:10px}
 body.student .app{grid-template-columns:1fr}
 body.student .side,body.student .bottom,body.student .top{display:none!important}
 body.student main{max-width:820px;margin:0 auto;padding:24px 16px 60px}
+body.student main:has(.lp){max-width:1180px;padding:0 0 40px}
+.lp{display:grid;grid-template-columns:1.15fr .85fr;gap:28px;align-items:start;max-width:1120px;margin:0 auto;padding:clamp(12px,4vw,40px) clamp(12px,3vw,24px)}
+.lp-hero{background:var(--side);color:#fff;border-radius:26px;padding:clamp(24px,4vw,44px);position:relative;overflow:hidden;background-image:radial-gradient(520px 280px at 105% -10%,rgba(232,163,61,.38),transparent),radial-gradient(480px 260px at -10% 110%,rgba(41,72,209,.45),transparent)}
+.lp-eye{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.12);border-radius:99px;padding:6px 14px;font-size:12.5px;font-weight:600;letter-spacing:.03em}
+.lp-hero h1{font-family:Fraunces,Georgia,serif;font-size:clamp(30px,4.6vw,46px);line-height:1.08;margin:18px 0 14px;font-weight:700}
+.lp-hero h1 em{font-style:normal;color:#f3b95a}
+.lp-lead{font-size:16.5px;line-height:1.6;color:#d6dcf0;margin:0 0 22px;max-width:56ch}
+.lp-grid{display:grid;gap:12px;margin:0 0 22px}
+.lp-pt{display:flex;gap:14px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:14px 16px}
+.lp-pt .i{flex:none;width:40px;height:40px;border-radius:12px;background:rgba(243,185,90,.18);color:#f3b95a;display:grid;place-items:center}
+.lp-pt b{display:block;font-size:15.5px;margin-bottom:2px}.lp-pt span{font-size:14px;line-height:1.5;color:#c9d1ea}
+.lp-quote{border-left:3px solid #f3b95a;padding:2px 0 2px 16px;font-family:Fraunces,Georgia,serif;font-size:19px;line-height:1.4;margin:0 0 20px}
+.lp-inst{font-size:14px;color:#c9d1ea;border-top:1px solid rgba(255,255,255,.14);padding-top:16px;line-height:1.55}.lp-inst b{color:#fff}
+.lp-form{position:sticky;top:20px}
+@media(max-width:900px){.lp{grid-template-columns:1fr}.lp-form{position:static;order:-1}}
 .s-hero{background:var(--side);color:#fff;border-radius:22px;padding:28px;margin-bottom:18px;background-image:radial-gradient(500px 240px at 110% -20%,rgba(232,163,61,.35),transparent),radial-gradient(500px 260px at -10% 120%,rgba(41,72,209,.45),transparent)}
 .s-hero h2{font-size:28px;margin:10px 0 6px}
 .s-hero .meta{display:flex;gap:14px;flex-wrap:wrap;color:#c3cbe2;font-size:14px}
@@ -285,17 +292,79 @@ body.student main{max-width:820px;margin:0 auto;padding:24px 16px 60px}
  .ring{width:108px;height:108px}.ring>div{width:88px;height:88px}.ring b{font-size:27px}
 }
 @media (max-width:520px){.upl-btns{grid-template-columns:1fr}.hide-sm{display:none}}
+
+/* ===== Experiência de aplicativo ===== */
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none;text-rendering:optimizeLegibility}
+button,.btn,a{touch-action:manipulation}
+.side nav a,.bottom a,.btn,.icon-btn{-webkit-user-select:none;user-select:none}
+::selection{background:#cdd7fb}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:8px}
+*{scrollbar-width:thin;scrollbar-color:#cfcabd transparent}
+#main>*{animation:enter .28s ease both}
+@keyframes enter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){#main>*{animation:none}html{scroll-behavior:auto}}
+.card{transition:box-shadow .2s,border-color .2s}
+@media (hover:hover){.card:hover{box-shadow:0 8px 28px rgba(22,33,58,.08)}.btn:hover{border-color:#cfcabd}.btn.primary:hover{filter:brightness(1.07)}}
+.btn:active{transform:scale(.97)}
+.side-user{display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;background:rgba(255,255,255,.06);margin-bottom:10px}
+.side-user .av{width:36px;height:36px;border-radius:50%;background:var(--accent);color:#1b1405;display:grid;place-items:center;font-weight:700;flex:none}
+.side-user .ui{min-width:0;flex:1;line-height:1.25}.side-user .ui b{display:block;color:#fff;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.side-user .ui small{color:#8f9bbd;font-size:11.5px}
+.side-user .sair{width:auto;margin:0;padding:6px 9px;font-size:12px}
+.side-install:empty{display:none}.side-install .btn{width:100%;margin-bottom:10px;background:rgba(255,255,255,.08);color:#fff;border-color:rgba(255,255,255,.15)}
+@media (min-width:901px){.side{box-shadow:1px 0 0 rgba(255,255,255,.04)}main{margin:0 auto}.page-head{padding-bottom:6px}}
+@media (max-width:900px){
+ .top{padding-top:calc(12px + env(safe-area-inset-top));padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
+ main{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+ .bottom{background:rgba(255,255,255,.94);backdrop-filter:saturate(1.4) blur(16px);-webkit-backdrop-filter:saturate(1.4) blur(16px);box-shadow:0 -4px 20px rgba(22,33,58,.06)}
+ .bottom a{min-height:54px;justify-content:center;transition:transform .1s,background .15s}.bottom a:active{transform:scale(.94)}
+ input,select,textarea{font-size:16px!important}
+ .btn,.icon-btn{min-height:44px}
+ .modal-bg{padding-top:env(safe-area-inset-top)}.modal{padding-bottom:env(safe-area-inset-bottom)}
+}
+@media (display-mode:standalone){body{-webkit-touch-callout:none}a{-webkit-touch-callout:none}}
+
+.gtabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:20px 0 16px;overflow-x:auto}
+.gtabs button{background:none;border:0;padding:11px 14px;font-weight:600;font-size:14px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+.gtabs button.on{color:var(--primary);border-color:var(--primary)}
+.gt{width:100%;border-collapse:collapse;font-size:13.5px}.gt th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:8px 10px;white-space:nowrap}.gt td{padding:11px 10px;border-top:1px solid var(--line);vertical-align:middle}
+.gt tbody tr:hover{background:rgba(41,72,209,.03)}
+.btn.sm{padding:6px 11px;font-size:12.5px;min-height:0!important;border-radius:9px}
+input[type=date],input[type=tel]{width:100%;border:1px solid #dcd8ce;border-radius:11px;padding:10px 12px;font:inherit;background:#fff}
+@media print{.side,.top,.bottom,.gtabs,.page-head .actions,.actions,.btn,#toasts{display:none!important}.app{display:block}main{padding:0!important;max-width:none}.card{break-inside:avoid;box-shadow:none}}
+body.admin-mode #syncBox,body.admin-mode #syncDot2{display:none!important}
+body.admin-mode .side nav a.active svg{color:var(--accent)}
+.warn-row{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)}
+.warn-row:first-of-type{border-top:0}
+.tag-ok{display:inline-flex;align-items:center;gap:4px;color:#1b8f62;font-size:12px;font-weight:700}
+
+.nb{margin-left:auto;background:#e8a33d;color:#111a33;font:700 11.5px Inter,sans-serif;font-style:normal;min-width:20px;height:20px;border-radius:99px;display:grid;place-items:center;padding:0 6px}
+.bottom a{position:relative}.bottom a .nb{position:absolute;top:2px;right:calc(50% - 22px);margin:0;min-width:17px;height:17px;font-size:10.5px}
+.mp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:4px 0 14px}
+.mp-grid div{background:#f6f4ee;border-radius:12px;padding:10px 12px}.mp-grid span{display:block;font-size:12px;color:var(--muted)}.mp-grid b{font-size:15px}.mp-grid small{display:block;color:var(--muted);font-size:12px}
+.pl-list{display:grid;gap:8px;margin-bottom:12px}
+.pl-opt{display:flex;align-items:center;gap:12px;border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;cursor:pointer;transition:.15s}
+.pl-opt:hover{border-color:#b9c3f0}.pl-opt:has(input:checked){border-color:var(--primary);background:var(--primary-soft)}
+.pl-opt.cur{opacity:.6;cursor:default}.pl-opt>div{flex:1;min-width:0}.pl-opt b{display:block}.pl-opt em{font-style:normal;font-size:11.5px;color:var(--muted);margin-left:6px}.pl-opt span{display:block;font-size:12.5px;color:var(--muted)}
+.pl-opt strong{font-size:15px;white-space:nowrap}.pl-opt small{font-size:11.5px;color:var(--muted);font-weight:500}
+body.admin-mode .bottom a{font-size:10px!important;padding:6px 1px!important;min-width:0}body.admin-mode .bottom a span{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.pl-row{display:grid;grid-template-columns:1.2fr .7fr 1.6fr auto;gap:8px;margin-bottom:8px}
+@media(max-width:560px){.pl-row{grid-template-columns:1fr 1fr}.pl-row .plD{grid-column:1/-1}}
+.sol-card{display:flex;gap:14px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;padding:14px 0;border-top:1px solid var(--line)}
+.sol-card:first-of-type{border-top:0}.sol-arrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:4px 0}
+.sol-arrow span{background:#f6f4ee;border-radius:9px;padding:4px 10px;font-size:13px}.sol-arrow b{color:var(--primary)}
 </style>
+<script src="config.js"></script>
 </head>
 <body>
 <div class="app">
   <aside class="side">
     <div class="brand"><div class="logo">C</div><div><b>Cátedra</b><small>Gestão acadêmica com IA</small></div></div>
     <nav id="sideNav"></nav>
-    <div class="side-foot">
+    <div class="side-foot" style="background:none;padding:0"><div id="sideUser" class="side-user"></div><div data-install class="side-install"></div><div id="syncBox" style="background:rgba(255,255,255,.05);border-radius:12px;padding:12px;font-size:13px">
       <div class="sync"><span class="dot" id="syncDot"></span><span id="syncText">Somente local</span></div>
       <button onclick="Sync.run()" id="syncBtn"></button>
-    </div>
+    </div></div>
   </aside>
   <div class="content">
     <header class="top"><div class="logo">C</div><h1 id="pageTitle">Cátedra</h1><span class="dot" id="syncDot2"></span></header>
@@ -324,7 +393,7 @@ const LIBS = {
   tessCore: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1',
   tessLang: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/por@1.0.0/4.0.0_best_int'
 };
-const APP_VERSION = '2026.11.05-1';
+const APP_VERSION = '2026.11.1-1';
 const sha16 = async t => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(t || ''))))].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
 const verNum = v => { const m = String(v || '').match(/^(\d+)\.(\d+)\.(\d+)-(\d+)$/); return m ? ((+m[1] * 100 + +m[2]) * 100 + +m[3]) * 1000 + +m[4] : 0; };
 const BC = (() => { try { return new BroadcastChannel('catedra'); } catch { return null; } })();
@@ -488,12 +557,491 @@ async function loadLib(name) {
 }
 
 /* ---------- IndexedDB ---------- */
+/* =========================================================
+   CONTAS (login de professores) — a sessão fica só neste navegador;
+   chaves de IA e segredos ficam SOMENTE no servidor.
+   ========================================================= */
+const App = {
+  evt: null, ios: /iphone|ipad|ipod/i.test(navigator.userAgent), standalone: matchMedia('(display-mode: standalone)').matches || !!navigator.standalone,
+  podeInstalar() { return !this.standalone && (!!this.evt || this.ios); },
+  btn() { return this.podeInstalar() ? `<button class="btn" onclick="App.instalar()">${ic('download')} Instalar aplicativo</button>` : ''; },
+  refresh() { document.querySelectorAll('[data-install]').forEach(el => el.innerHTML = this.btn()); },
+  async instalar() {
+    if (this.evt) { this.evt.prompt(); try { await this.evt.userChoice; } catch { } this.evt = null; this.refresh(); }
+    else modal({ title: 'Instalar no iPhone / iPad', body: '<ol class="blist small" style="padding-left:20px"><li>Abra este endereço no <b>Safari</b>.</li><li>Toque no botão <b>Compartilhar</b> (quadrado com seta para cima).</li><li>Escolha <b>Adicionar à Tela de Início</b> e confirme.</li></ol><p class="hint">O Cátedra passa a abrir em tela cheia, como um aplicativo.</p>', actions: [{ label: 'Entendi' }] });
+  }
+};
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); App.evt = e; App.refresh(); });
+window.addEventListener('appinstalled', () => { App.evt = null; App.standalone = true; App.refresh(); });
+if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => { }));
+function pintaUsuario() {
+  const su = document.getElementById('sideUser'); if (!su || !Auth.user) return; const n = Auth.user.nome || 'Usuário';
+  su.innerHTML = `<div class="av">${esc(n.trim().charAt(0).toUpperCase() || '?')}</div><div class="ui"><b>${esc(n)}</b><small>${Auth.admin ? 'Administrador' : 'Professor'}</small></div><button class="sair" onclick="Auth.logout()">Sair</button>`; App.refresh();
+}
+const Auth = {
+  api: String(window.CATEDRA_API || localStorage.getItem('catedra_api') || 'https://catedra-api.peixoto-adm85.workers.dev').replace(/\/+$/, ''),
+  token: localStorage.getItem('catedra_tok') || '',
+  user: (() => { try { return JSON.parse(localStorage.getItem('catedra_user') || 'null'); } catch { return null; } })(),
+  get admin() { return this.user?.role === 'admin'; },
+  dbName() { return !this.user || this.user.role === 'admin' ? 'catedra' : 'catedra_' + this.user.id; },
+  async call(path, body) {
+    const r = await fetch(this.api + path, { method: body ? 'POST' : 'GET', cache: 'no-store', headers: { ...(body ? { 'content-type': 'application/json' } : {}), ...(this.token ? { Authorization: 'Bearer ' + this.token } : {}) }, body: body ? JSON.stringify(body) : undefined });
+    let j = {}; try { j = await r.json(); } catch { }
+    if (r.status === 401 && this.token) { this.logout(); }
+    if (!r.ok) { const e = new Error(j.erro || 'Erro ' + r.status); e.status = r.status; throw e; }
+    return j;
+  },
+  logout() { ['catedra_tok', 'catedra_user'].forEach(k => localStorage.removeItem(k)); location.hash = ''; location.reload(); }
+};
+function telaLogin(modo = 'entrar') {
+  document.body.classList.add('student'); const reg = modo === 'registro';
+  $('#main').innerHTML = `<div class="lp"><section class="lp-hero" aria-label="Apresentação do Cátedra">
+    <span class="lp-eye">${ic('award', 15)} Cátedra · gestão acadêmica com IA</span>
+    <h1>Professor com tempo para viver <em>ensina melhor.</em></h1>
+    <p class="lp-lead">Há décadas, a jornada do professor não termina quando o sinal toca. Ela segue pela noite e pelo fim de semana, entre pilhas de provas e trabalhos para corrigir. O Cátedra devolve essas horas, para que o professor descanse, esteja com a família e continue se aperfeiçoando.</p>
+    <div class="lp-grid">
+      <div class="lp-pt"><div class="i">${ic('clock', 20)}</div><div><b>Menos correção em casa, mais vida fora da sala</b><span>Provas, redações e trabalhos corrigidos com apoio de inteligência artificial, com critérios definidos pelo próprio professor e revisão final dele.</span></div></div>
+      <div class="lp-pt"><div class="i">${ic('award', 20)}</div><div><b>Tempo para crescer</b><span>As horas recuperadas podem virar cursos presenciais e online, pós-graduação, leitura e planejamento de aulas melhores.</span></div></div>
+      <div class="lp-pt"><div class="i">${ic('users', 20)}</div><div><b>Alunos com devolutiva mais rápida e detalhada</b><span>Relatórios por aluno e por turma mostram onde cada um acertou e onde precisa avançar.</span></div></div>
+    </div>
+    <p class="lp-quote">Investir no tempo do professor é investir diretamente na qualidade do ensino.</p>
+    <div class="lp-inst"><b>Para gestores e instituições:</b> equipes menos sobrecarregadas, avaliações com critérios padronizados e relatórios que apoiam a coordenação pedagógica. Cuidar de quem ensina é a decisão que mais se reflete em quem aprende. Solicite ao administrador do sistema uma apresentação e os códigos de acesso para a sua equipe.</div>
+  </section>
+  <div class="card lp-form"><h2 style="margin-top:0">${reg ? 'Comece agora' : 'Bem-vindo(a) de volta'}</h2><p class="muted small">${reg ? 'Crie sua conta de professor e recupere o seu tempo.' : 'Entre com a sua conta.'}</p>
+  <form id="fAuth" onsubmit="return false">${!Auth.api ? '<div class="field"><label>Endereço do servidor</label><input name="api" placeholder="https://catedra.seunome.workers.dev"></div>' : ''}
+  ${reg ? '<div class="field"><label>Nome</label><input name="nome" autocomplete="name"></div>' : ''}
+  <div class="field"><label>E-mail</label><input name="email" type="email" autocomplete="username"></div>
+  ${reg ? '<div class="field"><label>WhatsApp com DDD (opcional)</label><input name="telefone" type="tel" autocomplete="tel" placeholder="(82) 99999-9999"><div class="hint">Usado para avisos sobre o seu plano.</div></div>' : ''}
+  <div class="field"><label>Senha ${reg ? '(mínimo 8 caracteres)' : ''}</label><input name="senha" type="password" autocomplete="${reg ? 'new-password' : 'current-password'}"></div>
+  ${reg ? '<div class="field"><label>Código de convite</label><input name="convite" autocomplete="off"><div class="hint">Fornecido pelo administrador do sistema.</div></div>' : ''}
+  <div id="authErr" class="small" style="color:#b3261e;min-height:18px;margin-bottom:6px"></div>
+  <button class="btn primary" style="width:100%" onclick="doAuth(${reg})">${reg ? 'Criar conta' : 'Entrar'}</button></form>
+  <p class="small" style="text-align:center;margin:14px 0 0"><a href="#" onclick="telaLogin('${reg ? 'entrar' : 'registro'}');return false"><u>${reg ? 'Já tenho conta' : 'Primeiro acesso? Criar conta'}</u></a></p></div></div>`;
+}
+async function doAuth(reg) {
+  const d = formData($('#fAuth')); const err = $('#authErr'); err.textContent = '';
+  try {
+    if (d.api) { Auth.api = d.api.trim().replace(/\/+$/, ''); localStorage.setItem('catedra_api', Auth.api); }
+    if (!Auth.api) throw new Error('Informe o endereço do servidor.'); delete d.api;
+    const r = await Auth.call(reg ? '/auth/registro' : '/auth/login', d);
+    localStorage.setItem('catedra_tok', r.sessao); localStorage.setItem('catedra_user', JSON.stringify(r.user)); location.hash = '#/painel'; location.reload();
+  } catch (e) { err.textContent = e.message; }
+}
+const Admin = {
+  async load() {
+    const box = $('#admProfs'); if (!box) return;
+    try {
+      const r = await Auth.call('/admin/profs'); const ok = (v, t) => `<span style="${v ? '' : 'color:#b3261e'}">${v ? '✓' : '✗'} ${t}</span>`;
+      box.innerHTML = `<div class="small" style="margin-bottom:10px">${ok(r.ia, 'IA configurada no servidor')} &nbsp; ${ok(r.convite, 'código de convite ativo')} &nbsp; Limite padrão: <b>${r.cotaPadrao}</b> correções por IA/mês por professor</div>`
+        + (r.profs.length ? `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><tr style="text-align:left"><th>Professor</th><th>E-mail</th><th>IA no mês</th><th></th></tr>${r.profs.map(p => `<tr style="border-top:1px solid #e6e2d8"><td>${esc(p.nome)}${p.bloqueado ? ' <span class="muted">(bloqueado)</span>' : ''}</td><td>${esc(p.email)}</td><td>${p.uso}/${p.cota ?? r.cotaPadrao}</td><td style="white-space:nowrap"><button class="btn sm" onclick="Admin.cota('${p.id}','${p.cota ?? ''}')">Limite</button> <button class="btn sm" onclick="Admin.bloq('${p.id}',${!p.bloqueado})">${p.bloqueado ? 'Desbloquear' : 'Bloquear'}</button></td></tr>`).join('')}</table></div>` : '<p class="muted small">Nenhum professor cadastrado ainda. Envie o link do sistema e o código de convite.</p>');
+    } catch (e) { box.innerHTML = `<div class="alert bad">${ic('alert')}<div>${esc(e.message)}</div></div>`; }
+  },
+  async cota(id, atual) { const v = prompt('Limite mensal de correções por IA deste professor (vazio = padrão):', atual); if (v === null) return; try { await Auth.call('/admin/prof', { id, cota: v }); this.load(); } catch (e) { toast(e.message, 'bad'); } },
+  async bloq(id, b) { if (b && !confirm('Bloquear este professor? Ele e os links dos alunos dele deixam de funcionar.')) return; try { await Auth.call('/admin/prof', { id, bloqueado: b }); this.load(); } catch (e) { toast(e.message, 'bad'); } }
+};
+
+Object.assign(Admin, {
+  codigo: '', origem: '',
+  TPL: 'Olá{nome}! 👋\n\nVocê foi convidado(a) para usar o *Cátedra*, o sistema de gestão de turmas e avaliações.\n\n🔗 Acesse: {link}\n🔑 Código de convite: *{codigo}*\n\n*Como começar*\n1. Abra o link acima\n2. Toque em "Primeiro acesso? Criar conta"\n3. Preencha seus dados e digite o código de convite\n\nQualquer dúvida, é só me chamar.\n{remetente}',
+  link() { return String(S.cfg.publicUrl || (location.origin + location.pathname)).replace(/index\.html$/, ''); },
+  async convite() {
+    const box = $('#admConvite'); if (!box) return;
+    try { const r = await Auth.call('/admin/convite'); this.codigo = r.codigo || ''; this.origem = r.origem; this.draw(); }
+    catch (e) { box.innerHTML = `<div class="alert bad">${ic('alert')}<div>${esc(e.message)}</div></div>`; }
+  },
+  draw() {
+    const box = $('#admConvite'); if (!box) return; let tpl = this.TPL; try { tpl = localStorage.getItem('catedra_conv_tpl') || tpl; } catch { }
+    box.innerHTML = `<h3>${ic('users')} Convidar professores</h3>
+    ${this.codigo ? '' : `<div class="alert warn" style="margin-bottom:12px">${ic('alert')}<div><b>Nenhum código de convite definido.</b> Hoje qualquer pessoa com o link pode criar conta. Clique em <b>Gerar novo</b> para proteger o cadastro.</div></div>`}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:22px;align-items:start">
+      <div>
+        <div class="field"><label>Nome do professor (opcional)</label><input id="cvNome" placeholder="Ex.: Maria" oninput="Admin.prev()"></div>
+        <div class="field"><label>WhatsApp com DDD (opcional)</label><input id="cvTel" inputmode="tel" placeholder="(82) 99999-9999"><div class="hint">Em branco, o WhatsApp abre para você escolher o contato.</div></div>
+        <div class="field"><label>Código de convite</label><div style="display:flex;gap:6px;flex-wrap:wrap"><input id="cvCod" value="${esc(this.codigo)}" readonly style="flex:1;min-width:150px;font-weight:700;letter-spacing:.5px"><button class="btn" onclick="Admin.novoCodigo(false)">Gerar novo</button><button class="btn" onclick="Admin.novoCodigo(true)">Definir…</button></div><div class="hint">Trocar o código bloqueia novos cadastros com o código antigo. Contas já criadas continuam funcionando.</div></div>
+        <div class="field"><label>Mensagem (editável)</label><textarea id="cvTpl" rows="11" oninput="Admin.prev(true)" style="width:100%;font-family:inherit">${esc(tpl)}</textarea><div class="hint">Campos automáticos: {nome} {link} {codigo} {remetente} <a href="#" onclick="Admin.restaurar();return false"><u>restaurar padrão</u></a></div></div>
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600">Pré-visualização</label>
+        <div id="cvPrev" style="background:#dcf8c6;color:#111;border-radius:14px 14px 14px 3px;padding:14px 16px;margin:6px 0 14px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-break:break-word;box-shadow:0 1px 2px rgba(0,0,0,.15)"></div>
+        <div class="actions"><button class="btn primary" onclick="Admin.enviarWa()">Abrir no WhatsApp</button><button class="btn" onclick="Admin.copiar()">Copiar mensagem</button></div>
+        <p class="hint">O link enviado é: <code>${esc(this.link())}</code></p>
+      </div>
+    </div>`;
+    this.prev();
+  },
+  msg() {
+    const nome = ($('#cvNome')?.value || '').trim(), tpl = $('#cvTpl')?.value || this.TPL;
+    return tpl.split('{nome}').join(nome ? ', ' + nome : '').split('{link}').join(this.link()).split('{codigo}').join(this.codigo || '(defina o código)').split('{remetente}').join(S.cfg.professor || Auth.user?.nome || '');
+  },
+  prev(salvar) {
+    if (salvar) { try { localStorage.setItem('catedra_conv_tpl', $('#cvTpl').value); } catch { } }
+    const el = $('#cvPrev'); if (el) el.innerHTML = esc(this.msg()).replace(/\*([^*\n]+)\*/g, '<b>$1</b>');
+  },
+  restaurar() { try { localStorage.removeItem('catedra_conv_tpl'); } catch { } this.draw(); },
+  enviarWa() {
+    if (!this.codigo) return toast('Defina um código de convite antes de enviar.', 'bad');
+    const t = ($('#cvTel')?.value || '').replace(/\D/g, ''); const num = t ? (t.length <= 11 ? '55' + t : t) : '';
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(this.msg())}`, '_blank', 'noopener');
+  },
+  async copiar() { try { await navigator.clipboard.writeText(this.msg()); toast('Mensagem copiada', 'ok'); } catch { toast('Não foi possível copiar; selecione o texto manualmente.', 'bad'); } },
+  async novoCodigo(manual) {
+    let c;
+    if (manual) { c = prompt('Digite o novo código de convite (6 a 40 caracteres, sem espaços):', this.codigo); if (c === null) return; c = c.trim(); }
+    else { if (this.codigo && !confirm('Gerar um novo código? O código atual deixa de valer para novos cadastros.')) return; const al = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; c = 'Prof-' + Array.from(crypto.getRandomValues(new Uint8Array(6)), b => al[b % al.length]).join(''); }
+    try { const r = await Auth.call('/admin/convite', { codigo: c }); this.codigo = r.codigo; this.origem = r.origem; this.draw(); this.load(); toast('Código atualizado', 'ok'); } catch (e) { toast(e.message, 'bad'); }
+  }
+});
+const brl = n => (+n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const dBR = iso => iso ? String(iso).split('-').reverse().join('/') : '—';
+const hojeISO = () => new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+const CHIP = { ativo: ['Em dia', '#1b8f62', '#e2f4ec'], isento: ['Sem cobrança', '#5b6478', '#eceae3'], vencido: ['Vencido', '#8a5a0a', '#fff2d6'], suspenso: ['Suspenso', '#b3261e', '#fde8e6'], bloqueado: ['Bloqueado', '#b3261e', '#fde8e6'] };
+const chip = s => { const c = CHIP[s] || CHIP.isento; return `<span style="background:${c[2]};color:${c[1]};padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700;white-space:nowrap">${c[0]}</span>`; };
+function waLink(tel, msg) { const t = String(tel || '').replace(/\D/g, ''); return `https://wa.me/${t ? (t.length <= 11 ? '55' + t : t) : ''}?text=${encodeURIComponent(msg)}`; }
+function baixarCSV(nome, linhas) {
+  const cel = c => { let s = String(c ?? ''); if (/^[=+\-@]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff' + linhas.map(l => l.map(cel).join(';')).join('\r\n')], { type: 'text/csv;charset=utf-8' }));
+  a.download = nome; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 600);
+}
+const kpi = (t, v, s) => `<div class="card" style="padding:14px 16px"><div class="muted small">${t}</div><div style="font-family:Fraunces,Georgia,serif;font-size:26px;font-weight:700;line-height:1.2">${v}</div><div class="muted small">${s || '&nbsp;'}</div></div>`;
+const Gestao = {
+  d: null, tab: 'professores', q: '', f: '',
+  byId(id) { return this.d.profs.find(p => p.id === id); },
+  norm(r) {
+    r = r || {}; const hj = hojeISO();
+    r.profs = (Array.isArray(r.profs) ? r.profs : []).map(p => {
+      const venc = p.venc || p.vencimento || '', dias = p.diasRestantes ?? (venc ? Math.round((Date.parse(venc + 'T00:00:00Z') - Date.parse(hj + 'T00:00:00Z')) / 86400000) : null);
+      const status = p.status || (p.bloqueado ? 'bloqueado' : !venc ? 'isento' : dias < 0 ? 'vencido' : 'ativo');
+      return { nome: '', email: '', telefone: '', turmas: 0, alunos: 0, atividades: 0, plano: 'Mensal', valor: 0, uso: 0, bloqueado: false, atraso: dias != null && dias < 0 ? -dias : 0, ...p, venc, diasRestantes: dias ?? 0, status };
+    });
+    r.pagamentos = Array.isArray(r.pagamentos) ? r.pagamentos : [];
+    r.fin = { plano: 'Mensal', valor: 0, teste: 0, tolerancia: 0, bloqueioAuto: false, pix: '', contato: '', planos: [], ...(r.fin || {}) }; if (!Array.isArray(r.fin.planos)) r.fin.planos = [];
+    r.cotaPadrao = r.cotaPadrao ?? 0; return r;
+  },
+  async carregar() { try { this.d = this.norm(await Auth.call('/admin/profs')); await this.carregarSol(true); this.draw(); } catch (e) { const b = $('#gBody'); if (b) b.innerHTML = `<div class="alert bad">${ic('alert')}<div>${esc(e.message)}</div></div>`; } },
+  aba(t) { location.hash = '#/gestao/' + t; },
+  TITULOS: { professores: ['Professores', 'Cadastros, alunos, plano, vencimento e bloqueio de acesso'], solicitacoes: ['Solicitações de plano', 'Pedidos de mudança feitos pelos professores: aprove ou recuse'], pagamentos: ['Pagamentos', 'Controle de mensalidades recebidas'], relatorios: ['Relatórios de gestão', 'Receita, situação dos professores e vencimentos'], convites: ['Convidar professores', 'Envie o link e o código de convite pelo WhatsApp'], planos: ['Plano e cobrança', 'Valor mensal, tolerância, bloqueio automático e PIX'] },
+  /* controle de quem já foi avisado (só neste navegador) */
+  avisados() { try { return JSON.parse(localStorage.getItem('catedra_avisados') || '{}'); } catch { return {}; } },
+  marcarAviso(p) { const a = this.avisados(); a[p.id + '|' + p.venc] = hojeISO(); try { localStorage.setItem('catedra_avisados', JSON.stringify(a)); } catch { } },
+  foiAvisado(p) { return !!this.avisados()[p.id + '|' + p.venc]; },
+  draw() {
+    if (!$('#gBody') || !this.d) return; const d = this.d, P = d.profs, mes = hojeISO().slice(0, 7);
+    const n = f => P.filter(f).length, soma = (L, f) => L.reduce((s, x) => s + f(x), 0);
+    const ativos = P.filter(p => p.status === 'ativo'), atraso = P.filter(p => p.status === 'vencido' || p.status === 'suspenso');
+    $('#gKpi').innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px">
+      ${kpi('Professores', P.length, `${n(p => p.status === 'ativo' || p.status === 'isento')} com acesso ativo`)}
+      ${kpi('Alunos gerenciados', soma(P, p => p.alunos), `${soma(P, p => p.turmas)} turma(s)`)}
+      ${kpi('Solicitações de plano', this.pend(), this.pend() ? 'aguardando sua decisão' : 'nenhuma pendente')}
+      ${kpi('Vencem amanhã', n(p => p.status === 'ativo' && p.diasRestantes === 1), 'aviso 1 dia antes')}
+      ${kpi('Vencem em 7 dias', n(p => p.status === 'ativo' && p.diasRestantes <= 7), 'avisar para renovar')}
+      ${kpi('Em atraso', atraso.length, brl(soma(atraso, p => p.valor)) + ' a receber')}
+      ${kpi('Receita prevista/mês', brl(soma(ativos, p => p.valor)), `${ativos.length} assinatura(s) ativa(s)`)}
+      ${kpi('Recebido no mês', brl(soma(d.pagamentos.filter(x => String(x.data).startsWith(mes)), x => x.valor)), 'pagamentos registrados')}</div>`;
+    if (this.tab !== 'professores') $('#gKpi').innerHTML = '';
+    $('#gTabs').innerHTML = '';
+    const tt = this.TITULOS[this.tab] || this.TITULOS.professores, ph = $('#gHead'); if (ph) { ph.querySelector('h2').textContent = tt[0]; ph.querySelector('p').textContent = tt[1]; document.title = tt[0] + ' · Cátedra'; $('#pageTitle').textContent = tt[0]; }
+    const B = $('#gBody'); B.innerHTML = this[this.tab](); if (this.tab === 'convites') Admin.convite(); if (this.tab === 'professores') this.lista();
+  },
+  /* ---- professores ---- */
+  avisosVenc() {
+    const L = this.d.profs.filter(p => p.status === 'ativo' && p.diasRestantes === 1);
+    const atr = this.d.profs.filter(p => p.status === 'vencido' && !p.bloqueado);
+    let h = this.pend() ? `<div class="alert warn" style="margin-bottom:16px">${ic('clipboard')}<div style="flex:1"><b>${this.pend()} solicitação(ões) de mudança de plano</b> aguardando a sua decisão.</div><button class="btn sm primary" onclick="Gestao.aba('solicitacoes')">Analisar</button></div>` : '';
+    if (L.length) h += `<div class="card" style="margin-bottom:16px;border-color:#f0d9a8;background:#fffaf0"><div class="card-head"><h3 style="font-size:17px">${ic('clock')} Vencem amanhã (${L.length})</h3></div>
+      <p class="muted small" style="margin:-6px 0 6px">O professor já vê o aviso no topo do sistema e numa janela ao entrar. Envie também pelo WhatsApp:</p>
+      ${L.map(p => `<div class="warn-row"><div><b>${esc(p.nome)}</b><div class="muted small">${dBR(p.venc)} · ${brl(p.valor)} · ${esc(p.plano)}</div></div><div style="display:flex;gap:8px;align-items:center">${this.foiAvisado(p) ? `<span class="tag-ok">${ic('check', 14)} avisado</span>` : ''}<button class="btn sm primary" onclick="Gestao.avisar('${p.id}')">${ic('send', 14)} Enviar aviso</button></div></div>`).join('')}</div>`;
+    if (atr.length) h += `<div class="card" style="margin-bottom:16px;border-color:#f0c4c4;background:#fff7f7"><div class="card-head"><h3 style="font-size:17px">${ic('alert')} Em atraso, ainda com acesso (${atr.length})</h3><button class="btn sm danger" onclick="Gestao.bloquearAtrasados()">Bloquear todos os inadimplentes</button></div>
+      ${atr.map(p => `<div class="warn-row"><div><b>${esc(p.nome)}</b><div class="muted small">venceu em ${dBR(p.venc)} · ${p.atraso} dia(s) de atraso · ${brl(p.valor)}</div></div><div style="display:flex;gap:8px"><button class="btn sm" onclick="Gestao.avisar('${p.id}')">Cobrar</button><button class="btn sm danger" onclick="Gestao.bloq('${p.id}',true)">Bloquear</button></div></div>`).join('')}</div>`;
+    return h;
+  },
+  async bloquearAtrasados() {
+    const L = this.d.profs.filter(p => p.status === 'vencido' && !p.bloqueado); if (!L.length) return;
+    if (!(await confirmDlg(`Bloquear o acesso de <b>${L.length}</b> professor(es) com plano vencido? Eles deixam de entrar e os links dos alunos param de funcionar. Ao registrar o pagamento, o acesso volta na hora.`, 'Bloquear todos'))) return;
+    try { for (const p of L) await Auth.call('/admin/prof', { id: p.id, bloqueado: true }); toast(L.length + ' professor(es) bloqueado(s)', 'ok'); } catch (e) { toast(e.message, 'bad'); }
+    this.carregar();
+  },
+  professores() {
+    return this.avisosVenc() + `<div class="card"><div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px"><input placeholder="Buscar professor ou e-mail…" value="${esc(this.q)}" oninput="Gestao.q=this.value;Gestao.lista()" style="flex:1;min-width:200px">
+      <select onchange="Gestao.f=this.value;Gestao.lista()" style="width:auto"><option value="">Todos os status</option>${Object.entries(CHIP).map(([k, v]) => `<option value="${k}" ${this.f === k ? 'selected' : ''}>${v[0]}</option>`).join('')}</select></div><div id="gLista"></div></div>`;
+  },
+  lista() {
+    let L = this.d.profs.slice(); const q = this.q.toLowerCase(); if (q) L = L.filter(p => (p.nome + ' ' + p.email).toLowerCase().includes(q)); if (this.f) L = L.filter(p => p.status === this.f);
+    const el = $('#gLista'); if (!el) return;
+    if (!L.length) { el.innerHTML = `<p class="muted small" style="margin:8px 0">${this.d.profs.length ? 'Nenhum professor encontrado.' : 'Nenhum professor cadastrado ainda. Use a aba <b>Convites</b> para enviar o link pelo WhatsApp.'}</p>`; return; }
+    el.innerHTML = `<div style="overflow-x:auto"><table class="gt"><thead><tr><th>Professor</th><th>Alunos</th><th class="hide-sm">Plano</th><th>Vencimento</th><th class="hide-sm">IA no mês</th><th></th></tr></thead><tbody>${L.map(p => `<tr>
+      <td><b>${esc(p.nome)}</b><div class="muted small">${esc(p.email)}</div></td>
+      <td><b>${p.alunos}</b><div class="muted small">${p.turmas} turma(s)</div></td>
+      <td class="hide-sm">${esc(p.plano)}<div class="muted small">${brl(p.valor)}/mês</div></td>
+      <td>${chip(p.status)}<div class="muted small">${p.venc ? dBR(p.venc) + (p.status === 'ativo' ? ` · ${p.diasRestantes === 0 ? 'hoje' : p.diasRestantes + ' dia(s)'}` : p.atraso ? ` · ${p.atraso} dia(s) de atraso` : '') : 'sem vencimento'}</div></td>
+      <td class="hide-sm">${p.uso}/${p.cota ?? this.d.cotaPadrao}</td>
+      <td style="white-space:nowrap;text-align:right"><button class="btn sm primary" onclick="Gestao.pagar('${p.id}')">Pagamento</button> <button class="btn sm" onclick="Gestao.avisar('${p.id}')">Avisar</button> <button class="btn sm" onclick="Gestao.editar('${p.id}')">Editar</button> <button class="btn sm ${p.bloqueado ? '' : 'danger'}" onclick="Gestao.bloq('${p.id}',${!p.bloqueado})">${p.bloqueado ? 'Desbloquear' : 'Bloquear'}</button></td></tr>`).join('')}</tbody></table></div>`;
+  },
+  pagar(id) {
+    const p = this.byId(id);
+    modal({ title: 'Registrar pagamento', body: `<p class="small" style="margin-top:0"><b>${esc(p.nome)}</b> · vencimento atual: <b>${dBR(p.venc)}</b></p>
+      <div class="field"><label>Valor recebido (R$)</label><input id="pgV" type="number" step="0.01" min="0" value="${p.valor}"></div>
+      <div class="field"><label>Meses pagos</label><input id="pgM" type="number" min="1" max="24" value="1"></div>
+      <div class="field"><label>Data do pagamento</label><input id="pgD" type="date" value="${hojeISO()}"></div>
+      <div class="field"><label>Observação</label><input id="pgO" placeholder="Ex.: PIX, comprovante nº…"></div>
+      ${p.bloqueado ? `<label class="check"><input type="checkbox" id="pgU" checked> <span>Desbloquear o acesso deste professor</span></label>` : ''}
+      <div class="hint">O novo vencimento conta a partir do vencimento atual (ou de hoje, se já venceu). Se o acesso estava suspenso por atraso, ele volta na hora.</div>`,
+      actions: [{ label: 'Cancelar' }, { label: `${ic('check')} Confirmar pagamento`, cls: 'primary', onClick: async m => {
+        const v = parseFloat(m.querySelector('#pgV').value); if (!(v >= 0)) throw new Error('Informe o valor recebido.');
+        const r = await Auth.call('/admin/pagamento', { id, valor: v, meses: +m.querySelector('#pgM').value || 1, data: m.querySelector('#pgD').value, obs: m.querySelector('#pgO').value, desbloquear: !!m.querySelector('#pgU')?.checked });
+        toast('Pagamento registrado. Novo vencimento: ' + dBR(r.venc), 'ok'); this.carregar();
+      } }] });
+  },
+  editar(id) {
+    const p = this.byId(id);
+    modal({ title: 'Editar professor', body: `<p class="small" style="margin-top:0"><b>${esc(p.nome)}</b> · ${esc(p.email)}</p>
+      <div class="field"><label>WhatsApp com DDD</label><input id="edT" type="tel" value="${esc(p.telefone)}" placeholder="(82) 99999-9999"></div>
+      <div class="field"><label>Plano</label><input id="edP" value="${esc(p.plano)}"></div>
+      <div class="field"><label>Valor mensal (R$)</label><input id="edV" type="number" step="0.01" min="0" value="${p.valor}"><div class="hint">Padrão do sistema: ${brl(this.d.fin.valor)}.</div></div>
+      <div class="field"><label>Próximo vencimento</label><input id="edD" type="date" value="${esc(p.venc || '')}"><div class="hint">Em branco = sem cobrança (acesso livre).</div></div>
+      <div class="field"><label>Limite de correções por IA/mês</label><input id="edC" type="number" min="0" value="${p.cota ?? ''}" placeholder="Padrão: ${this.d.cotaPadrao}"></div>`,
+      actions: [{ label: 'Cancelar' }, { label: `${ic('check')} Salvar`, cls: 'primary', onClick: async m => {
+        const q = sel => m.querySelector(sel).value;
+        const cotaTxt = String(q('#edC')).trim(), valor = parseFloat(q('#edV'));
+        if (!(valor >= 0)) throw new Error('Informe um valor mensal válido.');
+        const body = { id, telefone: q('#edT').trim(), plano: q('#edP').trim(), valor, venc: q('#edD'), cota: cotaTxt === '' ? '' : +cotaTxt };
+        if (!body.plano) throw new Error('Informe o nome do plano.');
+        const resp = await Auth.call('/admin/prof', body);
+        await this.carregar();
+        const n = this.byId(id) || {}, falhou = [];
+        if (String(n.plano || '') !== body.plano) falhou.push('plano');
+        if (Math.abs((+n.valor || 0) - body.valor) > 0.001) falhou.push('valor mensal');
+        if (String(n.venc || '') !== body.venc) falhou.push('vencimento');
+        if (String(n.telefone || '') !== body.telefone) falhou.push('WhatsApp');
+        if (falhou.length) { console.warn('Resposta do servidor a /admin/prof:', resp, 'dados recarregados:', n); toast(`O servidor respondeu, mas não gravou: ${falhou.join(', ')}. O Worker precisa aceitar esses campos em /admin/prof.`, 'bad', 12000); }
+        else toast('Dados salvos', 'ok');
+      } }] });
+  },
+  async bloq(id, b) {
+    const p = this.byId(id);
+    if (b && !(await confirmDlg(`Bloquear o acesso de <b>${esc(p.nome)}</b>? Ele deixa de entrar e os links dos alunos dele param de funcionar.`, 'Bloquear'))) return;
+    try { await Auth.call('/admin/prof', { id, bloqueado: b }); toast(b ? 'Acesso bloqueado' : 'Acesso liberado', 'ok'); this.carregar(); } catch (e) { toast(e.message, 'bad'); }
+  },
+  msg(p) {
+    const f = this.d.fin, pix = f.pix ? `\n\n💳 *Como pagar*\n${f.pix}` : '', v = brl(p.valor), n = (p.nome || '').split(' ')[0];
+    if (p.status === 'suspenso' || p.status === 'bloqueado') return `Olá, ${n}! O seu acesso ao *Cátedra* está suspenso${p.venc ? ` (plano vencido em ${dBR(p.venc)})` : ''}. Para reativar, regularize o plano de *${v}*.${pix}\n\nAssim que o pagamento for registrado, o acesso volta na hora. Se já pagou, envie o comprovante por aqui.`;
+    if (p.status === 'vencido') return `Olá, ${n}! O seu plano do *Cátedra* venceu em ${dBR(p.venc)} (valor *${v}*). Regularize para evitar a suspensão do acesso.${pix}\n\nSe já pagou, envie o comprovante por aqui. Obrigado!`;
+    const q = p.diasRestantes; return `Olá, ${n}! Lembrete: o seu plano do *Cátedra* vence ${q === 0 ? 'hoje' : q === 1 ? 'amanhã' : 'em ' + q + ' dias'} (${dBR(p.venc)}), no valor de *${v}*.${pix}\n\nDepois do pagamento, envie o comprovante por aqui. Obrigado!`;
+  },
+  avisar(id) {
+    const p = this.byId(id);
+    modal({ title: 'Avisar pelo WhatsApp', body: `<p class="small" style="margin-top:0">Para <b>${esc(p.nome)}</b>${p.telefone ? ` · ${esc(p.telefone)}` : ' · <span class="muted">sem WhatsApp cadastrado: você escolhe o contato ao abrir</span>'}</p><textarea id="avM" rows="11" style="width:100%;font-family:inherit">${esc(this.msg(p))}</textarea>`,
+      actions: [{ label: 'Fechar' }, { label: 'Copiar', onClick: async m => { await copyText(m.querySelector('#avM').value); Gestao.marcarAviso(p); return false; } }, { label: 'Abrir no WhatsApp', cls: 'primary', onClick: m => { window.open(waLink(p.telefone, m.querySelector('#avM').value), '_blank', 'noopener'); Gestao.marcarAviso(p); setTimeout(() => Gestao.draw(), 200); } }] });
+  },
+  /* ---- pagamentos ---- */
+  pagamentos() {
+    const L = this.d.pagamentos, tot = L.reduce((s, x) => s + x.valor, 0);
+    return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px"><div><b>Pagamentos registrados</b> <span class="muted small">(últimos 12 meses · total ${brl(tot)})</span></div><button class="btn" onclick="Gestao.csvPag()">${ic('download')} Exportar CSV</button></div>
+    ${L.length ? `<div style="overflow-x:auto"><table class="gt"><thead><tr><th>Data</th><th>Professor</th><th>Valor</th><th class="hide-sm">Meses</th><th class="hide-sm">Novo vencimento</th><th class="hide-sm">Observação</th></tr></thead><tbody>${L.map(x => `<tr><td>${dBR(x.data)}</td><td>${esc(x.nome)}</td><td><b>${brl(x.valor)}</b></td><td class="hide-sm">${x.meses}</td><td class="hide-sm">${dBR(x.venc)}</td><td class="hide-sm muted">${esc(x.obs || '')}</td></tr>`).join('')}</tbody></table></div>` : '<p class="muted small">Nenhum pagamento registrado ainda. Use o botão <b>Pagamento</b> na aba Professores.</p>'}</div>`;
+  },
+  csvPag() { baixarCSV('pagamentos.csv', [['Data', 'Professor', 'Valor', 'Meses', 'Novo vencimento', 'Observação'], ...this.d.pagamentos.map(x => [dBR(x.data), x.nome, String(x.valor).replace('.', ','), x.meses, dBR(x.venc), x.obs])]); },
+  csvProf() { baixarCSV('professores.csv', [['Professor', 'E-mail', 'WhatsApp', 'Turmas', 'Alunos', 'Atividades', 'Plano', 'Valor mensal', 'Vencimento', 'Situação', 'Dias de atraso', 'IA no mês'], ...this.d.profs.map(p => [p.nome, p.email, p.telefone, p.turmas, p.alunos, p.atividades, p.plano, String(p.valor).replace('.', ','), dBR(p.venc), CHIP[p.status][0], p.atraso, p.uso])]); },
+  /* ---- relatórios ---- */
+  relatorios() {
+    const d = this.d, P = d.profs, bar = (pct, cor) => `<div style="background:#eceae3;border-radius:99px;height:9px;overflow:hidden"><div style="width:${Math.max(2, pct)}%;height:100%;background:${cor};border-radius:99px"></div></div>`;
+    const meses = []; for (let i = 5; i >= 0; i--) { const dt = new Date(Date.now() - 3 * 3600e3); dt.setUTCDate(1); dt.setUTCMonth(dt.getUTCMonth() - i); meses.push(dt.toISOString().slice(0, 7)); }
+    const rec = meses.map(m => d.pagamentos.filter(x => String(x.data).startsWith(m)).reduce((s, x) => s + x.valor, 0)), mx = Math.max(...rec, 1);
+    const top = P.slice().sort((a, b) => b.alunos - a.alunos).slice(0, 8), mxA = Math.max(...top.map(p => p.alunos), 1);
+    const prox = P.filter(p => p.status === 'vencido' || p.status === 'suspenso' || (p.status === 'ativo' && p.diasRestantes <= 7)).sort((a, b) => String(a.venc).localeCompare(String(b.venc)));
+    return `<div class="actions" style="margin-bottom:14px"><button class="btn" onclick="Gestao.csvProf()">${ic('download')} Professores (CSV)</button><button class="btn" onclick="Gestao.csvPag()">${ic('download')} Pagamentos (CSV)</button><button class="btn" onclick="window.print()">Imprimir relatório</button></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;align-items:start">
+    <div class="card"><h3>Recebimentos por mês</h3><div style="display:flex;align-items:flex-end;gap:10px;height:150px;margin-top:14px">${rec.map((v, i) => `<div style="flex:1;text-align:center"><div class="muted small" style="font-size:11px">${v ? brl(v) : ''}</div><div style="height:${Math.max(3, v / mx * 100)}px;background:var(--primary);border-radius:6px 6px 0 0"></div><div class="muted small">${meses[i].slice(5)}/${meses[i].slice(2, 4)}</div></div>`).join('')}</div></div>
+    <div class="card"><h3>Situação dos professores</h3><div style="display:grid;gap:10px;margin-top:12px">${Object.entries(CHIP).map(([k, c]) => { const q = P.filter(p => p.status === k).length; return `<div><div style="display:flex;justify-content:space-between;font-size:13px"><span>${c[0]}</span><b>${q}</b></div>${bar(P.length ? q / P.length * 100 : 0, c[1])}</div>`; }).join('')}</div></div>
+    <div class="card"><h3>Professores com mais alunos</h3><div style="display:grid;gap:10px;margin-top:12px">${top.length ? top.map(p => `<div><div style="display:flex;justify-content:space-between;font-size:13px"><span>${esc(p.nome)}</span><b>${p.alunos}</b></div>${bar(p.alunos / mxA * 100, 'var(--accent)')}</div>`).join('') : '<p class="muted small">Sem dados.</p>'}</div></div>
+    <div class="card"><h3>Vencimentos e atrasos</h3>${prox.length ? `<div style="display:grid;gap:8px;margin-top:10px">${prox.map(p => `<div style="display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap"><div><b>${esc(p.nome)}</b><div class="muted small">${dBR(p.venc)} · ${brl(p.valor)}</div></div><div style="display:flex;gap:8px;align-items:center">${chip(p.status)}<button class="btn sm" onclick="Gestao.avisar('${p.id}')">Avisar</button></div></div>`).join('')}</div>` : '<p class="muted small">Nenhum vencimento nos próximos 7 dias e nenhum atraso.</p>'}</div></div>`;
+  },
+  convites() { return `<div class="card" id="admConvite"><div class="muted small">Carregando…</div></div>`; },
+  /* ---- plano e cobrança ---- */
+  planos() {
+    const f = this.d.fin;
+    return `<div class="card" style="max-width:640px"><h3>Plano e regras de cobrança</h3><form id="fFin" onsubmit="return false">
+      <div class="field"><label>Nome do plano</label><input name="plano" value="${esc(f.plano)}"></div>
+      <div class="field"><label>Valor mensal padrão (R$)</label><input name="valor" type="number" step="0.01" min="0" value="${f.valor}"></div>
+      <div class="field"><label>Teste gratuito para novos cadastros (dias)</label><input name="teste" type="number" min="0" max="90" value="${f.teste}"></div>
+      <div class="field"><label>Tolerância após o vencimento (dias)</label><input name="tolerancia" type="number" min="0" max="60" value="${f.tolerancia}"></div>
+      <label class="check"><input type="checkbox" name="bloqueioAuto" ${f.bloqueioAuto ? 'checked' : ''}> <span><b>Suspender automaticamente</b> o professor que passar da tolerância sem pagar. Ao registrar o pagamento, o acesso volta na hora.</span></label>
+      <div class="field" style="margin-top:12px"><label>Chave PIX e instruções de pagamento</label><textarea name="pix" rows="4" placeholder="PIX (e-mail): seu@email.com&#10;Nome: …&#10;Envie o comprovante pelo WhatsApp.">${esc(f.pix)}</textarea><div class="hint">Aparece para o professor em “Como pagar” e nas mensagens de cobrança.</div></div>
+      <div class="field"><label>Seu WhatsApp para contato (com DDD)</label><input name="contato" type="tel" value="${esc(f.contato)}" placeholder="(82) 99999-9999"><div class="hint">O professor usa para enviar o comprovante.</div></div>
+      <div class="field"><label>Planos disponíveis para troca (o professor escolhe um ao solicitar alteração)</label><div id="plRows">${(f.planos || []).map(x => `<div class="pl-row"><input class="plN" placeholder="Nome (ex.: Anual)" value="${esc(x.nome)}"><input class="plV" type="number" step="0.01" min="0" placeholder="R$/mês" value="${esc(String(x.valor ?? ''))}"><input class="plD" placeholder="Descrição curta" value="${esc(x.descricao || '')}"><button type="button" class="btn sm danger" onclick="this.parentNode.remove()" aria-label="Remover">${ic('x', 14)}</button></div>`).join('')}</div><button type="button" class="btn sm" onclick="Gestao.addPlano()">${ic('plus', 14)} Adicionar plano</button><div class="hint">Sem planos cadastrados, o professor descreve o plano desejado em texto livre.</div></div>
+      <div class="alert info" style="margin-bottom:12px">${ic('clock')}<div><b>Aviso automático:</b> o professor vê a mensagem de vencimento <b>1 dia antes</b>, no <b>dia</b> e enquanto estiver <b>em atraso</b> (faixa no topo do sistema e janela ao entrar). Professores sem vencimento definido não são cobrados.</div></div>
+      <button class="btn primary" onclick="Gestao.salvarFin()">${ic('check')} Salvar</button></form></div>`;
+  },
+  async salvarFin() { const d = formData($('#fFin')); d.bloqueioAuto = !!d.bloqueioAuto; d.planos = [...document.querySelectorAll('#plRows .pl-row')].map(r => ({ nome: r.querySelector('.plN').value.trim(), valor: parseFloat(r.querySelector('.plV').value) || 0, descricao: r.querySelector('.plD').value.trim() })).filter(x => x.nome); try { const r = await Auth.call('/admin/fin', d); this.d.fin = this.norm({ fin: r.fin }).fin; if (d.planos.length && !(r.fin.planos || []).length) toast('Regras salvas, mas o servidor não guardou a lista de planos. Atualize o Worker (worker.js).', 'bad', 12000); else toast('Regras salvas', 'ok'); this.carregar(); } catch (e) { toast(e.message, 'bad'); } }
+};
+/* ---------- Solicitações de mudança de plano ---------- */
+const dtc = v => v ? new Date(v).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+const SOLCHIP = { pendente: ['Aguardando', '#8a5a0a', '#fff2d6'], aprovada: ['Aprovada', '#1b8f62', '#e2f4ec'], recusada: ['Recusada', '#b3261e', '#fde8e6'], cancelada: ['Cancelada', '#5b6478', '#eceae3'] };
+const solChip = st => { const c = SOLCHIP[st] || SOLCHIP.pendente; return `<span style="background:${c[2]};color:${c[1]};padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700;white-space:nowrap">${c[0]}</span>`; };
+const solN = x => ({ ...x, status: x.status || 'pendente', novoPlano: x.planoNovo ?? x.plano ?? '', novoValor: x.valorNovo ?? x.valor ?? null, antPlano: x.planoAtual ?? '', antValor: x.valorAtual ?? null, profId: x.profId ?? x.userId ?? x.prof ?? '' });
+Object.assign(Gestao, {
+  sol: { ok: true, itens: [] }, ultPend: null,
+  pend() { return (this.sol.itens || []).filter(x => (x.status || 'pendente') === 'pendente').length; },
+  async carregarSol(silencioso) {
+    const antes = this.pend();
+    try { const r = await Auth.call('/admin/solicitacoes'); this.sol = { ok: true, itens: Array.isArray(r.itens) ? r.itens : Array.isArray(r.solicitacoes) ? r.solicitacoes : [] }; }
+    catch (e) { this.sol = { ok: false, itens: [], erro: e.status }; }
+    const n = this.pend();
+    if (n > 0 && (this.ultPend == null || n > this.ultPend)) toast(this.ultPend == null ? `Você tem ${n} solicitação(ões) de mudança de plano pendente(s)` : `${n - this.ultPend} nova(s) solicitação(ões) de mudança de plano`, 'info', 9000);
+    this.ultPend = n; renderNav('gestao/' + this.tab);
+    if (!silencioso && n !== antes && this.d && $('#gBody')) this.draw();
+  },
+  solicitacoes() {
+    if (!this.sol.ok) return `<div class="alert warn">${ic('alert')}<div><b>O servidor ainda não tem o recurso de solicitações de plano.</b> Atualize o Worker com os endpoints <code>/admin/solicitacoes</code> e <code>/admin/solicitacao</code> (e <code>/plano/solicitar</code> para o professor).</div></div>`;
+    const L = this.sol.itens.map(solN).sort((a, b) => (b.criadoEm || 0) - (a.criadoEm || 0)), pend = L.filter(x => x.status === 'pendente'), hist = L.filter(x => x.status !== 'pendente').slice(0, 30);
+    const fl = x => `<div class="sol-arrow"><span>${esc(x.antPlano || 'plano atual')}${x.antValor != null ? ' · ' + brl(x.antValor) : ''}</span>${ic('send', 14)}<span><b>${esc(x.novoPlano)}</b>${x.novoValor != null ? ' · ' + brl(x.novoValor) : ''}</span></div>`;
+    return `<div class="card" style="margin-bottom:16px"><div class="card-head"><h3>Aguardando decisão (${pend.length})</h3></div>
+      ${pend.length ? pend.map(x => `<div class="sol-card"><div style="flex:1;min-width:240px"><b>${esc(x.nome || 'Professor')}</b> <span class="muted small">${esc(x.email || '')} · ${dtc(x.criadoEm)}</span>${fl(x)}${x.obs ? `<div class="small muted" style="margin-top:4px">“${esc(x.obs)}”</div>` : ''}</div>
+        <div style="display:flex;gap:8px"><button class="btn sm primary" onclick="Gestao.decidir('${esc(String(x.id))}',true)">${ic('check', 14)} Aprovar</button><button class="btn sm danger" onclick="Gestao.decidir('${esc(String(x.id))}',false)">${ic('x', 14)} Recusar</button></div></div>`).join('') : '<p class="muted small" style="margin:0">Nenhuma solicitação pendente.</p>'}</div>
+      ${hist.length ? `<div class="card"><div class="card-head"><h3>Histórico</h3></div><div style="overflow-x:auto"><table class="gt"><thead><tr><th>Data</th><th>Professor</th><th>Mudança</th><th>Situação</th><th class="hide-sm">Resposta</th></tr></thead><tbody>${hist.map(x => `<tr><td>${dtc(x.decididoEm || x.criadoEm)}</td><td>${esc(x.nome || '')}</td><td>${esc(x.antPlano || '—')} → <b>${esc(x.novoPlano)}</b></td><td>${solChip(x.status)}</td><td class="hide-sm muted">${esc(x.resposta || '')}</td></tr>`).join('')}</tbody></table></div></div>` : ''}`;
+  },
+  decidir(id, ap) {
+    const it = this.sol.itens.find(i => String(i.id) === String(id)); if (!it) return; const x = solN(it);
+    modal({ title: ap ? 'Aprovar alteração de plano' : 'Recusar alteração de plano', body: `<p class="small" style="margin-top:0"><b>${esc(x.nome || 'Professor')}</b>: ${esc(x.antPlano || 'plano atual')} → <b>${esc(x.novoPlano)}</b></p>
+      ${x.obs ? `<div class="alert info" style="margin-bottom:12px"><div>“${esc(x.obs)}”</div></div>` : ''}
+      ${ap ? `<div class="field"><label>Valor mensal do novo plano (R$)</label><input id="dcV" type="number" step="0.01" min="0" value="${x.novoValor ?? x.antValor ?? ''}"></div>` : ''}
+      <div class="field"><label>${ap ? 'Mensagem ao professor (opcional)' : 'Motivo da recusa'}</label><textarea id="dcM" rows="3" placeholder="${ap ? 'Ex.: Plano alterado, vale a partir do próximo vencimento.' : 'Ex.: Pagamento em aberto. Regularize para trocar de plano.'}"></textarea></div>
+      <div class="hint">O professor vê a resposta no painel dele ao acessar o sistema.</div>`,
+      actions: [{ label: 'Cancelar' }, { label: ap ? `${ic('check')} Aprovar` : `${ic('x')} Recusar`, cls: ap ? 'primary' : 'danger', onClick: async m => {
+        const motivo = m.querySelector('#dcM').value.trim(), valor = ap ? parseFloat(m.querySelector('#dcV').value) : null;
+        if (ap && !(valor >= 0)) throw new Error('Informe o valor mensal do novo plano.');
+        await Auth.call('/admin/solicitacao', { id: it.id, aprovar: ap, motivo, valor });
+        if (ap && x.profId) { try { await Auth.call('/admin/prof', { id: x.profId, plano: x.novoPlano, valor }); } catch { } }
+        toast(ap ? 'Alteração aprovada e aplicada ao professor' : 'Solicitação recusada', 'ok'); this.carregar();
+      } }] });
+  },
+  addPlano(n = '', v = '', d = '') { const el = $('#plRows'); if (!el) return; const r = document.createElement('div'); r.className = 'pl-row'; r.innerHTML = `<input class="plN" placeholder="Nome (ex.: Anual)" value="${esc(n)}"><input class="plV" type="number" step="0.01" min="0" placeholder="R$/mês" value="${esc(String(v))}"><input class="plD" placeholder="Descrição curta" value="${esc(d)}"><button type="button" class="btn sm danger" onclick="this.parentNode.remove()" aria-label="Remover">${ic('x', 14)}</button>`; el.appendChild(r); }
+});
+function viewGestao() {
+  if (!Auth.admin) { location.hash = '#/painel'; return; }
+  const tt = Gestao.TITULOS[Gestao.tab] || Gestao.TITULOS.professores;
+  setMain(`<div class="page-head" id="gHead"><div><h2>${tt[0]}</h2><p class="muted">${tt[1]}</p></div><div class="actions"><button class="btn" onclick="Gestao.carregar()">${ic('refresh')} Atualizar</button>${Gestao.tab !== 'convites' ? `<button class="btn primary" onclick="Gestao.aba('convites')">${ic('send')} Convidar professor</button>` : ''}</div></div>
+  <div id="gKpi"></div><div id="gTabs"></div><div id="gBody"><div class="muted small">Carregando…</div></div>`, tt[0]);
+  if (Gestao.d) Gestao.draw();
+  Gestao.carregar();
+}
+/* --- lado do professor: avisos de vencimento e acesso suspenso --- */
+function avisoDe(a) { // reforço no navegador: se o servidor não marcou, calcula pelo vencimento
+  if (!a || a.status === 'isento' || !a.venc) return a?.aviso || '';
+  if (a.aviso) return a.aviso;
+  const d = Math.round((Date.parse(a.venc + 'T00:00:00Z') - Date.parse(hojeISO() + 'T00:00:00Z')) / 86400000);
+  return d === 1 ? 'amanha' : d === 0 ? 'hoje' : d < 0 ? 'atraso' : '';
+}
+function avisoAssinatura() {
+  const a = S?.assin; const av = avisoDe(a); if (!a || !av) return '';
+  const t = av === 'amanha' ? `<b>Seu plano vence amanhã (${dBR(a.venc)}).</b> Renove para não perder o acesso.` : av === 'hoje' ? `<b>Seu plano vence hoje.</b> Renove para não perder o acesso.` : `<b>Seu plano venceu em ${dBR(a.venc)}.</b>${a.suspendeEm ? ` O acesso será suspenso em ${dBR(a.suspendeEm)}.` : ''} Regularize o pagamento.`;
+  return `<div class="alert warn" style="margin-bottom:16px">${ic('alert')}<div>${t} <a href="#" onclick="comoPagar();return false"><u>Como pagar</u></a></div></div>`;
+}
+function fmtTel(t) { const d = String(t || '').replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, ''); return d.length === 11 ? `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}` : d.length === 10 ? `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}` : String(t || ''); }
+const PlanoProf = {
+  vistoKey: 'catedra_sol_visto',
+  visto() { try { return localStorage.getItem(this.vistoKey) || ''; } catch { return ''; } },
+  marcarVisto() { const x = S.sol; if (x) { try { localStorage.setItem(this.vistoKey, x.id + '|' + x.status); } catch { } } this.redraw(); },
+  redraw() { const el = document.getElementById('meuPlano'); if (el) el.outerHTML = this.card(); },
+  card() {
+    const a = S.assin; if (!a) return '';
+    const x = S.sol ? solN(S.sol) : null, d = a.diasRestantes;
+    const quando = a.status === 'ativo' && d != null ? (d === 0 ? 'vence hoje' : d === 1 ? 'vence amanhã' : `em ${d} dias`) : a.status === 'vencido' ? 'em atraso' : '';
+    const pend = x && x.status === 'pendente', novo = x && (x.status === 'aprovada' || x.status === 'recusada') && this.visto() !== x.id + '|' + x.status;
+    return `<div class="card" id="meuPlano" style="margin-bottom:18px"><div class="card-head"><h3>${ic('award')} Meu plano</h3>${chip(a.status)}</div>
+      <div class="mp-grid"><div><span>Plano</span><b>${esc(a.plano || '—')}</b></div><div><span>Valor mensal</span><b>${a.status === 'isento' ? 'Sem cobrança' : brl(a.valor)}</b></div><div><span>Vencimento</span><b>${a.venc ? dBR(a.venc) : '—'}</b>${quando ? `<small>${quando}</small>` : ''}</div></div>
+      ${pend ? `<div class="alert info" style="margin-bottom:12px">${ic('clock')}<div style="flex:1"><b>Solicitação enviada${x.criadoEm ? ' em ' + dtc(x.criadoEm) : ''}:</b> ${esc(x.antPlano || a.plano || 'plano atual')} → <b>${esc(x.novoPlano)}</b>${x.novoValor != null ? ' (' + brl(x.novoValor) + '/mês)' : ''}. Aguardando aprovação do gestor.</div><button class="btn sm" onclick="PlanoProf.cancelar()">Cancelar pedido</button></div>` : ''}
+      ${novo ? `<div class="alert ${x.status === 'aprovada' ? 'ok' : 'bad'}" style="margin-bottom:12px">${ic(x.status === 'aprovada' ? 'check' : 'alert')}<div style="flex:1"><b>Sua solicitação para <u>${esc(x.novoPlano)}</u> foi ${x.status === 'aprovada' ? 'aprovada' : 'recusada'}.</b>${x.resposta ? ` ${esc(x.resposta)}` : ''}</div><button class="btn sm" onclick="PlanoProf.marcarVisto()">Ok</button></div>` : ''}
+      <div class="actions"><button class="btn primary" ${pend ? 'disabled' : ''} onclick="PlanoProf.abrir()">${ic('edit')} Solicitar alteração de plano</button><button class="btn" onclick="comoPagar()">${ic('key')} Como pagar</button></div></div>`;
+  },
+  abrir() {
+    const a = S.assin || {}, cat = (a.planos || []).filter(p => p && p.nome);
+    const lista = cat.length ? `<div class="pl-list">${cat.map((p, i) => `<label class="pl-opt ${p.nome === a.plano ? 'cur' : ''}"><input type="radio" name="plNovo" value="${i}" ${p.nome === a.plano ? 'disabled' : ''}><div><b>${esc(p.nome)}${p.nome === a.plano ? '<em>plano atual</em>' : ''}</b>${p.descricao ? `<span>${esc(p.descricao)}</span>` : ''}</div><strong>${brl(p.valor)}<small>/mês</small></strong></label>`).join('')}</div>` : `<div class="field"><label>Plano desejado</label><input id="plTxt" placeholder="Ex.: Plano anual"></div>`;
+    modal({ title: 'Solicitar alteração de plano', body: `<p class="small" style="margin-top:0">Plano atual: <b>${esc(a.plano || '—')}</b>${a.status !== 'isento' ? ` · ${brl(a.valor)}/mês` : ''}</p>${lista}
+      <div class="field"><label>Observação para o gestor (opcional)</label><textarea id="plObs" rows="3" placeholder="Ex.: Preciso de mais turmas neste semestre."></textarea></div>
+      <div class="hint">O gestor é notificado e decide se aprova. A resposta aparece aqui no seu painel.</div>`,
+      actions: [{ label: 'Cancelar' }, { label: `${ic('send')} Enviar solicitação`, cls: 'primary', onClick: async m => {
+        let plano, valor = null;
+        if (cat.length) { const r = m.querySelector('input[name=plNovo]:checked'); if (!r) throw new Error('Escolha o novo plano.'); plano = cat[+r.value].nome; valor = cat[+r.value].valor; }
+        else { plano = (m.querySelector('#plTxt').value || '').trim(); if (!plano) throw new Error('Informe o plano desejado.'); }
+        const obs = m.querySelector('#plObs').value.trim();
+        try {
+          const r = await Auth.call('/plano/solicitar', { plano, valor, obs });
+          S.sol = r.solicitacao || { id: 'novo', status: 'pendente', planoNovo: plano, valorNovo: valor, planoAtual: a.plano, valorAtual: a.valor, obs, criadoEm: Date.now() };
+          toast('Solicitação enviada ao gestor', 'ok'); this.redraw();
+        } catch (e) {
+          if (e.status === 404 || e.status === 405) { window.open(waLink(a.contato, `Olá! Sou ${Auth.user?.nome || 'professor(a)'} e gostaria de alterar meu plano do Cátedra de "${a.plano || ''}" para "${plano}".${obs ? '\n' + obs : ''}`), '_blank', 'noopener'); toast('O servidor ainda não recebe solicitações: abri o WhatsApp do gestor.', 'info', 7000); }
+          else throw e;
+        }
+      } }] });
+  },
+  async cancelar() { try { await Auth.call('/plano/cancelar', {}); if (S.sol) S.sol.status = 'cancelada'; toast('Solicitação cancelada', 'ok'); this.redraw(); } catch (e) { toast(e.message, 'bad'); } },
+  async sync() {
+    try { const me = await Auth.call('/me'); const ant = S.sol ? S.sol.status : null; S.assin = me.assinatura || S.assin; S.sol = me.solicitacao || null;
+      if (ant === 'pendente' && S.sol && S.sol.status !== 'pendente') toast(S.sol.status === 'aprovada' ? 'O gestor aprovou a alteração do seu plano' : 'O gestor respondeu à sua solicitação de plano', 'info', 9000);
+      this.redraw(); } catch { }
+  }
+};
+function comoPagar(aviso) {
+  const a = S?.assin || {}, av = avisoDe(a), nome = (Auth.user?.nome || '').split(' ')[0] || 'professor(a)';
+  const atraso = av === 'atraso', hoje = av === 'hoje', amanha = av === 'amanha';
+  const tom = atraso ? 'bad' : (amanha || hoje) ? 'warn' : 'info';
+  const titulo = atraso ? 'Seu plano está vencido' : hoje ? 'Seu plano vence hoje' : amanha ? 'Seu plano vence amanhã' : 'Renovar o plano';
+  const dias = a.diasRestantes;
+  const sit = atraso ? `Vencido${a.venc ? ' há ' + Math.max(1, Math.abs(dias ?? 1)) + ' dia(s)' : ''}` : hoje ? 'Vence hoje' : amanha ? 'Vence em 1 dia' : (dias != null ? `Vence em ${dias} dia(s)` : 'Em dia');
+  const msg = atraso ? `Olá, <b>${esc(nome)}</b>! O pagamento do seu plano <b>${esc(a.plano || '')}</b> venceu em <b>${dBR(a.venc)}</b>. Regularize agora para não perder o acesso ao sistema. Seus dados continuam guardados.`
+    : `Olá, <b>${esc(nome)}</b>! Seu plano <b>${esc(a.plano || '')}</b> ${hoje ? 'vence <b>hoje</b>' : amanha ? 'vence <b>amanhã</b>' : 'vence em <b>' + dBR(a.venc) + '</b>'} (${dBR(a.venc)}). Faça o pagamento de <b>${brl(a.valor)}</b> para continuar usando o sistema sem interrupção.`;
+  const root = document.getElementById('vencRoot') || Object.assign(document.createElement('div'), { id: 'vencRoot' }); document.body.appendChild(root);
+  root.innerHTML = `<div class="vc-ov" onclick="if(event.target===this)vencFechar()"><div class="vc vc-${tom}" role="dialog" aria-modal="true" aria-label="${esc(titulo)}">
+    <div class="vc-top"><button class="vc-x" onclick="vencFechar()" aria-label="Fechar">${ic('x', 18)}</button>
+      <div class="vc-ico">${ic(atraso ? 'alert' : 'clock', 26)}</div>
+      <div class="vc-t">${esc(titulo)}</div><div class="vc-s">${a.venc ? 'Vencimento: ' + dBR(a.venc) : 'Aviso de cobrança'}</div></div>
+    <div class="vc-body">
+      <p class="vc-msg">${msg}</p>
+      <div class="vc-grid"><div><span>Plano</span><b>${esc(a.plano || '—')}</b></div><div><span>Valor</span><b>${brl(a.valor)}</b></div><div><span>Situação</span><b class="vc-sit">${sit}</b></div></div>
+      <div class="vc-sec"><div class="vc-lbl">${ic('key', 15)} Dados para pagamento</div>
+        ${a.pix ? `<div class="vc-pix" id="vcPix">${esc(a.pix)}</div><button class="btn sm" onclick="copyText(document.getElementById('vcPix').innerText)">${ic('copy', 14)} Copiar dados</button>` : '<p class="muted small" style="margin:0">Fale com o gestor para combinar a forma de pagamento.</p>'}</div>
+      <div class="vc-sec"><div class="vc-lbl">${ic('user', 15)} Contato do gestor</div>
+        ${a.contato ? `<div class="vc-ct"><div><b>${esc(fmtTel(a.contato))}</b><span>WhatsApp · envie o comprovante</span></div><a class="btn primary sm" target="_blank" rel="noopener" href="${esc(waLink(a.contato, `Olá! Sou ${Auth.user?.nome || 'professor(a)'} e estou enviando o comprovante do plano do Cátedra (vencimento ${dBR(a.venc)}).`))}">${ic('send', 14)} Chamar no WhatsApp</a></div>` : '<p class="muted small" style="margin:0">Contato do gestor ainda não informado.</p>'}</div>
+      <p class="vc-hint">Depois de pagar, envie o comprovante. O acesso é atualizado assim que o pagamento for registrado.</p>
+    </div>
+    <div class="vc-foot"><button class="btn" onclick="vencFechar()">Lembrar depois</button><button class="btn primary" onclick="vencFechar()">Entendi</button></div>
+  </div></div>`;
+}
+function vencFechar() { const r = document.getElementById('vencRoot'); if (r) r.innerHTML = ''; }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') vencFechar(); });
+(function () { const st = document.createElement('style'); st.textContent = `
+.vc-ov{position:fixed;inset:0;z-index:300;background:rgba(17,26,51,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:grid;place-items:center;padding:16px;animation:vcF .2s}
+.vc{width:100%;max-width:460px;max-height:calc(100vh - 32px);overflow:auto;background:#fff;border-radius:22px;box-shadow:0 30px 80px rgba(10,16,40,.45);animation:vcU .28s cubic-bezier(.2,.9,.3,1.2)}
+@keyframes vcF{from{opacity:0}}@keyframes vcU{from{opacity:0;transform:translateY(18px) scale(.97)}}
+.vc-top{position:relative;padding:26px 24px 22px;color:#fff;text-align:center;background:linear-gradient(135deg,#e8a33d,#c9791a)}
+.vc-bad .vc-top{background:linear-gradient(135deg,#d94c4c,#a82929)}.vc-info .vc-top{background:linear-gradient(135deg,#2948d1,#1d36a8)}
+.vc-ico{width:56px;height:56px;border-radius:18px;background:rgba(255,255,255,.2);display:grid;place-items:center;margin:0 auto 12px}
+.vc-t{font:700 22px Fraunces,Georgia,serif}.vc-s{opacity:.9;font-size:13.5px;margin-top:2px}
+.vc-x{position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:10px;border:0;background:rgba(255,255,255,.18);color:#fff;cursor:pointer;display:grid;place-items:center}
+.vc-body{padding:20px 22px 6px}.vc-msg{margin:0 0 16px;font-size:14.5px;line-height:1.55;color:var(--ink)}
+.vc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.vc-grid div{background:#f6f4ee;border-radius:12px;padding:10px 12px}.vc-grid span{display:block;font-size:11.5px;color:var(--muted)}.vc-grid b{font-size:14px}
+.vc-bad .vc-sit{color:var(--bad)}.vc-warn .vc-sit{color:var(--warn)}
+.vc-sec{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:12px}
+.vc-lbl{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
+.vc-pix{background:#faf8f3;border-radius:10px;padding:10px 12px;margin-bottom:8px;white-space:pre-wrap;word-break:break-word;font-size:14px}
+.vc-ct{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.vc-ct b{display:block;font-size:16px}.vc-ct span{font-size:12.5px;color:var(--muted)}
+.vc-hint{font-size:12.5px;color:var(--muted);margin:4px 0 10px}
+.vc-foot{display:flex;gap:8px;justify-content:flex-end;padding:12px 22px 20px}
+@media(max-width:420px){.vc-grid{grid-template-columns:1fr 1fr}.vc-foot .btn{flex:1}}`; document.head.appendChild(st); })();
+function telaSuspensa(a) {
+  document.body.classList.add('student'); const bl = a.status === 'bloqueado';
+  $('#main').innerHTML = `<div class="card" style="max-width:480px;margin:8vh auto;text-align:center"><div style="font-size:42px">🔒</div><h2 style="margin:6px 0 8px">${bl ? 'Acesso bloqueado' : 'Assinatura vencida'}</h2>
+  <p class="muted" style="margin-top:0">${bl ? 'O administrador bloqueou o seu acesso. Fale com ele para regularizar.' : `O seu plano venceu em <b>${dBR(a.venc)}</b>. Regularize o pagamento para voltar a usar o sistema.`}</p>
+  ${a.pix && !bl ? `<div style="background:#faf8f3;border:1px solid var(--line);border-radius:12px;padding:12px 14px;white-space:pre-wrap;word-break:break-word;text-align:left">${esc(a.pix)}</div>` : ''}
+  <div class="actions" style="justify-content:center;margin-top:16px">${a.contato ? `<a class="btn primary" target="_blank" rel="noopener" href="${esc(waLink(a.contato, 'Olá! Sou ' + (Auth.user?.nome || 'professor(a)') + ' e quero regularizar o meu acesso ao Cátedra.'))}">Falar com o administrador</a>` : ''}<button class="btn" onclick="location.reload()">Já paguei, atualizar</button><button class="btn" onclick="Auth.logout()">Sair</button></div>
+  <p class="hint" style="margin-top:14px">Seus dados continuam guardados e voltam assim que o acesso for regularizado.</p></div>`;
+}
 const STORES = ['turmas', 'alunos', 'atividades', 'entregas', 'meta'];
 const DB = {
   db: null,
   open() {
     return new Promise((res, rej) => {
-      const r = indexedDB.open('catedra', 1);
+      const r = indexedDB.open(Auth.dbName(), 1);
       r.onupgradeneeded = () => { const d = r.result; STORES.forEach(s => { if (!d.objectStoreNames.contains(s)) d.createObjectStore(s, { keyPath: 'id' }); }); };
       r.onsuccess = () => { this.db = r.result; res(); };
       r.onerror = () => rej(r.error);
@@ -584,17 +1132,22 @@ function confirmDlg(msg, okLabel = 'Confirmar', danger = true) {
 const formData = el => Object.fromEntries(new FormData(el.querySelector('form') || el).entries());
 function empty(title, text, action = '', icon = 'layers') { return `<div class="card empty"><div class="ei">${ic(icon, 28)}</div><h3>${esc(title)}</h3><p>${esc(text)}</p>${action}</div>`; }
 function setMain(html, title) {
-  $('#main').innerHTML = html; $('#pageTitle').textContent = title || 'Cátedra'; document.title = (title ? title + ' · ' : '') + 'Cátedra';
+  $('#main').innerHTML = avisoAssinatura() + html; $('#pageTitle').textContent = title || 'Cátedra'; document.title = (title ? title + ' · ' : '') + 'Cátedra';
 }
 async function copyText(t) { try { await navigator.clipboard.writeText(t); toast('Copiado para a área de transferência', 'ok'); } catch { prompt('Copie o texto:', t); } }
 
 /* ---------- Navegação ---------- */
-const NAV = [['painel', 'home', 'Painel'], ['turmas', 'users', 'Turmas'], ['config', 'settings', 'Configurações']];
+const GTABS = ['professores', 'solicitacoes', 'pagamentos', 'relatorios', 'convites', 'planos'];
+const NAV = Auth.admin
+  ? [['gestao/professores', 'users', 'Professores'], ['gestao/solicitacoes', 'clipboard', 'Solicitações'], ['gestao/pagamentos', 'check', 'Pagamentos'], ['gestao/relatorios', 'list', 'Relatórios'], ['gestao/convites', 'send', 'Convites'], ['gestao/planos', 'settings', 'Plano']]
+  : [['painel', 'home', 'Painel'], ['turmas', 'users', 'Turmas'], ['config', 'settings', 'Meu perfil']];
 function renderNav(active) {
   const map = { turma: 'turmas', atividade: 'turmas', 'atividade-form': 'turmas', entrega: 'turmas', aluno: 'turmas' };
   const a = map[active] || active;
-  $('#sideNav').innerHTML = NAV.map(([k, i, l]) => `<a href="#/${k}" class="${a === k ? 'active' : ''}">${ic(i)} ${l}</a>`).join('');
-  $('#bottomNav').innerHTML = NAV.map(([k, i, l]) => `<a href="#/${k}" class="${a === k ? 'active' : ''}">${ic(i, 21)}<span>${l.replace('Configurações', 'Ajustes')}</span></a>`).join('');
+  if (Auth.admin) { const bs = document.querySelector('.brand small'); if (bs) bs.textContent = 'Painel gerencial'; }
+  const nb = k => (Auth.admin && k === 'gestao/solicitacoes' && Gestao.pend()) ? `<em class="nb">${Gestao.pend()}</em>` : '';
+  $('#sideNav').innerHTML = NAV.map(([k, i, l]) => `<a href="#/${k}" class="${a === k ? 'active' : ''}">${ic(i)} ${l}${nb(k)}</a>`).join(''); pintaUsuario();
+  $('#bottomNav').innerHTML = NAV.map(([k, i, l]) => `<a href="#/${k}" class="${a === k ? 'active' : ''}">${ic(i, 21)}<span>${l.replace('Configurações', 'Ajustes').replace('Solicitações', 'Pedidos')}</span>${nb(k)}</a>`).join('');
 }
 function router() {
   const h = location.hash.replace(/^#\/?/, '') || 'painel';
@@ -602,8 +1155,13 @@ function router() {
   $('#modalRoot').innerHTML = '';
   if (name === 'enviar') return viewEnviar(rest.join('/'));
   document.body.classList.remove('student');
+  if (Auth.admin) { // o administrador só gerencia professores: qualquer outra rota cai na Gestão
+    document.body.classList.add('admin-mode');
+    const t = name === 'convidar' ? 'convites' : (name === 'gestao' && GTABS.includes(rest[0]) ? rest[0] : 'professores');
+    Gestao.tab = GTABS.includes(t) ? t : 'professores'; renderNav('gestao/' + Gestao.tab); viewGestao(); window.scrollTo(0, 0); return;
+  }
   renderNav(name);
-  const views = { painel: viewPainel, turmas: viewTurmas, turma: viewTurma, atividade: viewAtividade, 'atividade-form': viewAtividadeForm, entrega: viewEntrega, aluno: viewAluno, config: viewConfig };
+  const views = { painel: viewPainel, turmas: viewTurmas, turma: viewTurma, atividade: viewAtividade, 'atividade-form': viewAtividadeForm, entrega: viewEntrega, aluno: viewAluno, config: viewConfig, gestao: viewGestao, convidar: () => { Gestao.tab = 'convites'; viewGestao(); } };
   (views[name] || viewPainel)(...rest);
   window.scrollTo(0, 0);
 }
@@ -641,12 +1199,12 @@ function parseCfg(str) { const c = str ? JSON.parse(str) : {}; if (c.ai) { delet
 
 const Sync = {
   busy: false, again: false, timer: null, dirtyArq: new Set(), state: 'off', lastError: '',
-  configured() { return !!(S.local && S.local.token && S.local.gistId); },
+  configured() { return !!Auth.token; },
   schedule() { if (!this.configured()) return; clearTimeout(this.timer); this.timer = setTimeout(() => this.run(true), 1200); },
   start() {
     this.ui();
     if (this.configured()) this.run(true);
-    setInterval(() => { if (!document.hidden && this.configured()) this.run(true); }, 20000);
+    setInterval(() => { if (!document.hidden && this.configured()) this.run(true); }, 45000);
     window.addEventListener('focus', () => this.configured() && this.run(true));
     window.addEventListener('online', () => this.configured() && this.run(true));
   },
@@ -659,50 +1217,22 @@ const Sync = {
     $('#syncBtn').innerHTML = this.configured() ? ic('refresh', 15) + ' Sincronizar agora' : ic('cloud', 15) + ' Configurar nuvem';
   },
   async run(silent = false) {
-    if (!this.configured()) { if (!silent) go('config'); return; }
+    if (!this.configured()) return;
     if (this.busy) { this.again = true; return; }
     this.busy = true; this.state = 'busy'; this.ui();
     let changed = false; const novas = [];
     try {
-      const { token, gistId } = S.local;
-      const g = await gh(`/gists/${gistId}`, {}, token);
-      // 1) data.json
-      const fd = g.files['data.json']; const remoteDataStr = await fileContent(fd);
-      if (remoteDataStr) {
-        const rd = JSON.parse(remoteDataStr);
-        for (const st of ['turmas', 'alunos', 'atividades']) for (const r of rd[st] || []) {
-          const l = byId(st, r.id); if (!l || (r.updatedAt || 0) > (l.updatedAt || 0)) { await putLocal(st, r); changed = true; }
-        }
-      }
-      // 2) config.json
-      const fc = g.files['config.json']; const remoteCfgStr = await fileContent(fc);
-      if (remoteCfgStr) {
-        const rc = parseCfg(remoteCfgStr); const ru = Math.min(rc.updatedAt || 0, Date.now() + 60000);
-        if (verNum(rc.appVersion) > verNum(APP_VERSION)) showUpdateBanner(rc.appVersion);
-        else if (ru > (S.cfg.updatedAt || 0)) { S.cfg = { ...rc, id: 'cfg', updatedAt: ru, ai: { ...(rc.ai || {}), key: S.cfg.ai?.key || '', workspace: rc.ai?.workspace || S.cfg.ai?.workspace || '' } }; await DB.put('meta', S.cfg); changed = true; }
-      }
-      // 3) entregas
-      const toDelete = [];
-      for (const [name, file] of Object.entries(g.files)) {
-        if (!/^(e|arq)_.*\.json$/.test(name)) continue;
-        let c; try { c = JSON.parse(await fileContent(file)); } catch { continue; }
-        const arr = Array.isArray(c) ? c : [c];
-        for (const r of arr) {
-          if (!r || !r.id) continue;
-          const l = byId('entregas', r.id);
-          if (!l || (r.updatedAt || 0) > (l.updatedAt || 0)) { if (!l && !r.deleted) novas.push(r); await putLocal('entregas', r); changed = true; }
-        }
-        if (name.startsWith('e_')) { toDelete.push(name); arr.forEach(r => r && this.dirtyArq.add(r.atividadeId)); }
-      }
-      // 4) envio das alterações locais
-      const files = {};
-      const ld = JSON.stringify(buildData()); if (ld !== remoteDataStr) files['data.json'] = { content: ld };
-      const lc = JSON.stringify(cfgPublic()); const remoteNewer = remoteCfgStr && verNum(JSON.parse(remoteCfgStr).appVersion) > verNum(APP_VERSION); if (lc !== remoteCfgStr && !remoteNewer) files['config.json'] = { content: lc };
-      for (const aid of this.dirtyArq) { const list = S.entregas.filter(e => e.atividadeId === aid); if (list.length) files[`arq_${aid}.json`] = { content: JSON.stringify(list) }; }
-      toDelete.forEach(n => files[n] = null);
-      if (Object.keys(files).length) await gh(`/gists/${gistId}`, { method: 'PATCH', body: JSON.stringify({ files }) }, token);
-      this.dirtyArq.clear();
-      S.local.lastSync = Date.now(); await saveLocal();
+      const t0 = Date.now(); const CAP = 300;
+      const pend = S.entregas.filter(e => (e.updatedAt || 0) > (S.local.pushed || 0)).sort((a, b) => (a.updatedAt || 0) - (b.updatedAt || 0));
+      const envio = pend.slice(0, CAP);
+      const r = await Auth.call('/sync', { since: S.local.since || 0, rev: S.local.rev || 0, data: buildData(), cfg: cfgPublic(), entregas: envio });
+      if (r.data) { for (const st of ['turmas', 'alunos', 'atividades']) for (const x of r.data[st] || []) { const l = byId(st, x.id); if (!l || (x.updatedAt || 0) > (l.updatedAt || 0)) { await putLocal(st, x); changed = true; } } S.local.rev = r.data.rev || 0; }
+      const rc = r.cfg || {}; const ru = Math.min(rc.updatedAt || 0, Date.now() + 60000);
+      if (verNum(rc.appVersion) > verNum(APP_VERSION)) showUpdateBanner(rc.appVersion);
+      else if (ru > (S.cfg.updatedAt || 0)) { S.cfg = { ...rc, id: 'cfg', updatedAt: ru, workerUrl: Auth.api, ai: S.cfg.ai }; await DB.put('meta', S.cfg); changed = true; }
+      for (const x of r.entregas || []) { const l = byId('entregas', x.id); if (!l || (x.updatedAt || 0) > (l.updatedAt || 0)) { if (!l && !x.deleted) novas.push(x); await putLocal('entregas', x); changed = true; } }
+      S.local.pushed = pend.length > CAP ? envio[envio.length - 1].updatedAt : t0; if (pend.length > CAP) this.again = true;
+      S.local.since = (r.agora || Date.now()) - 60000; S.local.lastSync = Date.now(); await saveLocal();
       this.state = 'ok'; this.lastError = '';
       if (!silent) toast('Sincronização concluída', 'ok');
     } catch (err) {
@@ -760,35 +1290,9 @@ function aiErr(p, st, msg = '') {
   else if (st === 403) dica = 'acesso negado pelo provedor (permissão, região ou chave desativada).';
   return `IA (${p}): ${dica || 'erro ' + st}${m ? ` [${m.slice(0, 160)}]` : ''}`;
 }
+// A chave da IA fica só no servidor: o navegador envia o pedido e o servidor chama o provedor (com limite mensal por professor).
 async function aiCall(cfg, { system, text, images = [] }) {
-  const ai = cfg.ai || {}; const provider = ai.provider || 'anthropic'; const model = ai.model || MODELS[provider]; const key = cleanKey(ai.key);
-  if (!key) throw new Error('A chave da IA não foi configurada pelo professor.');
-  let r, j;
-  if (provider === 'anthropic') {
-    const content = [...images.map(d => ({ type: 'image', source: { type: 'base64', media_type: d.mime, data: d.b64 } })), { type: 'text', text }];
-    const base = { 'content-type': 'application/json', 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' };
-    const ws = String(ai.workspace || '').trim(); if (ws) base['anthropic-workspace-id'] = ws;
-    const body = JSON.stringify({ model, max_tokens: 8000, system, messages: [{ role: 'user', content }] });
-    const call = h => fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { ...base, ...h }, body });
-    const legacy = /^sk-ant-api/.test(key);
-    r = await call(legacy ? { 'x-api-key': key } : { Authorization: 'Bearer ' + key });
-    if (r.status === 401) { const r2 = await call(legacy ? { Authorization: 'Bearer ' + key } : { 'x-api-key': key }); if (r2.status !== 401) r = r2; }
-    j = await r.json(); if (!r.ok) throw new Error(aiErr('Anthropic', r.status, j.error?.message));
-    return j.content.filter(c => c.type === 'text').map(c => c.text).join('');
-  }
-  if (provider === 'openai') {
-    const content = [{ type: 'text', text }, ...images.map(d => ({ type: 'image_url', image_url: { url: `data:${d.mime};base64,${d.b64}` } }))];
-    r = await fetch('https://api.openai.com/v1/chat/completions', { method: 'POST', headers: { 'content-type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify({ model, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: system }, { role: 'user', content }] }) });
-    j = await r.json(); if (!r.ok) throw new Error(aiErr('OpenAI', r.status, j.error?.message));
-    return j.choices[0].message.content;
-  }
-  if (provider === 'gemini') {
-    const parts = [...images.map(d => ({ inline_data: { mime_type: d.mime, data: d.b64 } })), { text }];
-    r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents: [{ role: 'user', parts }], generationConfig: { responseMimeType: 'application/json', temperature: 0.2 } }) });
-    j = await r.json(); if (!r.ok) throw new Error(aiErr('Gemini', r.status, j.error?.message));
-    return (j.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
-  }
-  throw new Error('Provedor de IA desconhecido');
+  const r = await Auth.call('/ia', { system, text, images }); return r.texto;
 }
 function parseJSON(s) {
   s = String(s || '').trim().replace(/^```(?:json)?/i, '').replace(/```\s*$/, '');
@@ -1666,44 +2170,6 @@ function renderRelatorio(e, atv, { student = false, aluno = null } = {}) {
 /* =========================================================
    VIEWS — PROFESSOR
    ========================================================= */
-/* ===== Tempo devolvido ao professor ===== */
-function fmtHoras(min) { const h = min / 60; return h < 1 ? Math.round(min) + ' min' : (h < 10 ? h.toFixed(1).replace('.', ',') : Math.round(h)) + ' h'; }
-function blocoTempo(en) {
-  const minPor = Number(S.cfg.minPorCorrecao) || 10;
-  const n = en.length, min = n * minPor;
-  if (S.cfg.ocultarTempo && n) return '';
-  if (!n) return `<div class="card tempo">
-    <h3>A correção não precisa mais ir para casa com você.</h3>
-    <p>Por décadas, a jornada do professor continuou depois do último sinal: na mesa da cozinha, à noite e nos fins de semana, entre pilhas de provas e redações. Professores brasileiros declaram cerca de <b style="color:#fff">6 horas por semana</b> só corrigindo (TALIS 2024). A Cátedra assume a primeira leitura, aplica seus critérios e entrega o relatório pronto para você revisar, para que esse tempo volte para a sua família, o seu descanso e a sua formação.</p>
-    <div class="tfoot"><a class="btn" href="#/turmas">${ic('plus')} Comece criando uma turma</a><span>Cada entrega corrigida aqui soma ao seu tempo devolvido.</span></div></div>`;
-  const semanas = Math.max(1, (Date.now() - Math.min(...en.map(e => e.criadoEm || Date.now()))) / 6048e5);
-  const porSem = min / semanas;
-  return `<div class="card tempo">
-    <button class="tx" onclick="ocultarTempo()" aria-label="Ocultar este quadro">${ic('x', 16)}</button>
-    <h3>${fmtHoras(min)} que voltaram para a sua vida.</h3>
-    <p>Esse é o tempo estimado que você deixou de passar corrigindo em casa. Tempo para jantar com a família, para dormir melhor, para aquele curso que vinha ficando para depois.</p>
-    <div class="tnums">
-      <div><b>${n}</b><span>entregas corrigidas pela Cátedra</span></div>
-      <div><b>${fmtHoras(min)}</b><span>de correção poupadas</span></div>
-      <div><b>${fmtHoras(porSem)}</b><span>em média por semana</span></div>
-    </div>
-    <div class="tfoot"><span>Estimativa: ${minPor} min poupados por correção.</span><button class="btn sm" onclick="ajustarTempo()">${ic('clock', 15)} Ajustar estimativa</button></div></div>`;
-}
-async function ocultarTempo() { S.cfg.ocultarTempo = true; await saveCfg(); toast('Quadro ocultado. Reative em Configurações › Professor.'); router(); }
-function ajustarTempo() {
-  modal({
-    title: 'Quanto tempo você levaria corrigindo?',
-    body: `<p class="muted">Informe quantos minutos, em média, você gastaria para corrigir uma entrega à mão (ler, anotar, dar a nota e escrever o retorno). O painel usa esse número para estimar o tempo devolvido.</p>
-      <div class="field"><label for="minPor">Minutos por correção</label><input id="minPor" type="number" min="1" max="120" step="1" value="${Number(S.cfg.minPorCorrecao) || 10}"></div>
-      <label class="check"><input id="mostraTempo" type="checkbox" ${S.cfg.ocultarTempo ? '' : 'checked'}> <span>Mostrar o quadro “tempo devolvido” no painel</span></label>`,
-    actions: [{ label: 'Cancelar' }, { label: 'Salvar', cls: 'primary', onClick: async m => {
-      const v = Math.round(Number(m.querySelector('#minPor').value));
-      if (!(v >= 1 && v <= 120)) { toast('Use um valor entre 1 e 120 minutos.', 'bad'); return false; }
-      S.cfg.minPorCorrecao = v; S.cfg.ocultarTempo = !m.querySelector('#mostraTempo').checked; await saveCfg(); router();
-    } }]
-  });
-}
-
 function viewPainel() {
   const ts = live(S.turmas), al = live(S.alunos), at = live(S.atividades), en = live(S.entregas);
   const ps = en.map(pctE).filter(x => x != null && !isNaN(x));
@@ -1714,9 +2180,9 @@ function viewPainel() {
   setMain(`
   <div class="page-head"><div><h2>${hello}</h2><p class="muted">${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</p></div>
    <div class="actions"><a class="btn" href="#/turmas">${ic('users')} Turmas</a><button class="btn primary" onclick="formTurma()">${ic('plus')} Nova turma</button></div></div>
+  ${PlanoProf.card()}
   ${!Sync.configured() ? `<div class="alert warn">${ic('cloud')}<div><b>Sincronização desativada.</b> Para gerar links para os alunos e sincronizar em tempo real entre dispositivos, configure o GitHub Gist e a IA em <a href="#/config" style="text-decoration:underline">Configurações</a>.</div></div>` : ''}
   ${!S.cfg.ai?.key || S.cfg.modoPadrao === 'local' ? `<div class="alert ok">${ic('check')}<div><b>Correção gratuita ativa.</b> Trabalhos são avaliados por métricas do texto e provas pela leitura óptica da folha de respostas, sem custo. Para correções mais profundas, configure uma IA em <a href="#/config" style="text-decoration:underline">Configurações</a> (o Gemini tem plano gratuito).</div></div>` : ''}
-  ${blocoTempo(en)}
   <div class="grid stats">
     ${statCard('users', ts.length, 'Turmas')}${statCard('user', al.length, 'Alunos')}${statCard('layers', at.length, 'Atividades')}${statCard('clipboard', en.length, 'Entregas corrigidas')}${statCard('award', pctStr(media), 'Aproveitamento médio')}
   </div>
@@ -2066,15 +2532,21 @@ function ajustarNota(id) {
 async function delEntrega(id) { const e = byId('entregas', id); if (await confirmDlg('Excluir esta entrega? O aluno poderá enviar novamente (libera uma tentativa).', 'Excluir')) { await removeRec('entregas', id); toast('Entrega excluída'); go('atividade/' + e.atividadeId); } }
 
 /* ---------- Configurações ---------- */
+function viewConvidar() {
+  if (!Auth.admin) { location.hash = '#/painel'; return; }
+  setMain(`<div class="page-head"><div><h2>Convidar professores</h2><p class="muted">Envie o link do sistema e o código de convite pelo WhatsApp</p></div></div>
+  <div class="card" id="admConvite"><div class="muted small">Carregando…</div></div>`, 'Convidar');
+  Admin.convite();
+}
 function viewConfig() {
   const c = S.cfg, l = S.local, ai = c.ai || {};
-  setMain(`<div class="page-head"><div><h2>Configurações</h2><p class="muted">Seus dados, sincronização e inteligência artificial</p></div></div>
+  setMain(`<div class="page-head"><div><h2>${Auth.admin ? 'Configurações' : 'Meu perfil'}</h2><p class="muted">${Auth.admin ? 'Professores, limites e dados do sistema' : 'Seus dados e modo de correção'}</p></div></div>
   <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(340px,1fr));align-items:start">
   <div class="card"><h3>${ic('user')} Professor</h3><form id="fProf" onsubmit="return false">
     <div class="field"><label>Nome</label><input name="professor" value="${esc(c.professor)}" placeholder="Prof. Dr. Nome Sobrenome"></div>
     <div class="field"><label>Instituição</label><input name="instituicao" value="${esc(c.instituicao)}"></div>
-    <div class="field"><label>URL pública do sistema</label><input name="publicUrl" value="${esc(c.publicUrl)}" placeholder="https://seuusuario.github.io/catedra/"><div class="hint">Endereço onde este arquivo está publicado. É a base dos links enviados aos alunos. Em branco = endereço atual.</div></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" onclick="saveProf()">${ic('check')} Salvar</button><button class="btn" type="button" onclick="ajustarTempo()">${ic('clock')} Tempo devolvido</button></div></form></div>
+    ${Auth.admin ? `<div class="field"><label>URL pública do sistema</label><input name="publicUrl" value="${esc(c.publicUrl)}" placeholder="https://seuusuario.github.io/catedra/"><div class="hint">Endereço onde este arquivo está publicado. É a base dos links enviados aos alunos. Em branco = endereço atual.</div></div>` : ''}
+    <button class="btn primary" onclick="saveProf()">${ic('check')} Salvar</button></form></div>
 
   <div class="card"><h3>${ic('check')} Modo de correção</h3><form id="fModo" onsubmit="return false">
     <label class="check"><input type="radio" name="modoPadrao" value="local" ${(c.modoPadrao || (ai.key ? 'ia' : 'local')) === 'local' ? 'checked' : ''}> <span><b>Gratuita (sem IA)</b><br><span class="muted small">Sem custo e sem chave. Trabalhos: métricas do texto (extensão, conectivos, desvios, citações, referências, seções e conceitos do tema). Provas: leitura óptica da folha de respostas impressa + verificação de conceitos nas questões abertas. É uma estimativa: revise quando necessário.</span></span></label>
@@ -2083,39 +2555,15 @@ function viewConfig() {
     <div class="hint" style="margin-bottom:12px">Cada atividade pode usar outro modo (no formulário da atividade).</div>
     <button class="btn primary" onclick="saveModo()">${ic('check')} Salvar</button></form></div>
 
-  <div class="card"><h3>${ic('sparkle')} Inteligência artificial</h3>
-    <div class="alert info">${ic('sparkle')}<div><b>IA sem custo:</b> o Google oferece um plano gratuito da API Gemini, com limites de uso e apenas para alguns modelos. Crie a chave em <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener"><u>aistudio.google.com/apikey</u></a>, escolha "Google (Gemini)" e um modelo do plano gratuito (ex.: gemini-2.5-flash-lite). No plano gratuito, o Google pode usar o conteúdo enviado para melhorar seus produtos, e novas contas podem precisar ativar o plano pré-pago.</div></div><form id="fAi" onsubmit="return false">
-    <div class="field"><label>Provedor</label><select name="provider" onchange="this.form.model.value=MODELS[this.value];$('[data-anth]').style.display=this.value==='anthropic'?'':'none'">${Object.entries(PROVIDERS).map(([k, v]) => `<option value="${k}" ${ai.provider === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
-    <div class="field"><label>Modelo</label><input name="model" value="${esc(ai.model || MODELS[ai.provider || 'anthropic'])}"><div class="hint">Use um modelo com visão (leitura de imagens) para corrigir provas fotografadas.</div></div>
-    <div class="field" data-anth ${ai.provider && ai.provider !== 'anthropic' ? 'style="display:none"' : ''}><label>ID do workspace (Anthropic, opcional)</label><input name="workspace" value="${esc(ai.workspace || '')}" placeholder="wrkspc_…" autocomplete="off" spellcheck="false"><div class="hint">Necessário só se a chave não estiver vinculada a um workspace (chaves pessoais <code>sk-ant-usr</code> criadas sem workspace). Encontre o ID no Console em <b>Configurações → Workspaces</b>.</div></div>
-    <div class="field"><label>Chave de API</label><div style="display:flex;gap:6px"><input type="password" name="key" id="aiKey" value="${esc(ai.key)}" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore placeholder="${ai.provider === 'gemini' ? 'AIza…' : ai.provider === 'openai' ? 'sk-…' : 'sk-ant-…'}"><button type="button" class="btn" onclick="const k=$('#aiKey');k.type=k.type==='password'?'text':'password'" title="Mostrar/ocultar">${ic('eye', 16)}</button></div>
-      <div class="hint">${ai.key ? `Chave salva: <code>${esc(maskKey(ai.key))}</code> (${ai.key.length} caracteres). Confira se o início e o fim batem com a chave do provedor.` : 'Nenhuma chave salva.'} ${ai.provider === 'anthropic' || !ai.provider ? 'Gere a chave em <a href="https://platform.claude.com/settings/keys" target="_blank" rel="noopener"><u>platform.claude.com/settings/keys</u></a> (a assinatura do Claude.ai não fornece chave de API).' : ''}</div></div>
-    <div class="actions"><button class="btn primary" onclick="saveAi()">${ic('check')} Salvar</button><button class="btn" onclick="testAi()">${ic('sparkle')} Testar e diagnosticar</button></div></form></div>
-
-  <div class="card"><h3>${ic('cloud')} Sincronização (GitHub Gist)</h3>
-    <div class="alert ${Sync.configured() ? (Sync.state === 'err' ? 'bad' : 'ok') : 'warn'}">${ic(Sync.configured() ? 'check' : 'alert')}<div>${Sync.configured() ? (Sync.state === 'err' ? esc(Sync.lastError) : `Conectado ao Gist <b>${esc(l.gistId.slice(0, 10))}…</b>. Última sincronização: ${fmtDate(l.lastSync)}`) : 'Não configurado — os dados estão apenas neste navegador.'}</div></div>
-    <form id="fGh" onsubmit="return false">
-    <div class="field"><label>Token do GitHub (permissão "gist")</label><input type="password" name="token" value="${esc(l.token)}" autocomplete="off" placeholder="ghp_…"><div class="hint">Crie em <a href="https://github.com/settings/tokens/new?scopes=gist&description=Catedra" target="_blank" rel="noopener"><u>github.com/settings/tokens</u></a> marcando apenas <b>gist</b>.</div></div>
-    <div class="field"><label>ID do Gist</label><input name="gistId" value="${esc(l.gistId)}" placeholder="Deixe vazio e clique em Criar Gist"></div>
-    <div class="actions"><button class="btn primary" onclick="ghConnect()">${ic('link')} Conectar</button><button class="btn" onclick="ghCreate()">${ic('plus')} Criar Gist</button><button class="btn" onclick="ghFind()">${ic('refresh')} Buscar existente</button>${Sync.configured() ? `<button class="btn ghost" onclick="ghDisconnect()">Desconectar</button>` : ''}</div></form>
-    <p class="hint" style="margin-top:14px">A sincronização ocorre automaticamente a cada alteração e a cada 20 segundos. Use o mesmo token e Gist em outro dispositivo para acessar seus dados.</p></div>
-
-  <div class="card"><h3>${ic('shield')} Servidor de envio dos alunos</h3>
-    <p class="small muted" style="margin-top:0">Os alunos enviam e recebem a correção por um pequeno servidor gratuito (Cloudflare Worker) que guarda o token do GitHub e a chave da IA. O link do aluno não contém nenhum segredo, e o gabarito nunca chega ao aparelho do aluno.</p>
-    <form id="fSrv" onsubmit="return false"><div class="field"><label>Endereço do servidor</label><input name="workerUrl" value="${esc(c.workerUrl || '')}" placeholder="https://catedra.seunome.workers.dev" spellcheck="false"></div>
-    <div class="actions"><button class="btn primary" onclick="saveSrv()">${ic('check')} Salvar</button><button class="btn" onclick="testSrv()">${ic('refresh')} Testar servidor</button><button class="btn ghost" onclick="guiaServidor()">${ic('list')} Como instalar</button></div></form>
-    <div id="srvStatus" style="margin-top:12px"></div></div>
-
-  <div class="card"><h3>${ic('shield')} Segurança</h3>
-    <ul class="blist small" style="margin-top:0"><li>Token do GitHub e chave da IA <b>nunca</b> vão para o Gist nem para o link do aluno.</li><li>O gabarito, as instruções internas e as entregas dos colegas não são enviados ao aluno.</li><li>Matrícula, prazo e número de tentativas são conferidos no servidor; a nota é calculada no servidor.</li><li>Defina um <b>limite de gastos</b> no painel do provedor da IA.</li></ul>
-    <p class="small" style="margin:10px 0 6px"><b>Migração (recomendado se você já enviou links antigos):</b> os links antigos continham o token e o ID do Gist. Revogue o token antigo no GitHub, crie um novo, informe-o acima e clique em:</p>
-    <button class="btn" onclick="ghMigrar()">${ic('refresh')} Migrar para um novo Gist</button></div>
+  ${!Auth.admin && S.assin ? `<div style="grid-column:1/-1">${PlanoProf.card()}</div>` : ''}
+  ${Auth.admin ? `<div class="card" style="grid-column:1/-1"><h3>${ic('grid')} Gestão de professores</h3><p class="muted small" style="margin-top:0">Cadastros, planos, pagamentos, bloqueios e relatórios ficam em <b>Gestão</b>.</p><div class="actions"><a class="btn primary" href="#/gestao">Abrir Gestão</a><span data-install>${App.btn()}</span><button class="btn" onclick="Auth.logout()">Sair</button></div></div>`
+  : `<div class="card"><h3>${ic('user')} Minha conta</h3><p class="small" style="margin-top:0">${esc(Auth.user?.email || '')}</p>${S.assin && S.assin.status !== 'isento' ? `<p class="small" style="margin:0 0 10px">Plano <b>${esc(S.assin.plano)}</b> · ${brl(S.assin.valor)}/mês<br>Vencimento: <b>${dBR(S.assin.venc)}</b>${S.assin.status === 'ativo' ? ` (${S.assin.diasRestantes === 0 ? 'hoje' : S.assin.diasRestantes + ' dia(s)'})` : ''} <button class="btn sm" onclick="comoPagar()">Como pagar</button></p>` : ''}<p class="small muted" id="iaUso">${S.ia ? (S.ia.disponivel ? `Correções por IA neste mês: <b>${S.ia.uso}</b>${S.ia.limite != null ? ' de <b>' + S.ia.limite + '</b>' : ''}` : 'Correção por IA indisponível no momento (use a gratuita).') : ''}</p><div class="actions"><span data-install>${App.btn()}</span><button class="btn" onclick="Auth.logout()">Sair</button></div></div>`}
 
   <div class="card"><h3>${ic('download')} Backup global</h3><p class="muted small" style="margin-top:0">Leva <b>tudo</b> para outro aparelho: turmas, alunos, atividades e entregas, token do GitHub e ID do Gist, chave e configuração da IA, endereço do servidor e URL pública. O arquivo é <b>criptografado com uma senha</b> definida por você.</p>
     <p class="hint">Versão do sistema: <b>${APP_VERSION}</b></p>
     <div class="actions"><button class="btn primary" onclick="exportBackup()">${ic("download")} Exportar backup global</button><label class="btn">${ic("upload")} Importar backup<input type="file" accept=".json" hidden onchange="importBackup(this.files[0]);this.value=''"></label><button class="btn danger" onclick="wipeAll()">${ic('trash')} Apagar dados locais</button></div></div>
   </div>`, 'Configurações');
-  testSrv();
+  if (Auth.admin) { Admin.convite(); Admin.load(); }
 }
 async function saveSrv() { const v = String(formData($('#fSrv')).workerUrl || '').trim().replace(/\/+$/, ''); if (v && !/^https:\/\/[a-z0-9.-]+(:\d+)?(\/[\w./-]*)?$/i.test(v)) return toast('Informe um endereço https válido', 'bad'); S.cfg.workerUrl = v; await saveCfg(); toast('Servidor salvo', 'ok'); testSrv(); }
 async function testSrv() {
@@ -2573,6 +3021,7 @@ function sNovaTentativa() { $('#main').innerHTML = sShell(`<div id="sId"></div>`
    ========================================================= */
 async function boot() {
   const student = /^#\/?enviar\//.test(location.hash);
+  if (!student && !Auth.token) return telaLogin();
   try {
     await DB.open();
     S.local = await DB.get('meta', 'local') || { id: 'local', token: '', gistId: '', lastSync: 0 };
@@ -2582,9 +3031,21 @@ async function boot() {
     if (!student) { $('#main').innerHTML = `<div class="alert bad">${ic('alert')}<div>Não foi possível abrir o banco de dados local (IndexedDB): ${esc(e.message)}. Saia do modo anônimo ou use outro navegador.</div></div>`; return; }
     S.local = { token: '', gistId: '' }; S.cfg = {};
   }
+  if (!student) {
+    try {
+      const me = await Auth.call('/me'); Auth.user = me.user; localStorage.setItem('catedra_user', JSON.stringify(me.user)); S.ia = me.ia;
+      S.assin = me.assinatura || null; S.sol = me.solicitacao || null; if (S.assin && (S.assin.status === 'suspenso' || S.assin.status === 'bloqueado')) { telaSuspensa(S.assin); return; }
+      S.cfg.workerUrl = Auth.api; S.cfg.ai = { provider: me.ia.provider, model: me.ia.model, key: me.ia.disponivel ? 'servidor' : '' };
+      if (!S.cfg.professor && me.user.role !== 'admin') S.cfg.professor = me.user.nome;
+      await DB.put('meta', S.cfg); // remove do navegador qualquer chave de IA antiga
+      if (S.local.token || S.local.gistId) { S.local.token = ''; S.local.gistId = ''; await saveLocal(); } // o token do GitHub não é mais usado
+    } catch (e) { if (e.status === 401) return; }
+  }
   window.addEventListener('hashchange', router);
   router();
-  if (!student) Sync.start();
+  if (!student && !Auth.admin) { Sync.start(); setInterval(() => { if (!document.hidden) PlanoProf.sync(); }, 120000); window.addEventListener('focus', () => PlanoProf.sync()); }
+  if (!student && Auth.admin) { setInterval(() => { if (!document.hidden) Gestao.carregarSol(); }, 60000); window.addEventListener('focus', () => Gestao.carregarSol()); }
+  if (!student && !Auth.admin && avisoDe(S.assin)) { const k = 'catedra_aviso_sessao'; let ja = false; try { ja = sessionStorage.getItem(k) === hojeISO(); sessionStorage.setItem(k, hojeISO()); } catch { } if (!ja) setTimeout(() => comoPagar(true), 600); }
 }
 boot();
 </script>
